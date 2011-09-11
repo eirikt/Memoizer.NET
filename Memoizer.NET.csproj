@@ -1,0 +1,60 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Settings;Clean;Build;Test" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <ItemGroup>
+    <ProjectReferences Include="Memoizer.Net\Memoizer.Net.csproj"/>
+    <TestProjectReferences Include="Memoizer.Net.Test\Memoizer.Net.Test.csproj"/>
+  </ItemGroup>
+  
+  <Target Name="RunDefaultTargetsForAllProjects">
+    <MSBuild Projects="@(ProjectReferences)" StopOnFirstFailure="true" ContinueOnError="false"/>
+    <MSBuild Projects="@(TestProjectReferences)" StopOnFirstFailure="true" ContinueOnError="false"/>
+  </Target>
+  
+  <Target Name="Default">
+    <MSBuild Projects="@(ProjectReferences)" StopOnFirstFailure="true" ContinueOnError="false"/>
+    <MSBuild Projects="@(TestProjectReferences)" StopOnFirstFailure="true" ContinueOnError="false"/>
+  </Target>
+  
+   <Target Name="Settings">
+    <Message Text="Target 'Settings' invoked..."/>
+
+    <Message Text="Program Files path         : $(ProgramFiles)" />
+    <Message Text="Configuration              : $(Configuration)" />
+    <Message Text="Platform                   : $(Platform)" />
+    <Message Text="AssemblyName               : $(AssemblyName)" />
+    <Message Text="SourceDir                  : $(SourceDir)" />
+    <Message Text="OutputPath                 : $(OutputPath)" />
+    <Message Text="SolutionDir                : $(SolutionDir)" />
+    <Message Text="ProjectDir                 : $(ProjectDir)" />
+    <Message Text="MSBuildToolsPath           : $(MSBuildToolsPath)" />
+    <Message Text="MSBuildExtensionsPath32    : $(MSBuildExtensionsPath32)" />
+    <Message Text="MSBuildExtensionsPath64    : $(MSBuildExtensionsPath64)" />
+    <Message Text="BuildingInsideVisualStudio : $(BuildingInsideVisualStudio)" />
+
+    <MSBuild Projects="@(ProjectReferences)" Targets="Settings"/>
+    <MSBuild Projects="@(TestProjectReferences)" Targets="Settings"/>
+	
+    <Message Text="Target 'Settings' completed!"/>
+  </Target>
+
+  <Target Name="Clean">
+    <MSBuild Projects="@(ProjectReferences)" Targets="Clean"/>
+    <MSBuild Projects="@(TestProjectReferences)" Targets="Clean"/>
+  </Target>
+
+  <Target Name="Build">
+    <MSBuild Projects="@(ProjectReferences)" Targets="Build"/>
+    <MSBuild Projects="@(TestProjectReferences)" Targets="Build"/>
+  </Target>
+
+  <Target Name="Rebuild">
+    <MSBuild Projects="@(ProjectReferences)" Targets="Rebuild"/>
+    <MSBuild Projects="@(TestProjectReferences)" Targets="Rebuild"/>
+  </Target>
+
+  <Target Name="Test">
+    <MSBuild Projects="@(TestProjectReferences)" Targets="Test" StopOnFirstFailure="true" ContinueOnError="false"/>
+  </Target>
+
+</Project>

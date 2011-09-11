@@ -1,0 +1,35 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Memoizer.NET", "Memoizer.NET\Memoizer.NET.csproj", "{04CCECDF-1885-4A26-8234-9ACC64724F27}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Memoizer.NET.Test", "Memoizer.NET.Test\Memoizer.NET.Test.csproj", "{7A844EAC-AD20-4078-BBAC-C174EE7EB7F9}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{E24DFBC5-009B-4F04-B917-0A131456DB49}"
+	ProjectSection(SolutionItems) = preProject
+		LICENSE.txt = LICENSE.txt
+		Memoizer.NET.csproj = Memoizer.NET.csproj
+		Memoizer.NET.targets = Memoizer.NET.targets
+		Memoizer.NET.targets.user = Memoizer.NET.targets.user
+		README.txt = README.txt
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{04CCECDF-1885-4A26-8234-9ACC64724F27}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{04CCECDF-1885-4A26-8234-9ACC64724F27}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{04CCECDF-1885-4A26-8234-9ACC64724F27}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{04CCECDF-1885-4A26-8234-9ACC64724F27}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7A844EAC-AD20-4078-BBAC-C174EE7EB7F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7A844EAC-AD20-4078-BBAC-C174EE7EB7F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7A844EAC-AD20-4078-BBAC-C174EE7EB7F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7A844EAC-AD20-4078-BBAC-C174EE7EB7F9}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

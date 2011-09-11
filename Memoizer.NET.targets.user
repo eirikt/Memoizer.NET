@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+
+  <!-- To be used if the included NUnit won't work (as sometimes has been the case...)
+  <PropertyGroup>
+	<NUnitHome>C:\Program Files (x86)\NUnit 2.5.10\bin\net-2.0</USER_NUnitHome>
+  </PropertyGroup>
+  -->
+  
+</Project>

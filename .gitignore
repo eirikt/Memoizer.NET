@@ -1,0 +1,32 @@
+#Ignore archived artifacts
+archive/
+#Ignore thumbnails created by Windows
+Thumbs.db
+#Ignore files build by Visual Studio
+*.obj
+*.exe
+*.pdb
+*.aps
+*.pch
+*.vspscc
+*_i.c
+*_p.c
+*.ncb
+*.suo
+*.tlb
+*.tlh
+*.bak
+*.cache
+*.ilk
+*.log
+[Bb]in
+[Dd]ebug*/
+*.lib
+*.sbr
+obj/
+[Rr]elease*/
+[Tt]est[Rr]esult*
+#Ignore Resharper specific files
+_ReSharper*/
+*.ReSharper.user
+*.csproj.ReSharper

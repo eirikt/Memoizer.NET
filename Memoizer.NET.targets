@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <Target Name="Settings">
+    <Message Text="Program Files path         : $(ProgramFiles)" />
+    <Message Text="Configuration              : $(Configuration)" />
+    <Message Text="Platform                   : $(Platform)" />
+    <Message Text="AssemblyName               : $(AssemblyName)" />
+    <Message Text="SourceDir                  : $(SourceDir)" />
+    <Message Text="OutputPath                 : $(OutputPath)" />
+    <Message Text="SolutionDir                : $(SolutionDir)" />
+    <!--<Error Text="SolutionDir does not have trailing slash" Condition="!HasTrailingSlash('$(SolutionDir)')"/>-->
+    <Message Text="ProjectDir                 : $(ProjectDir)" />
+    <Message Text="MSBuildToolsPath           : $(MSBuildToolsPath)" />
+    <Message Text="MSBuildExtensionsPath32    : $(MSBuildExtensionsPath32)" />
+    <Message Text="MSBuildExtensionsPath64    : $(MSBuildExtensionsPath64)" />
+    <Message Text="BuildingInsideVisualStudio : $(BuildingInsideVisualStudio)" />
+  </Target>
+
+  <PropertyGroup>
+    <MSBuildCommunityTasksPath>.</MSBuildCommunityTasksPath>
+  </PropertyGroup>
+  <Import Project="lib\MSBuildCommunityTasks.1.2.0.306\MSBuild.Community.Tasks.Targets" />
+
+  <PropertyGroup>
+    <!-- Default: NuGet default path -->
+    <NUnitHome>..\packages\NUnit.2.5.10.11092\tools</NUnitHome>
+  </PropertyGroup>
+
+  <Target Name="Test" DependsOnTargets="Rebuild">
+    <NUnit ToolPath="$(NUnitHome)" Assemblies="$(OutputPath)$(AssemblyName).dll" OutputXmlFile="$(OutputPath)TestResults.xml" ContinueOnError="false" />
+  </Target>
+
+</Project>
