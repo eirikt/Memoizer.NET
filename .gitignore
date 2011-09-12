@@ -25,6 +25,7 @@ Thumbs.db
 obj/
 [Rr]elease*/
 [Tt]est[Rr]esult*
+*.csproj.user
 #Ignore Resharper specific files
 _ReSharper*/
 *.ReSharper.user
