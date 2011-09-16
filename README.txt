@@ -73,4 +73,4 @@ Building the project *)
 Help
 ====
 
-- How do I set up NuGet properly so I can remove the silly ‘packages’/’lib’ folders in Git?
+- How do I set up NuGet properly so I can remove the silly 'packages'/'lib' folders in Git?
