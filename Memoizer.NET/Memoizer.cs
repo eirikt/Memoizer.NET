@@ -18,7 +18,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Caching;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Memoizer.NET
@@ -60,18 +59,22 @@ namespace Memoizer.NET
 
     #region Memoizer (using a MemoryCache instance and Goetz's algorithm)
     /// <remarks>
-    /// This class is an implementation of a method-level/fine-grained cache (a.k.a. <i>memoizer</i>).
-    /// It is based on an implementation from the book "Java Concurrency in Practice" by Brian Goetz et. al. -
-    /// ported to C# 4.0 using goodness like method handlers/delegates and lambda expressions.
+    /// This class is an implementation of a method-level/fine-grained cache (a.k.a. <i>memoizer</i>). 
+    /// It is based on an implementation from the book "Java Concurrency in Practice" by Brian Goetz et. al. - 
+    /// ported to C# 4.0 using goodness like method handles/delegates and lambda expressions.
     /// <p/>
-    /// A <code>System.Runtime.Caching.MemoryCache</code> instance is used as cache, enabling configuration through the <code>System.Runtime.Caching.CacheItemPolicy</code>.
+    /// A <code>System.Runtime.Caching.MemoryCache</code> instance is used as cache, enabling configuration via the <code>System.Runtime.Caching.CacheItemPolicy</code>. 
     /// Default cache configuration is: items to be held as long as the CLR is alive or the memoizer is disposed/cleared.
-    /// Every <code>Memoizer</code> instance creates its own <code>System.Runtime.Caching.MemoryCache</code> instance.
-    /// This is due to the fact that <code>Memoizer</code> intances are <i>disposable</i>, hence will dispose of its <code>Memoizer</code> member.
-    /// One could re-design this to utilize the ubiquitous <i>default</i> <code>System.Runtime.Caching.MemoryCache</code> instance to make this memoizer even faster.
+    /// <p/>
+    /// Every <code>Memoizer.Net.Memoizer</code> instance creates its own <code>System.Runtime.Caching.MemoryCache</code> instance. 
+    /// One could re-design this to utilize the ubiquitous default <code>System.Runtime.Caching.MemoryCache</code> instance to make this memoizer even faster. 
+    /// As a middle-way, the <code>Memoizer.Net.Memoizer</code> instance, with its <code>System.Runtime.Caching.MemoryCache</code> member instance, 
+    /// can be lazy-loaded by using the <code>Memoizer.Net.LazyMemoizer</code>.
     /// <p/>
     /// This class is thread-safe.
     /// </remarks>
+    /// <see>http://jcip.net/</see>
+    /// <see><code>Memoizer.Net.LazyMemoizer</code></see>
     /// <author>Eirik Torske</author>
     public abstract class AbstractMemoizer<TResult> : IThreadSafe, IDisposable
     {
@@ -371,6 +374,9 @@ namespace Memoizer.NET
     //        return () => this.methodToBeMemoized((TParam1)args[0], (TParam2)args[1], (TParam3)args[2], (TParam4)args[3], (TParam5)args[4], (TParam6)args[5]);
     //    }
     //}
+
+    // TODO: create a "mini-DSL"/builder for easy creation of Memoizer objects
+
     #endregion
 
     #region MemoryCacheMemoizer
