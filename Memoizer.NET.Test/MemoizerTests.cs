@@ -34,33 +34,35 @@ namespace Memoizer.NET.Test
     {
 
         #region Test constants
-        const int NUMBER_OF_ITERATIONS = 10;
-        const int NUMBER_OF_CONCURRENT_TASKS = 600;
-        const int DATABASE_RESPONSE_LATENCY_IN_MILLIS = 30;
-        const int NETWORK_RESPONSE_LATENCY_IN_MILLIS = 1000;
-        const string METHOD_RESPONSE_ELEMENT = "VeryExpensiveMethodResponseFor";
+        internal const int NUMBER_OF_ITERATIONS = 3;
+        internal const int NUMBER_OF_CONCURRENT_TASKS = 600;
+
+        internal const int DATABASE_RESPONSE_LATENCY_IN_MILLIS = 30;
+        internal const int NETWORK_RESPONSE_LATENCY_IN_MILLIS = 1000;
+
+        internal const string METHOD_RESPONSE_ELEMENT = "VeryExpensiveMethodResponseFor";
         #endregion
 
         #region Test helper methods
-        static string Concatinate(string arg1, string arg2, string arg3) { return arg1 + arg2 + arg3; }
+        internal static string Concatinate(string arg1, string arg2, string arg3) { return arg1 + arg2 + arg3; }
 
-        static string ReallySlowNetworkStaticInvocation(string stringArg, long longArg)
+        internal static string ReallySlowNetworkStaticInvocation(string stringArg, long longArg)
         {
             //Console.WriteLine("TypicalNetworkInvocation invoked...");
             Thread.Sleep(NETWORK_RESPONSE_LATENCY_IN_MILLIS);
             //Console.WriteLine("TypicalNetworkInvocation returns...");
             return Concatinate(METHOD_RESPONSE_ELEMENT, stringArg, Convert.ToString(longArg));
         }
-        string ReallySlowNetworkInvocation(string stringArg, long longArg) { return ReallySlowNetworkStaticInvocation(stringArg, longArg); }
+        internal string ReallySlowNetworkInvocation(string stringArg, long longArg) { return ReallySlowNetworkStaticInvocation(stringArg, longArg); }
 
-        static string TypicalDatabaseStaticInvocation(string stringArg, long longArg)
+        internal static string TypicalDatabaseStaticInvocation(string stringArg, long longArg)
         {
             Console.WriteLine("TypicalDatabaseInvocation invoked...");
             Thread.Sleep(DATABASE_RESPONSE_LATENCY_IN_MILLIS);
             Console.WriteLine("TypicalDatabaseInvocation returns...");
             return Concatinate(METHOD_RESPONSE_ELEMENT, stringArg, Convert.ToString(longArg));
         }
-        string TypicalDatabaseInvocation(string stringArg, long longArg) { return TypicalDatabaseStaticInvocation(stringArg, longArg); }
+        internal string TypicalDatabaseInvocation(string stringArg, long longArg) { return TypicalDatabaseStaticInvocation(stringArg, longArg); }
         #endregion
 
         #region MemoizerHelper
@@ -139,229 +141,6 @@ namespace Memoizer.NET.Test
                 "MultiThreadedDirectInvocation: " + NUMBER_OF_CONCURRENT_TASKS + " concurrent, identical, non-memoized method invocations." +
                 " " + NUMBER_OF_ITERATIONS + " iterations with " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms latency took " + durationInMilliseconds + " ms" +
                 " (should take > " + NUMBER_OF_ITERATIONS * NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms).");
-        }
-        #endregion
-
-        #region DictionaryMemoizer
-        /// <summary>
-        /// Sequential invocations of the memoizer
-        /// </summary>
-        //[Ignore("This memoizer implementation is not the main focus here...")]
-        [Test]
-        public void SingleThreadedMemoizedInvocation_DictionaryMemoizer_WithLocks()
-        {
-            long startTime = DateTime.Now.Ticks;
-            DictionaryMemoizer<string> memoizer = new DictionaryMemoizer<string>();
-            for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
-                for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
-                {
-                    string retVal = memoizer.Invoke(ReallySlowNetworkInvocation, "SingleThreadedMemoizedInvocation_DictionaryMemoizer_WithLocks", 14L);
-                    Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "SingleThreadedMemoizedInvocation_DictionaryMemoizer_WithLocks" + 14L));
-                }
-            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
-            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(NETWORK_RESPONSE_LATENCY_IN_MILLIS));
-            Console.WriteLine(
-                "SingleThreadedMemoizedInvocation_DictionaryMemoizer_WithLocks: " + NUMBER_OF_ITERATIONS + " iterations of " + NUMBER_OF_CONCURRENT_TASKS + " sequential, identical, memoized method invocations with " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms latency" +
-                " took " + durationInMilliseconds + " ms" +
-                " (should take > " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms)");
-        }
-
-
-        class VeryExpensiveMemoizedServiceCallTask_DictionaryMemoizer : AbstractTwoPhaseExecutorThread
-        {
-            static int TASK_COUNTER;
-            public string Result { get; private set; }
-            readonly DictionaryMemoizer<string> memoizer;
-
-            public VeryExpensiveMemoizedServiceCallTask_DictionaryMemoizer(Barrier barrier, DictionaryMemoizer<string> memoizer, string stringArg, long longArg)
-                : base(barrier)
-            {
-                TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
-                ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);
-                this.memoizer = memoizer;
-                Action = () => this.Result = this.memoizer.Invoke(ReallySlowNetworkStaticInvocation, stringArg, longArg);
-                if (Instrumentation)
-                    Console.WriteLine(this.GetType().Name + " #" + TaskNumber + " created... [(possible) barrier participant #" + ParticipantNumber + "]");
-            }
-        }
-
-        /// <summary>
-        /// Concurrent invocations of the memoizer
-        /// </summary>
-        //[Ignore("This memoizer implementation is not the main focus here...")]
-        [Test]
-        public void MultiThreadedMemoizedInvocation_DictionaryMemoizer_WithLocks()
-        {
-            long startTime = DateTime.Now.Ticks;
-            DictionaryMemoizer<string> memoizer = new DictionaryMemoizer<string>();
-            for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
-            {
-                // Arrange
-                TwoPhaseExecutor twoPhaseExecutor = new TwoPhaseExecutor(NUMBER_OF_CONCURRENT_TASKS);
-                VeryExpensiveMemoizedServiceCallTask_DictionaryMemoizer[] tasks = new VeryExpensiveMemoizedServiceCallTask_DictionaryMemoizer[NUMBER_OF_CONCURRENT_TASKS];
-                for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
-                    tasks[j] = new VeryExpensiveMemoizedServiceCallTask_DictionaryMemoizer(twoPhaseExecutor.Barrier, memoizer, "MultiThreadedMemoizedWithLocksInvocation", 15L);
-
-                // Act
-                for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
-                    tasks[j].Start();
-                twoPhaseExecutor.Start();
-
-                // Assert
-                for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
-                    Assert.That(tasks[j].Result, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "MultiThreadedMemoizedWithLocksInvocation" + 15L));
-            }
-            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
-            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(NETWORK_RESPONSE_LATENCY_IN_MILLIS));
-            Console.WriteLine(
-                "MultiThreadedMemoizedInvocation_DictionaryMemoizer_WithLocks: " + NUMBER_OF_CONCURRENT_TASKS + " concurrent, identical, memoized method invocations." +
-                " " + NUMBER_OF_ITERATIONS + " iterations with " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms latency took " + durationInMilliseconds + " ms" +
-                " (should take > " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms).");
-        }
-        #endregion
-
-        #region ConcurrentDictionaryMemoizer
-        //[Ignore("This memoizer implementation is not the main focus here...")]
-        [Test]
-        public void SingleThreadedMemoizedInvocation_ConcurrentDictionaryMemoizer()
-        {
-            long startTime = DateTime.Now.Ticks;
-            ConcurrentDictionaryMemoizer<string> memoizer = new ConcurrentDictionaryMemoizer<string>();
-            for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
-                for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
-                {
-                    string retVal = memoizer.Invoke(ReallySlowNetworkInvocation, "SingleThreadedMemoizedDirectInvocation", 14L);
-                    Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "SingleThreadedMemoizedDirectInvocation" + 14L));
-                }
-            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
-            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(NETWORK_RESPONSE_LATENCY_IN_MILLIS));
-            Console.WriteLine(
-                "SingleThreadedMemoizedInvocation_ConcurrentDictionaryMemoizer: " + NUMBER_OF_ITERATIONS + " iterations of " + NUMBER_OF_CONCURRENT_TASKS + " sequential, identical, memoized method invocations with " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms latency" +
-                " took " + durationInMilliseconds + " ms" +
-                " (should take > " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms)");
-        }
-
-
-        class VeryExpensiveMemoizedServiceCallTask_ConcurrentDictionaryMemoizer : AbstractTwoPhaseExecutorThread
-        {
-            static int TASK_COUNTER;
-            public string Result { get; private set; }
-            readonly ConcurrentDictionaryMemoizer<string> memoizer;
-
-            public VeryExpensiveMemoizedServiceCallTask_ConcurrentDictionaryMemoizer(Barrier barrier, ConcurrentDictionaryMemoizer<string> memoizer, string stringArg, long longArg)
-                : base(barrier)
-            {
-                TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
-                ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);
-                this.memoizer = memoizer;
-                Action = () => this.Result = this.memoizer.Invoke(ReallySlowNetworkStaticInvocation, stringArg, longArg);
-                if (Instrumentation)
-                    Console.WriteLine(this.GetType().Name + " #" + TaskNumber + " created... [(possible) barrier participant #" + ParticipantNumber + "]");
-            }
-        }
-
-        //[Ignore("This memoizer implementation is not the main focus here...")]
-        [Test]
-        public void MultiThreadedMemoizedInvocation_ConcurrentDictionaryMemoizer()
-        {
-            long startTime = DateTime.Now.Ticks;
-            ConcurrentDictionaryMemoizer<string> memoizer = new ConcurrentDictionaryMemoizer<string>();
-            for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
-            {
-                // Arrange
-                TwoPhaseExecutor twoPhaseExecutor = new TwoPhaseExecutor(NUMBER_OF_CONCURRENT_TASKS);
-                VeryExpensiveMemoizedServiceCallTask_ConcurrentDictionaryMemoizer[] tasks = new VeryExpensiveMemoizedServiceCallTask_ConcurrentDictionaryMemoizer[NUMBER_OF_CONCURRENT_TASKS];
-                for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
-                    tasks[j] = new VeryExpensiveMemoizedServiceCallTask_ConcurrentDictionaryMemoizer(twoPhaseExecutor.Barrier, memoizer, "MultiThreadedMemoizedWithLocksInvocation", 15L);
-
-                // Act
-                for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
-                    tasks[j].Start();
-                twoPhaseExecutor.Start();
-
-                // Assert
-                for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
-                    Assert.That(tasks[j].Result, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "MultiThreadedMemoizedWithLocksInvocation" + 15L));
-            }
-            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
-            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(NETWORK_RESPONSE_LATENCY_IN_MILLIS));
-            Console.WriteLine(
-                "MultiThreadedMemoizedInvocation_ConcurrentDictionaryMemoizer: " + NUMBER_OF_CONCURRENT_TASKS + " concurrent, identical, memoized method invocations." +
-                " " + NUMBER_OF_ITERATIONS + " iterations with " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms latency took " + durationInMilliseconds + " ms" +
-                " (should take > " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms).");
-        }
-        #endregion
-
-        #region MemoryCacheMemoizer
-        //[Ignore("This memoizer implementation is not the main focus here...")]
-        [Test]
-        public void SingleThreadedMemoizedInvocation_MemoryCacheMemoizer()
-        {
-            long startTime = DateTime.Now.Ticks;
-            MemoryCacheMemoizer<string> memoizer = new MemoryCacheMemoizer<string>(this.GetType(), "SingleThreadedMemoizedInvocation_MemoryCacheMemoizer");
-            for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
-                for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
-                {
-                    var retVal = memoizer.Invoke(ReallySlowNetworkInvocation, "SingleThreadedMemoizedDirectInvocation", 14L);
-                    Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "SingleThreadedMemoizedDirectInvocation" + 14L));
-                }
-            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
-            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(NETWORK_RESPONSE_LATENCY_IN_MILLIS));
-            Console.WriteLine(
-                "SingleThreadedMemoizedInvocation_MemoryCacheMemoizer: " + NUMBER_OF_ITERATIONS + " iterations of " + NUMBER_OF_CONCURRENT_TASKS + " sequential, identical, memoized method invocations with " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms latency" +
-                " took " + durationInMilliseconds + " ms" +
-                " (should take > " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms)");
-        }
-
-
-        class VeryExpensiveMemoizedServiceCallTask_MemoryCacheMemoizer : AbstractTwoPhaseExecutorThread
-        {
-            static int TASK_COUNTER;
-            public string Result { get; private set; }
-            readonly MemoryCacheMemoizer<string> memoizer;
-
-            public VeryExpensiveMemoizedServiceCallTask_MemoryCacheMemoizer(Barrier barrier, MemoryCacheMemoizer<string> memoizer, string stringArg, long longArg)
-                : base(barrier)
-            {
-                TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
-                ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);
-                this.memoizer = memoizer;
-                Action = () => this.Result = this.memoizer.Invoke(ReallySlowNetworkStaticInvocation, stringArg, longArg);
-                if (Instrumentation)
-                    Console.WriteLine(this.GetType().Name + " #" + TaskNumber + " created... [(possible) barrier participant #" + ParticipantNumber + "]");
-            }
-        }
-
-        //[Ignore("This memoizer implementation is not the main focus here...")]
-        [Test]
-        public void MultiThreadedMemoizedInvocation_MemoryCacheMemoizer()
-        {
-            long startTime = DateTime.Now.Ticks;
-            MemoryCacheMemoizer<string> memoizer = new MemoryCacheMemoizer<string>(this.GetType(), "MultiThreadedMemoizedInvocation_MemoryCacheMemoizer");
-
-            for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
-            {
-                // Arrange
-                TwoPhaseExecutor twoPhaseExecutor = new TwoPhaseExecutor(NUMBER_OF_CONCURRENT_TASKS);
-                VeryExpensiveMemoizedServiceCallTask_MemoryCacheMemoizer[] tasks = new VeryExpensiveMemoizedServiceCallTask_MemoryCacheMemoizer[NUMBER_OF_CONCURRENT_TASKS];
-                for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
-                    tasks[j] = new VeryExpensiveMemoizedServiceCallTask_MemoryCacheMemoizer(twoPhaseExecutor.Barrier, memoizer, "MultiThreadedMemoizedWithLocksInvocation", 15L);
-
-                // Act
-                for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
-                    tasks[j].Start();
-                twoPhaseExecutor.Start();
-
-                // Assert
-                for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
-                    Assert.That(tasks[j].Result, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "MultiThreadedMemoizedWithLocksInvocation" + 15L));
-            }
-            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
-            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(NETWORK_RESPONSE_LATENCY_IN_MILLIS));
-            Console.WriteLine(
-                "MultiThreadedMemoizedInvocation_MemoryCacheMemoizer: " + NUMBER_OF_CONCURRENT_TASKS + " concurrent, identical, memoized method invocations." +
-                " " + NUMBER_OF_ITERATIONS + " iterations with " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms latency took " + durationInMilliseconds + " ms" +
-                " (should take > " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms).");
         }
         #endregion
 
@@ -504,41 +283,53 @@ namespace Memoizer.NET.Test
             }
         }
 
+        //static void LoggingMethod(string loggingMessage)
+        //{
+        //    Console.WriteLine(loggingMessage);
+        //}
+
         /// <summary>
         /// Concurrent invocations of the memoizer
         /// </summary>
         //[Ignore("Temporary disabled...")]
         [Test]
-        public void MultiThreadedMemoizedInvocation_Memoizer()
+        public void MultiThreadedMemoizedInvocation_Memoizer(
+            [Values(1, 2, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentTasks)
         {
             long startTime = DateTime.Now.Ticks;
             Memoizer<string, string, long> memoizer =
-                new Memoizer<string, string, long>(this.GetType(),
-                                                   "MultiThreadedMemoizedInvocation_Memoizer",
-                                                   ReallySlowNetworkInvocation);
+                new Memoizer<string, string, long>(//this.GetType(),
+                //"MultiThreadedMemoizedInvocation_Memoizer",
+                                                   ReallySlowNetworkInvocation//,
+                //null as CacheItemPolicy,
+                //Console.WriteLine
+                //LoggingMethod
+                                                   );
+            memoizer.CacheItemPolicy = null as CacheItemPolicy;
+            memoizer.LoggingMethod = Console.WriteLine;
             for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
             {
                 // Arrange
-                TwoPhaseExecutor twoPhaseExecutor = new TwoPhaseExecutor(NUMBER_OF_CONCURRENT_TASKS);
-                VeryExpensiveMemoizedServiceCallTask_Memoizer[] tasks = new VeryExpensiveMemoizedServiceCallTask_Memoizer[NUMBER_OF_CONCURRENT_TASKS];
-                for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
+                TwoPhaseExecutor twoPhaseExecutor = new TwoPhaseExecutor(numberOfConcurrentTasks);
+                VeryExpensiveMemoizedServiceCallTask_Memoizer[] tasks = new VeryExpensiveMemoizedServiceCallTask_Memoizer[numberOfConcurrentTasks];
+                for (int j = 0; j < numberOfConcurrentTasks; ++j)
                     tasks[j] = new VeryExpensiveMemoizedServiceCallTask_Memoizer(twoPhaseExecutor.Barrier, memoizer, "MultiThreadedMemoizedInvocation_Memoizer", 15L);
 
                 // Act
-                for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
+                for (int j = 0; j < numberOfConcurrentTasks; ++j)
                     tasks[j].Start();
                 twoPhaseExecutor.Start();
 
                 // Assert
-                for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
+                for (int j = 0; j < numberOfConcurrentTasks; ++j)
                     Assert.That(tasks[j].Result, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "MultiThreadedMemoizedInvocation_Memoizer" + 15L));
             }
             long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
-            Assert.That(durationInMilliseconds, Is.InRange(1000L, 2600L));
+            Assert.That(durationInMilliseconds, Is.InRange(NETWORK_RESPONSE_LATENCY_IN_MILLIS, 2600L));
             Console.WriteLine(
-                "MultiThreadedMemoizedInvocation_Memoizer: " + NUMBER_OF_CONCURRENT_TASKS + " concurrent, identical, memoized method invocations." +
-                " " + NUMBER_OF_ITERATIONS + " iterations with " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms latency took " + durationInMilliseconds + " ms" +
-                " (should take > " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms).");
+                "MultiThreadedMemoizedInvocation_Memoizer: " + NUMBER_OF_ITERATIONS + " rounds with " + numberOfConcurrentTasks + " concurrent, identical, memoized method invocations:" +
+                " " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms non-cached method latency took " + durationInMilliseconds + " ms" +
+                " (should take " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " > " + durationInMilliseconds + " > 2600 ms).");
         }
 
 
@@ -578,45 +369,54 @@ namespace Memoizer.NET.Test
         }
 
 
+        //        [Ignore("delebil...")]
+        //        [Test, ExpectedException(typeof(FormatException), ExpectedMessage = "Hour and minute string must be given as HH:mm", MatchType = MessageMatch.Contains)]
+        //        public void GetDateTimeFromHourAndMinuteString_ShouldFailIfStringParamIsNotOfCorrectFormat(
+        //            [Values(null, "", "  ", "18:39:00", "1839", "18 39", "18'39", "18''39", "18,39", "18.39", "18;39", "18-39", "01.10.2010 18:39")] string hourMinuteString)
+        //        {
+        ////            DateTimeHelper.GetDateTimeFromHourAndMinuteString(DateTime.Now, hourMinuteString);
+        //        }
+
+
         /// <summary>
         /// Concurrent invocation of the memoizer
         /// </summary>
-        [Ignore("Temporary disabled... TODO")]
+        //[Ignore("Temporary disabled...")]
         [Test]
-        public void MultiThreadedMemoizedInvocationWithClearing_Memoizer()
+        public void MultiThreadedMemoizedInvocationWithClearing_Memoizer(
+            [Values(1, 2, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentTasks)
         {
-            const int NUMBER_OF_CONCURRENT_TASKS = 400;
+            //for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
+            //{
+            //const int METHOD_NUMBER_OF_CONCURRENT_TASKS = 50;
             long startTime = DateTime.Now.Ticks;
             Memoizer<string, string, long> memoizer =
                 new Memoizer<string, string, long>(this.GetType(),
                                                    "MultiThreadedMemoizedInvocationWithClearing_Memoizer",
                                                    TypicalDatabaseInvocation);
-            //for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
-            //{
             // Arrange
-            TwoPhaseExecutor twoPhaseExecutor = new TwoPhaseExecutor(NUMBER_OF_CONCURRENT_TASKS + 3);
-            //TwoPhaseExecutor twoPhaseExecutor = new TwoPhaseExecutor(NUMBER_OF_CONCURRENT_TASKS);
-            twoPhaseExecutor.Instrumentation = false;
-            VeryExpensiveMemoizedServiceCallTask_Memoizer[] tasks = new VeryExpensiveMemoizedServiceCallTask_Memoizer[NUMBER_OF_CONCURRENT_TASKS];
+            TwoPhaseExecutor twoPhaseExecutor = new TwoPhaseExecutor(numberOfConcurrentTasks + 3); // + 3 clearing tasks
+            //twoPhaseExecutor.Instrumentation = true;
+            VeryExpensiveMemoizedServiceCallTask_Memoizer[] tasks = new VeryExpensiveMemoizedServiceCallTask_Memoizer[numberOfConcurrentTasks];
 
             ClearCacheTask_Memoizer clearingTask1 = new ClearCacheTask_Memoizer(twoPhaseExecutor.Barrier, memoizer);
-            clearingTask1.Instrumentation = false;
+            //clearingTask1.Instrumentation = true;
 
-            for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
+            for (int j = 0; j < numberOfConcurrentTasks; ++j)
             {
                 tasks[j] = new VeryExpensiveMemoizedServiceCallTask_Memoizer(twoPhaseExecutor.Barrier, memoizer, "MultiThreadedMemoizedInvocationWithClearing_Memoizer", 15L);
-                tasks[j].Instrumentation = false;
+                //tasks[j].Instrumentation = true;
             }
 
             ClearCacheTask_Memoizer clearingTask2 = new ClearCacheTask_Memoizer(twoPhaseExecutor.Barrier, memoizer);
-            clearingTask2.Instrumentation = false;
+            //clearingTask2.Instrumentation = true;
             ClearCacheTask_Memoizer clearingTask3 = new ClearCacheTask_Memoizer(twoPhaseExecutor.Barrier, memoizer);
-            clearingTask3.Instrumentation = false;
+            //clearingTask3.Instrumentation = true;
 
             // Act
             clearingTask1.Start();
 
-            for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
+            for (int j = 0; j < numberOfConcurrentTasks; ++j)
                 tasks[j].Start();
 
             clearingTask2.Start();
@@ -624,35 +424,110 @@ namespace Memoizer.NET.Test
             twoPhaseExecutor.Start();
 
             // Assert
-            for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
+            for (int j = 0; j < numberOfConcurrentTasks; ++j)
                 Assert.That(tasks[j].Result, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "MultiThreadedMemoizedInvocationWithClearing_Memoizer" + 15L));
             //}
             //long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
-
             //Assert.That(durationInMilliseconds, Is.GreaterThan(METHOD_RESPONSE_LATENCY_IN_MILLIS * NUMBER_OF_ITERATIONS));// - 2000L)); // -2000 due to possible CLR optomizations
-
             //Assert.That(durationInMilliseconds, Is.LessThan(METHOD_RESPONSE_LATENCY_IN_MILLIS * NUMBER_OF_ITERATIONS + METHOD_RESPONSE_LATENCY_IN_MILLIS));
-
             //Console.WriteLine("MultiThreadedMemoizedInvocationWithClearing_Memoizer: " + NUMBER_OF_ITERATIONS + " * " + NUMBER_OF_CONCURRENT_TASKS + " concurrent, identical method invocations (latency: " + METHOD_RESPONSE_LATENCY_IN_MILLIS + " ms) took " + durationInMilliseconds + " ms");
 
             long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
-            //Assert.That(durationInMilliseconds, Is.InRange(DATABASE_RESPONSE_LATENCY_IN_MILLIS, DATABASE_RESPONSE_LATENCY_IN_MILLIS+20L));
-            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
-            Console.WriteLine(
-                "MultiThreadedMemoizedInvocationWithClearing_Memoizer: " + NUMBER_OF_CONCURRENT_TASKS + " concurrent, identical, memoized method invocations." +
-                " " + NUMBER_OF_ITERATIONS + " iterations with " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms latency took " + durationInMilliseconds + " ms" +
-                " (should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms).");
 
-            //long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
-            //Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
-            //Console.WriteLine("MultiThreadedMemoizedInvocationWithClearing_Memoizer: " + NUMBER_OF_ITERATIONS + " * " + NUMBER_OF_CONCURRENT_TASKS + " concurrent, identical, memoized method invocations" +
-            //    "(latency: " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms) took " + durationInMilliseconds + " ms " +
-            //    "(should be > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)");
+            // The more threads, the more contention overhard, and the longer this test will take.
+            // Just a silly empiric hack emulating the CLR resource contention behaviour...
+            int threadContentionFactor = 1;
+            if (numberOfConcurrentTasks > 100)
+                threadContentionFactor += 2;
+            if (numberOfConcurrentTasks > 200)
+                threadContentionFactor += 2;
+            if (numberOfConcurrentTasks > 300)
+                threadContentionFactor += 2;
+            if (numberOfConcurrentTasks > 400)
+                threadContentionFactor += 2;
+            if (numberOfConcurrentTasks > 500)
+                threadContentionFactor += 2;
+            if (numberOfConcurrentTasks > 600)
+                threadContentionFactor += 2;
+            if (numberOfConcurrentTasks > 700)
+                threadContentionFactor += 2;
+            if (numberOfConcurrentTasks > 800)
+                threadContentionFactor += 2;
+            if (numberOfConcurrentTasks > 900)
+                threadContentionFactor += 2;
+            if (numberOfConcurrentTasks > 1000)
+                threadContentionFactor += 2;
+
+            int numberOfMemoizerElementsCleared = memoizer.NumberOfElementsCleared;
+            int numberOfMemoizerInvocations = memoizer.NumberOfTimesInvoked;
+            int numberOfMemoizerNoCachedExecutions = memoizer.NumberOfTimesNoCacheInvoked;
+
+            Assert.That(numberOfMemoizerInvocations, Is.GreaterThanOrEqualTo(numberOfMemoizerNoCachedExecutions));
+            Assert.That(numberOfMemoizerElementsCleared, Is.LessThanOrEqualTo(numberOfMemoizerNoCachedExecutions));
+
+            //int totalExpectedLatencyInMillis = DATABASE_RESPONSE_LATENCY_IN_MILLIS + (memoizer.NumberOfElementsCleared * DATABASE_RESPONSE_LATENCY_IN_MILLIS);
+            int minimumExpectedLatencyInMillis = DATABASE_RESPONSE_LATENCY_IN_MILLIS;
+            //int maximumExpectedLatencyInMillis = (numberOfMemoizerNoCachedExecutions * DATABASE_RESPONSE_LATENCY_IN_MILLIS) + (DATABASE_RESPONSE_LATENCY_IN_MILLIS / 2);
+            int maximumExpectedLatencyInMillis = DATABASE_RESPONSE_LATENCY_IN_MILLIS + ((numberOfMemoizerNoCachedExecutions * DATABASE_RESPONSE_LATENCY_IN_MILLIS) * threadContentionFactor);
+
+            //Assert.That(durationInMilliseconds, Is.InRange(DATABASE_RESPONSE_LATENCY_IN_MILLIS, DATABASE_RESPONSE_LATENCY_IN_MILLIS+20L));
+            Console.WriteLine(
+                "MultiThreadedMemoizedInvocationWithClearing_Memoizer: " + numberOfConcurrentTasks + " concurrent, identical, memoized method invocations.");// +
+            ///*" " + NUMBER_OF_ITERATIONS + " iterations*/ " 1 iteration with " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms latency and " + numberOfMemoizerNoCachedExecutions + " function executions took " + durationInMilliseconds + " ms" +
+            //" (should take [" + minimumExpectedLatencyInMillis + " < " + durationInMilliseconds + " < " + maximumExpectedLatencyInMillis + "] ms).");
+            Console.WriteLine(
+                "MultiThreadedMemoizedInvocationWithClearing_Memoizer: " + // + numberOfConcurrentTasks + " concurrent, identical, memoized method invocations." +
+                /*" " + NUMBER_OF_ITERATIONS + " iterations*/ "1 iteration with " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms latency and " + numberOfMemoizerNoCachedExecutions + " function execution(s) took " + durationInMilliseconds + " ms" +
+                " (should take [" + minimumExpectedLatencyInMillis + " < " + durationInMilliseconds + " < " + maximumExpectedLatencyInMillis + "] ms) (threadContentionFactor=" + threadContentionFactor + ").");
+
+            Assert.That(durationInMilliseconds, Is.GreaterThan(minimumExpectedLatencyInMillis));
+            Assert.That(durationInMilliseconds, Is.LessThan(maximumExpectedLatencyInMillis));
+            //}
         }
 
 
         // TODO: test when caching with complex objects as parameters
 
+        // TODO: check the behaviour of the MemoryCache name parameter (Gets or sets the name of a particular cache configuration) via multiple memoizer instances at the same time
+
+        static public readonly Func<long, long> FIBONACCI = (arg => arg <= 1 ? arg : FIBONACCI(arg - 1) + FIBONACCI(arg - 2));
+
+        //Memoizer<long, long> MEMOIZED_FIBONACCI = new Memoizer<long, long>("fibonacci", FIBONACCI).InstrumentUsing(Console.WriteLine);
+        Memoizer<long, long> MEMOIZED_FIBONACCI_INSTRUMENTED = new Memoizer<long, long>("fibonacci", (arg => arg < 2 ? arg : FIBONACCI(arg - 1) + FIBONACCI(arg - 2))).InstrumentWith(Console.WriteLine);
+        Func<long, long> MEMOIZED_FIBONACCI = FIBONACCI.Memoize();
+
+        [Test]
+        public void FibonacciNumbers(
+            //[Values(1, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40)] int numberOfFibonacciArguments)
+            [Values(4)] int numberOfFibonacciArguments)
+        {
+            long startTime = DateTime.Now.Ticks;
+            Console.WriteLine("Fibonacci(" + numberOfFibonacciArguments + ") =");
+
+            //Memoizer<long, long> memoizedFibonacciFunction = new Memoizer<long, long>();
+            //Func<long, long> functionToBeMemoized = new Func<long, long>(new Memoizer<long, long>(memoizedFibonacciFunction).InvokeWith);
+            //memoizedFibonacciFunction.methodToBeMemoized = (arg => arg < 2 ? arg : memoizedFibonacciFunction(arg - 1) + memoizedFibonacciFunction(arg - 2))).InstrumentUsing(Console.WriteLine);
+
+            for (int i = 0; i < numberOfFibonacciArguments; ++i) { Console.Write(FIBONACCI(i) + " "); }
+            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
+            Console.WriteLine();
+            Console.WriteLine("Took " + durationInMilliseconds + " ms");
+        }
+
+        // TODO: Memoization of recursive functions not yet supported
+        [Test]
+        public void MemoizedFibonacciNumbers_KindOf(
+            //[Values(1, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40)] int numberOfFibonacciArguments)
+            [Values(6)] int numberOfFibonacciArguments)
+        {
+            long startTime = DateTime.Now.Ticks;
+            Console.WriteLine("(Memoized [Func.Hash=" + MEMOIZED_FIBONACCI.GetHashCode() + "]) Fibonacci(" + numberOfFibonacciArguments + ") =");
+            //for (int i = 0; i < numberOfFibonacciArguments; ++i) { Console.Write(MEMOIZED_FIBONACCI.InvokeWith(i) + " "); }
+            for (int i = 0; i < numberOfFibonacciArguments; ++i) { Console.Write(MEMOIZED_FIBONACCI(i) + " "); }
+            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
+            Console.WriteLine();
+            Console.WriteLine("Took " + durationInMilliseconds + " ms");
+        }
         #endregion
     }
     #endregion
