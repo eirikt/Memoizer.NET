@@ -18,6 +18,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Caching;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Memoizer.NET
@@ -80,7 +81,23 @@ namespace Memoizer.NET
     {
         protected string name;
         protected MemoryCache cache;
-        protected CacheItemPolicy cacheItemPolicy;
+        //protected CacheItemPolicy cacheItemPolicy;
+        //protected Action<string> loggingMethod;
+
+        //public CacheItemPolicy CacheItemPolicy { get; set; }
+        //public Action<string> LoggingMethod { get; set; }
+        private CacheItemPolicy cacheItemPolicy;
+        private Action<string> loggingMethod;
+
+        int numberOfTimesInvoked;
+        int numberOfTimesNoCacheInvoked;
+        int numberOfTimesCleared;
+        int numberOfElementsCleared;
+
+        public int NumberOfTimesInvoked { get { return this.numberOfTimesInvoked; } }
+        public int NumberOfTimesNoCacheInvoked { get { return this.numberOfTimesNoCacheInvoked; } }
+        public int NumberOfTimesCleared { get { return this.numberOfTimesCleared; } }
+        public int NumberOfElementsCleared { get { return this.numberOfElementsCleared; } }
 
         //protected readonly Func<TParam, TResult> methodToBeMemoized;
 
@@ -112,18 +129,31 @@ namespace Memoizer.NET
         public void Dispose() { this.cache.Dispose(); }
 
         /// <summary>
+        /// Lock object for removal of element and incrementing total element removal index.
+        /// </summary>
+        static readonly object @lock = new Object();
+
+        /// <summary>
         /// Clears the cache, removing all items.
         /// </summary>
         public void Clear()
         {
-            //int i = 0;
-            foreach (var element in this.cache.AsEnumerable())
+            lock (@lock)
             {
-                //Console.WriteLine("Removing cached element #" + ++i + ": " + element.Key + "=" + ((Task<string>)element.Value).Status);
-                this.cache.Remove(element.Key);
+                int i = 0;
+                foreach (var element in this.cache.AsEnumerable())
+                {
+                    this.cache.Remove(element.Key);
+                    Interlocked.Increment(ref this.numberOfElementsCleared);
+                    Console.WriteLine("Removed cached element #" + ++i + ": " + element.Key + "=" + ((Task<string>)element.Value).Status + " [" + this.NumberOfElementsCleared + " elements removed in total]");
+                }
+                Interlocked.Increment(ref this.numberOfTimesCleared);
+                Console.WriteLine("All " + i + " elements in memoizer removed [memoizer cleared " + NumberOfTimesCleared + " times]");
             }
-            //Console.WriteLine("All " + i + " elements in memoizer removed");
         }
+
+
+        public void InstrumentWith(Action<String> instrumenter) { this.loggingMethod = instrumenter; }
 
 
         /// <summary>
@@ -136,6 +166,14 @@ namespace Memoizer.NET
         //    // Or just:
         //    return () => this.methodToBeMemoized((TParam)args[0]);
         //}
+        /// <summary>
+        /// Gets the method delegate, closed under given arguments.
+        /// </summary>
+
+        protected void ConditionalLog(string logMessage)
+        {
+            if (this.loggingMethod != null) { this.loggingMethod(this.GetType().Namespace + "." + this.GetType().Name + " [" + this.GetHashCode() + "] : " + logMessage); }
+        }
 
         //public abstract TResult InvokeWith(TParam param)
         //{
@@ -161,7 +199,7 @@ namespace Memoizer.NET
                 // And finally more subclass-friendly:
                 CacheItem newCacheItem = new CacheItem(key, new Task<TResult>(GetMethodClosure(args)));
 
-                // The 'AddOrGetExisting' method is atomic: If a cached value for the key exists, the existing cached value is returned; otherwise null is returned
+                // The 'AddOrGetExisting' method is atomic: If a cached value for the key exists, the existing cached value is returned; otherwise null is returned as value property
                 cacheItem = this.cache.AddOrGetExisting(newCacheItem, this.cacheItemPolicy);
                 if (cacheItem.Value == null)
                 {
@@ -169,21 +207,27 @@ namespace Memoizer.NET
                     cacheItem = newCacheItem;
                     // The 'Start' method is idempotent
                     ((Task<TResult>)newCacheItem.Value).Start();
+                    //((Task<TResult>)cacheItem.Value).Start();
+                    Interlocked.Increment(ref this.numberOfTimesNoCacheInvoked);
+                    ConditionalLog("(Possibly expensive) caching function executed " + this.numberOfTimesNoCacheInvoked + " time(s)");
                 }
-                //    else
-                //    {
-                //        Console.WriteLine("OS thread ID=" + AppDomain.GetCurrentThreadId() + ", " + "Managed thread ID=" + Thread.CurrentThread.GetHashCode() + "/" + Thread.CurrentThread.ManagedThreadId + ": cacheItem.Value == " + cacheItem.Value);
-                //    }
-                //}
-                //else
-                //{
-                //    Console.WriteLine("OS thread ID=" + AppDomain.GetCurrentThreadId() + ", " + "Managed thread ID=" + Thread.CurrentThread.GetHashCode() + "/" + Thread.CurrentThread.ManagedThreadId + ": cacheItem == " + cacheItem);
+                else
+                {
+                    //Console.WriteLine("OS thread ID=" + AppDomain.GetCurrentThreadId() + ", " + "Managed thread ID=" + Thread.CurrentThread.GetHashCode() + "/" + Thread.CurrentThread.ManagedThreadId + ": cacheItem.Value == " + cacheItem.Value);
+                }
+            }
+            else
+            {
+                //Console.WriteLine("OS thread ID=" + AppDomain.GetCurrentThreadId() + ", " + "Managed thread ID=" + Thread.CurrentThread.GetHashCode() + "/" + Thread.CurrentThread.ManagedThreadId + ": cacheItem == " + cacheItem);
             }
 
             // The 'Result' property blocks until a value is available
             //Console.WriteLine("OS thread ID=" + AppDomain.GetCurrentThreadId() + ", " + "Managed thread ID=" + Thread.CurrentThread.GetHashCode() + "/" + Thread.CurrentThread.ManagedThreadId + ": Status: " + ((Task<TResult>)cacheItem.Value).Status);
             var retVal = ((Task<TResult>)cacheItem.Value).Result;
             //Console.WriteLine("OS thread ID=" + AppDomain.GetCurrentThreadId() + ", " + "Managed thread ID=" + Thread.CurrentThread.GetHashCode() + "/" + Thread.CurrentThread.ManagedThreadId + ": Invoke(" + args + ") took " + (DateTime.Now.Ticks - startTime) + " ticks");
+
+            Interlocked.Increment(ref this.numberOfTimesInvoked);
+            ConditionalLog("Invoked " + this.numberOfTimesInvoked + " times");
 
             return retVal;
         }
@@ -192,29 +236,43 @@ namespace Memoizer.NET
 
     public class Memoizer<TResult, TParam> : AbstractMemoizer<TResult>, IInvocable<TResult, TParam>
     {
-        readonly Func<TParam, TResult> methodToBeMemoized;
+        public Func<TParam, TResult> methodToBeMemoized;
 
-        public Memoizer(string methodHash,
-                        Func<TParam, TResult> methodToBeMemoized,
-                        CacheItemPolicy cacheItemPolicy = null)
+        public Memoizer() { }
+
+        public Memoizer(string methodId,
+                        Func<TParam, TResult> methodToBeMemoized//,
+            //CacheItemPolicy cacheItemPolicy = null,
+            //Action<string> loggingMethod = null
+            )
         {
-            if (string.IsNullOrEmpty(methodHash)) { throw new ArgumentException("A hash of the method to be memoized must be provided"); }
+            if (string.IsNullOrEmpty(methodId)) { throw new ArgumentException("A hash of the method to be memoized must be provided"); }
             //if (methodToBeMemoized == null) { throw new ArgumentException("Method to be memoized is missing"); } // 'methodToBeMemoized' is overloaded field
-            this.name = MemoizerHelper.CreateParameterHash(methodHash);
+            this.name = MemoizerHelper.CreateParameterHash(methodId);
             this.cache = new MemoryCache(name);
             this.methodToBeMemoized = methodToBeMemoized;
-            this.cacheItemPolicy = cacheItemPolicy;
+            //this.cacheItemPolicy = cacheItemPolicy;
+            //this.loggingMethod = loggingMethod;
         }
 
         public Memoizer(Type sourceClass,
                         string nameOfMethodToBeMemoized,
-                        Func<TParam, TResult> methodToBeMemoized,
-                        CacheItemPolicy cacheItemPolicy = null)
-            : this(MemoizerHelper.CreateMethodHash(sourceClass, nameOfMethodToBeMemoized), methodToBeMemoized, cacheItemPolicy)
+                        Func<TParam, TResult> methodToBeMemoized//,
+            //CacheItemPolicy cacheItemPolicy = null,
+            //Action<string> loggingMethod = null
+            )
+            : this(MemoizerHelper.CreateMethodHash(sourceClass, nameOfMethodToBeMemoized), methodToBeMemoized)//, cacheItemPolicy, loggingMethod)
         {
             if (sourceClass == null) { throw new ArgumentException("Type of invoking class is missing"); }
             if (string.IsNullOrEmpty(nameOfMethodToBeMemoized)) { throw new ArgumentException("Name of method to be memoized is missing"); }
         }
+
+        public Memoizer(Func<TParam, TResult> methodToBeMemoized//,
+            //CacheItemPolicy cacheItemPolicy = null,
+            //Action<string> loggingMethod = null
+            )
+            : this(new Random().Next(Int32.MaxValue).ToString(), methodToBeMemoized)//, cacheItemPolicy, loggingMethod)
+        { }
 
         protected override Func<TResult> GetMethodClosure(params object[] args)
         {
@@ -235,26 +293,36 @@ namespace Memoizer.NET
         readonly Func<TParam1, TParam2, TResult> methodToBeMemoized;
 
         public Memoizer(string methodHash,
-                        Func<TParam1, TParam2, TResult> methodToBeMemoized,
-                        CacheItemPolicy cacheItemPolicy = null)
+                        Func<TParam1, TParam2, TResult> methodToBeMemoized//,
+            //CacheItemPolicy cacheItemPolicy = null,
+            //Action<string> loggingMethod = null
+            )
         {
             if (string.IsNullOrEmpty(methodHash)) { throw new ArgumentException("A hash of the method to be memoized must be provided"); }
             //if (methodToBeMemoized == null) { throw new ArgumentException("Method to be memoized is missing"); } // 'methodToBeMemoized' is overloaded field
             this.name = MemoizerHelper.CreateParameterHash(methodHash);
             this.cache = new MemoryCache(name);
             this.methodToBeMemoized = methodToBeMemoized;
-            this.cacheItemPolicy = cacheItemPolicy;
+            //this.cacheItemPolicy = cacheItemPolicy;
+            //this.loggingMethod = loggingMethod;
         }
 
         public Memoizer(Type sourceClass,
                         string nameOfMethodToBeMemoized,
                         Func<TParam1, TParam2, TResult> methodToBeMemoized,
                         CacheItemPolicy cacheItemPolicy = null)
-            : this(MemoizerHelper.CreateMethodHash(sourceClass, nameOfMethodToBeMemoized), methodToBeMemoized, cacheItemPolicy)
+            : this(MemoizerHelper.CreateMethodHash(sourceClass, nameOfMethodToBeMemoized), methodToBeMemoized)//, cacheItemPolicy)
         {
             if (sourceClass == null) { throw new ArgumentException("Type of invoking class is missing"); }
             if (string.IsNullOrEmpty(nameOfMethodToBeMemoized)) { throw new ArgumentException("Name of method to be memoized is missing"); }
         }
+
+        public Memoizer(Func<TParam1, TParam2, TResult> methodToBeMemoized//,
+            //CacheItemPolicy cacheItemPolicy = null,
+            //Action<string> loggingMethod = null
+            )
+            : this(new Random().Next(Int32.MaxValue).ToString(), methodToBeMemoized)//, cacheItemPolicy, loggingMethod)
+        { }
 
         protected override Func<TResult> GetMethodClosure(params object[] args) { return () => this.methodToBeMemoized((TParam1)args[0], (TParam2)args[1]); }
 
@@ -262,52 +330,52 @@ namespace Memoizer.NET
     }
 
 
-    public class Memoizer<TResult, TParam1, TParam2, TParam3> : AbstractMemoizer<TResult>, IInvocable<TResult, TParam1, TParam2, TParam3>
-    {
-        readonly Func<TParam1, TParam2, TParam3, TResult> methodToBeMemoized;
+    //public class Memoizer<TResult, TParam1, TParam2, TParam3> : AbstractMemoizer<TResult>, IInvocable<TResult, TParam1, TParam2, TParam3>
+    //{
+    //    readonly Func<TParam1, TParam2, TParam3, TResult> methodToBeMemoized;
 
-        public Memoizer(string methodHash,
-                        Func<TParam1, TParam2, TParam3, TResult> methodToBeMemoized,
-                        CacheItemPolicy cacheItemPolicy = null)
-        {
-            if (string.IsNullOrEmpty(methodHash)) { throw new ArgumentException("A hash of the method to be memoized must be provided"); }
-            //if (methodToBeMemoized == null) { throw new ArgumentException("Method to be memoized is missing"); } // 'methodToBeMemoized' is overloaded field
-            this.name = MemoizerHelper.CreateParameterHash(methodHash);
-            this.cache = new MemoryCache(name);
-            this.methodToBeMemoized = methodToBeMemoized;
-            this.cacheItemPolicy = cacheItemPolicy;
-        }
+    //    public Memoizer(string methodHash,
+    //                    Func<TParam1, TParam2, TParam3, TResult> methodToBeMemoized,
+    //                    CacheItemPolicy cacheItemPolicy = null)
+    //    {
+    //        if (string.IsNullOrEmpty(methodHash)) { throw new ArgumentException("A hash of the method to be memoized must be provided"); }
+    //        //if (methodToBeMemoized == null) { throw new ArgumentException("Method to be memoized is missing"); } // 'methodToBeMemoized' is overloaded field
+    //        this.name = MemoizerHelper.CreateParameterHash(methodHash);
+    //        this.cache = new MemoryCache(name);
+    //        this.methodToBeMemoized = methodToBeMemoized;
+    //        this.cacheItemPolicy = cacheItemPolicy;
+    //    }
 
-        public Memoizer(Type sourceClass,
-                        string nameOfMethodToBeMemoized,
-                        Func<TParam1, TParam2, TParam3, TResult> methodToBeMemoized,
-                        CacheItemPolicy cacheItemPolicy = null)
-            : this(MemoizerHelper.CreateMethodHash(sourceClass, nameOfMethodToBeMemoized), methodToBeMemoized, cacheItemPolicy)
-        {
-            if (sourceClass == null) { throw new ArgumentException("Type of invoking class is missing"); }
-            if (string.IsNullOrEmpty(nameOfMethodToBeMemoized)) { throw new ArgumentException("Name of method to be memoized is missing"); }
-        }
+    //    public Memoizer(Type sourceClass,
+    //                    string nameOfMethodToBeMemoized,
+    //                    Func<TParam1, TParam2, TParam3, TResult> methodToBeMemoized,
+    //                    CacheItemPolicy cacheItemPolicy = null)
+    //        : this(MemoizerHelper.CreateMethodHash(sourceClass, nameOfMethodToBeMemoized), methodToBeMemoized, cacheItemPolicy)
+    //    {
+    //        if (sourceClass == null) { throw new ArgumentException("Type of invoking class is missing"); }
+    //        if (string.IsNullOrEmpty(nameOfMethodToBeMemoized)) { throw new ArgumentException("Name of method to be memoized is missing"); }
+    //    }
 
-        protected override Func<TResult> GetMethodClosure(params object[] args) { return () => this.methodToBeMemoized((TParam1)args[0], (TParam2)args[1], (TParam3)args[2]); }
+    //    protected override Func<TResult> GetMethodClosure(params object[] args) { return () => this.methodToBeMemoized((TParam1)args[0], (TParam2)args[1], (TParam3)args[2]); }
 
-        public TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3) { return Invoke(param1, param2, param3); }
+    //    public TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3) { return Invoke(param1, param2, param3); }
 
 
-        //public Memoizer(Type sourceClass,
-        //                string nameOfMethodToBeMemoized,
-        //                Func<TParam1, TParam2, TParam3, TResult> methodToBeMemoized,
-        //                CacheItemPolicy cacheItemPolicy = null)
-        //    : base(sourceClass, nameOfMethodToBeMemoized, null, cacheItemPolicy)
-        //{
-        //    if (methodToBeMemoized == null) { throw new ArgumentException("Method to be memoized is missing"); }
-        //    this.methodToBeMemoized = methodToBeMemoized;
-        //}
+    //    //public Memoizer(Type sourceClass,
+    //    //                string nameOfMethodToBeMemoized,
+    //    //                Func<TParam1, TParam2, TParam3, TResult> methodToBeMemoized,
+    //    //                CacheItemPolicy cacheItemPolicy = null)
+    //    //    : base(sourceClass, nameOfMethodToBeMemoized, null, cacheItemPolicy)
+    //    //{
+    //    //    if (methodToBeMemoized == null) { throw new ArgumentException("Method to be memoized is missing"); }
+    //    //    this.methodToBeMemoized = methodToBeMemoized;
+    //    //}
 
-        //protected override Func<TResult> GetMethodClosure(params object[] args)
-        //{
-        //    return () => this.methodToBeMemoized((TParam1)args[0], (TParam2)args[1], (TParam3)args[2]);
-        //}
-    }
+    //    //protected override Func<TResult> GetMethodClosure(params object[] args)
+    //    //{
+    //    //    return () => this.methodToBeMemoized((TParam1)args[0], (TParam2)args[1], (TParam3)args[2]);
+    //    //}
+    //}
 
 
     // TODO: ...
