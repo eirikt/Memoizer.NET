@@ -305,8 +305,8 @@ namespace Memoizer.NET.Test
                 //Console.WriteLine
                 //LoggingMethod
                                                    );
-            memoizer.CacheItemPolicy = null as CacheItemPolicy;
-            memoizer.LoggingMethod = Console.WriteLine;
+            //memoizer.CacheItemPolicy = null as CacheItemPolicy;
+            //memoizer.InstrumentWith(Console.WriteLine);
             for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
             {
                 // Arrange
@@ -493,8 +493,9 @@ namespace Memoizer.NET.Test
         static public readonly Func<long, long> FIBONACCI = (arg => arg <= 1 ? arg : FIBONACCI(arg - 1) + FIBONACCI(arg - 2));
 
         //Memoizer<long, long> MEMOIZED_FIBONACCI = new Memoizer<long, long>("fibonacci", FIBONACCI).InstrumentUsing(Console.WriteLine);
-        Memoizer<long, long> MEMOIZED_FIBONACCI_INSTRUMENTED = new Memoizer<long, long>("fibonacci", (arg => arg < 2 ? arg : FIBONACCI(arg - 1) + FIBONACCI(arg - 2))).InstrumentWith(Console.WriteLine);
-        Func<long, long> MEMOIZED_FIBONACCI = FIBONACCI.Memoize();
+        //Memoizer<long, long> MEMOIZED_FIBONACCI_INSTRUMENTED = new Memoizer<long, long>("fibonacci", (arg => arg < 2 ? arg : FIBONACCI(arg - 1) + FIBONACCI(arg - 2)));
+        //MEMOIZED_FIBONACCI_INSTRUMENTED.InstrumentWith(Console.WriteLine);
+        Func<long, long> MEMOIZED_FIBONACCI = FIBONACCI.Memoize().Function;
 
         [Test]
         public void FibonacciNumbers(
