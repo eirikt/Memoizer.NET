@@ -38,6 +38,7 @@
   <ItemGroup>
     <Compile Include="LazyMemoizer.cs" />
     <Compile Include="Memoizer.cs" />
+    <Compile Include="MemoizerBuilder.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TwoPhaseExecutor.cs" />
   </ItemGroup>
