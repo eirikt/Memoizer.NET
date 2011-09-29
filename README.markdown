@@ -1,40 +1,33 @@
-### Memoizer.Net.Memoizer
-This class is an implementation of a method-level/fine-grained cache (a.k.a. _memoizer_). 
+### Memoizer.Net
+This project is an implementation of a method-level/fine-grained cache (a.k.a. _memoizer_). 
 It is based on an implementation from the book ["Java Concurrency in Practice"](http://jcip.net "http://jcip.net") by Brian Goetz et. al. - ported to C# 4.0 using goodness like method handles/delegates, lambda expressions, and extension methods.
 
 The noble thing about this implementation is that the _values_ are not cached, but rather _asynchronous functions_ for retrieving those values.
-These functions are guarantied not to be executed more than once in case of concurrent first-time invocations.
+These functions are guarantied to be executed not more than once in case of concurrent first-time invocations.
 The more expensive the memoized functions are, and the more concurrent the environment is - the better suited this memoizer implementation will be compared to others.
 
 A [`System.Runtime.Caching.MemoryCache`](http://msdn.microsoft.com/en-us/library/system.runtime.caching.memorycache.aspx "http://msdn.microsoft.com/en-us/library/system.runtime.caching.memorycache.aspx") instance is used as cache, 
 enabling configuration via the [`System.Runtime.Caching.CacheItemPolicy`](http://msdn.microsoft.com/en-us/library/system.runtime.caching.cacheitempolicy.aspx "http://msdn.microsoft.com/en-us/library/system.runtime.caching.cacheitempolicy.aspx").
 Default cache configuration is: items to be held as long as the CLR is alive or the memoizer is disposed/cleared. 
 
-### Memoizer.Net.LazyMemoizer
-Every `Memoizer.Net.Memoizer` instance creates its own [`System.Runtime.Caching.MemoryCache`](http://msdn.microsoft.com/en-us/library/system.runtime.caching.memorycache.aspx "http://msdn.microsoft.com/en-us/library/system.runtime.caching.memorycache.aspx") instance. 
-One could re-design this to utilize the ubiquitous `default` [`System.Runtime.Caching.MemoryCache`](http://msdn.microsoft.com/en-us/library/system.runtime.caching.memorycache.aspx "http://msdn.microsoft.com/en-us/library/system.runtime.caching.memorycache.aspx") instance to make the intansiation of this memoizer faster. 
-As a middle-way, the `Memoizer.Net.Memoizer` instance, with its [`System.Runtime.Caching.MemoryCache`](http://msdn.microsoft.com/en-us/library/system.runtime.caching.memorycache.aspx "http://msdn.microsoft.com/en-us/library/system.runtime.caching.memorycache.aspx") member instance, can be lazy-loaded by using the `Memoizer.Net.LazyMemoizer`.
-
 #### Usage
-Example:
+Example, default caching policy:
 
     static readonly Func<long, string> MyExpensiveFunction = ...
 
-    static readonly IInvocable<string, long> MyExpensiveFunctionMemoizer = 
-        new LazyMemoizer<string, long>(methodId:           "MyExpensiveFunction",
-                                       methodToBeMemoized: MyExpensiveFunction);
+    public static string ExpensiveFunction(long someId) { 
+        return MyExpensiveFunction.MemoizedInvoke<long, string>(someId);
+    }
+
+Example, expiration policy:
+
+	readonly CacheItemPolicy cacheItemEvictionPolicy = new CacheItemPolicy { SlidingExpiration = TimeSpan.FromMinutes(30) };
 
     public static string ExpensiveFunction(long someId) { 
-        return MyExpensiveFunctionMemoizer.InvokeWith(someId);
+        return MyExpensiveFunction.Memoize().CachePolicy(cacheItemEvictionPolicy).Get().InvokeWith(someId);
     }
 
 #### ToDo
-In v0.5: a memoizer builder for easier creation:
-
-    static readonly IInvocable<string, long> MyExpensiveFunctionMemoizer =
-        MyExpensiveFunction.Memoize().InstrumentWith(Console.WriteLine).LazyLoad().Build();
-
-- Can this be even more shortened with a generic extension method? _#lazyweb_
 
 - Can all this be accomplished using C# attributes? _#lazyweb_
 
@@ -43,7 +36,7 @@ In v0.5: a memoizer builder for easier creation:
 A class for synchronized execution of an arbitrary number of worker/task threads. All participating worker/task threads must derive from the `Memoizer.Net.AbstractTwoPhaseExecutorThread` class.
 
 #### Usage
-See the `Memoizer.NET.Test.MemoizerTests` class for usage examples. In v0.6 a mini DSL/builder for easy `Memoizer.Net.TwoPhaseExecutor` usage will be included.
+See the `Memoizer.NET.Test.MemoizerTests` class for usage examples. In v0.6 a mini DSL/builder for easy `Memoizer.Net.TwoPhaseExecutor` usage will be included. Right now the API kind of sucks...
 
 ---  
 
