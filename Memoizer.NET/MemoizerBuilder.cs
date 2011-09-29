@@ -1,4 +1,19 @@
-﻿using System;
+﻿/*
+ * Copyright 2011 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+using System;
 
 namespace Memoizer.NET
 {
@@ -41,6 +56,16 @@ namespace Memoizer.NET
         {
             return new MemoizerBuilder<TResult, TParam>(functionToBeMemoized);
         }
+
+        public static Func<TParam, TResult> MemoizedFunc<TParam, TResult>(this Func<TParam, TResult> functionToBeMemoized)
+        {
+            return new MemoizerBuilder<TResult, TParam>(functionToBeMemoized).Function;
+        }
+
+        public static TResult MemoizedInvoke<TParam, TResult>(this Func<TParam, TResult> functionToBeMemoized, TParam arg)
+        {
+            return new MemoizerBuilder<TResult, TParam>(functionToBeMemoized).Get().InvokeWith(arg);
+        }
     }
     #endregion
 
@@ -57,26 +82,41 @@ namespace Memoizer.NET
 
     public class MemoizerBuilder<TResult, TParam>
     {
+        static Memoizer<TResult, TParam> CreateMemoizer(Func<TParam, TResult> f) { return new Memoizer<TResult, TParam>(f); }
+        static readonly LazyMemoizer<Memoizer<TResult, TParam>, Func<TParam, TResult>> MEMOIZER_MEMOIZER =
+            new LazyMemoizer<Memoizer<TResult, TParam>, Func<TParam, TResult>>(CreateMemoizer);
 
-        //public static Func<Memoizer<TResult, TParam>, long> newMemoizer =
-        //    new Func<Memoizer<TResult, TParam>, long> {};
+        public MemoizerBuilder(Func<TParam, TResult> functionToBeMemoized)
+        {
+            this.function = functionToBeMemoized;
+        }
 
-        //public static LazyMemoizer<Memoizer<TResult, TParam>, long> memoizerMemoizer = new LazyMemoizer<Memoizer<TResult, TParam>, long>();
+        readonly Func<TParam, TResult> function;
+        internal Func<TParam, TResult> Function
+        {
+            get { return this.function; }
+        }
 
-        Action<String> LoggingMethod;
-        public MemoizerBuilder(Func<TParam, TResult> functionToBeMemoized) { Function = functionToBeMemoized; }
-        public Func<TParam, TResult> Function { get; private set; }
+        Action<String> loggingMethod;
+        internal Action<String> LoggingMethod
+        {
+            get { return this.loggingMethod; }
+        }
+        public MemoizerBuilder<TResult, TParam> InstrumentWith(Action<String> loggingAction)
+        {
+            this.loggingMethod = loggingAction;
+            return this;
+        }
+
         public Memoizer<TResult, TParam> Get()
         {
-            Memoizer<TResult, TParam> memoizer = new Memoizer<TResult, TParam>(Function);
-            
-            //Memoizer<TResult, TParam> memoizer = memoizerMemoizer.InvokeWith(Memoizer<TResult, TParam>(Function));
-            
-            if (this.LoggingMethod != null) { memoizer.InstrumentWith(this.LoggingMethod); }
+            //Memoizer<TResult, TParam> memoizer = new Memoizer<TResult, TParam>(Function); // Not memoized memoizer one-line creation
+            Memoizer<TResult, TParam> memoizer = MEMOIZER_MEMOIZER.InvokeWith(this.function);
+
+            if (this.loggingMethod != null) { memoizer.InstrumentWith(this.loggingMethod); }
             return memoizer;
 
         }
-        public void InstrumentWith(Action<String> loggingAction) { this.LoggingMethod = loggingAction; }
     }
 
     //class MemoizerReadyForBuilding<TResult, TParam>
@@ -90,5 +130,4 @@ namespace Memoizer.NET
     //        return this.memoizer;
     //    }
     //}
-
 }
