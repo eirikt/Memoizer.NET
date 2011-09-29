@@ -229,7 +229,8 @@ namespace Memoizer.NET.Test
             IInvocable<long, long> memoizedSlowSquare2 = slowSquareMemoizerBuilder.Get();
 
             startTime = DateTime.Now.Ticks;
-            result = memoizedSlowSquare2.InvokeWith(123);
+            result = slowSquareMemoizerBuilder.Get().InvokeWith(123);
+            //result = memoizedSlowSquare2.InvokeWith(123);
             durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("Square(123) = " + result + " [memoized first time (instrumented) invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
             Assert.That(durationInTicks / 10000, Is.LessThan(10)); // ms (memoized invocation)
