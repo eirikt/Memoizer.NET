@@ -66,13 +66,32 @@ namespace Memoizer.NET.Test
         #endregion
 
         #region MemoizerHelper
-        // TODO: test hashing complex objects!
-        [Ignore("TODO")]
+        Func<long, long> slow500Square = (arg1 => { Thread.Sleep(500); return arg1 * arg1; });
+        Func<long, long> slow1000Square = (arg1 => { Thread.Sleep(1000); return arg1 * arg1; });
+        Func<long, long> slow500PowerOfThree = (arg1 => { Thread.Sleep(500); return arg1 * arg1 * arg1; });
+        Func<long, long> slow1000PowerOfThree = (arg1 => { Thread.Sleep(1000); return arg1 * arg1 * arg1; });
+
         [Test]
-        public void ShouldCreateAHashForClassNameAndMethodName()
+        public void StringsArePrimitivesArentThey()
         {
-            // ...
+            Assert.That(typeof(long).IsPrimitive, Is.True);
+            Assert.That(typeof(Int64).IsPrimitive, Is.True);
+            Assert.That(typeof(ulong).IsPrimitive, Is.True);
+            Assert.That(typeof(UInt64).IsPrimitive, Is.True);
+            Assert.That(typeof(String).IsPrimitive, Is.False); // Nope
         }
+
+        [Test]
+        public void ShouldCreateAHashForDelegates()
+        {
+            Assert.That(MemoizerHelper.CreateParameterHash(40L), Is.EqualTo(MemoizerHelper.CreateParameterHash(40L)));
+            Assert.That(MemoizerHelper.CreateParameterHash(slow500Square), Is.EqualTo(MemoizerHelper.CreateParameterHash(slow500Square)));
+            Assert.That(MemoizerHelper.CreateParameterHash(slow1000Square), Is.EqualTo(MemoizerHelper.CreateParameterHash(slow1000Square)));
+            Assert.That(MemoizerHelper.CreateParameterHash(slow500Square), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(slow1000Square)));
+        }
+
+        // TODO: test hashing complex objects!
+
         #endregion
 
         #region Direct invocation
@@ -486,29 +505,21 @@ namespace Memoizer.NET.Test
         }
 
 
-        // TODO: test when caching with complex objects as parameters
-
-        // TODO: check the behaviour of the MemoryCache name parameter (Gets or sets the name of a particular cache configuration) via multiple memoizer instances at the same time
-
         static public readonly Func<long, long> FIBONACCI = (arg => arg <= 1 ? arg : FIBONACCI(arg - 1) + FIBONACCI(arg - 2));
 
         //Memoizer<long, long> MEMOIZED_FIBONACCI = new Memoizer<long, long>("fibonacci", FIBONACCI).InstrumentUsing(Console.WriteLine);
         //Memoizer<long, long> MEMOIZED_FIBONACCI_INSTRUMENTED = new Memoizer<long, long>("fibonacci", (arg => arg < 2 ? arg : FIBONACCI(arg - 1) + FIBONACCI(arg - 2)));
         //MEMOIZED_FIBONACCI_INSTRUMENTED.InstrumentWith(Console.WriteLine);
-        Func<long, long> MEMOIZED_FIBONACCI = FIBONACCI.Memoize().Function;
+        readonly Func<long, long> MEMOIZED_FIBONACCI = FIBONACCI.MemoizedFunc();
+        readonly IInvocable<long, long> MEMOIZED_FIBONACCI_2 = FIBONACCI.Memoize().Get();
 
         [Test]
         public void FibonacciNumbers(
-            //[Values(1, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40)] int numberOfFibonacciArguments)
-            [Values(4)] int numberOfFibonacciArguments)
+            [Values(1, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40)] int numberOfFibonacciArguments)
+            //[Values(6)] int numberOfFibonacciArguments)
         {
             long startTime = DateTime.Now.Ticks;
             Console.WriteLine("Fibonacci(" + numberOfFibonacciArguments + ") =");
-
-            //Memoizer<long, long> memoizedFibonacciFunction = new Memoizer<long, long>();
-            //Func<long, long> functionToBeMemoized = new Func<long, long>(new Memoizer<long, long>(memoizedFibonacciFunction).InvokeWith);
-            //memoizedFibonacciFunction.methodToBeMemoized = (arg => arg < 2 ? arg : memoizedFibonacciFunction(arg - 1) + memoizedFibonacciFunction(arg - 2))).InstrumentUsing(Console.WriteLine);
-
             for (int i = 0; i < numberOfFibonacciArguments; ++i) { Console.Write(FIBONACCI(i) + " "); }
             long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
             Console.WriteLine();
@@ -517,19 +528,39 @@ namespace Memoizer.NET.Test
 
         // TODO: Memoization of recursive functions not yet supported
         [Test]
-        public void MemoizedFibonacciNumbers_KindOf(
-            //[Values(1, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40)] int numberOfFibonacciArguments)
-            [Values(6)] int numberOfFibonacciArguments)
+        public void MemoizedFibonacciNumbers_Nope(
+            [Values(1, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40)] int numberOfFibonacciArguments)
+            //[Values(6)] int numberOfFibonacciArguments)
         {
             long startTime = DateTime.Now.Ticks;
             Console.WriteLine("(Memoized [Func.Hash=" + MEMOIZED_FIBONACCI.GetHashCode() + "]) Fibonacci(" + numberOfFibonacciArguments + ") =");
-            //for (int i = 0; i < numberOfFibonacciArguments; ++i) { Console.Write(MEMOIZED_FIBONACCI.InvokeWith(i) + " "); }
             for (int i = 0; i < numberOfFibonacciArguments; ++i) { Console.Write(MEMOIZED_FIBONACCI(i) + " "); }
             long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
             Console.WriteLine();
             Console.WriteLine("Took " + durationInMilliseconds + " ms");
         }
+
+        // TODO: Memoization of recursive functions not yet supported
+        [Test]
+        public void MemoizedFibonacciNumbers_KindOf(
+            [Values(1, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40)] int numberOfFibonacciArguments)
+            //[Values(6)] int numberOfFibonacciArguments)
+        {
+            long startTime = DateTime.Now.Ticks;
+            Console.WriteLine("(Memoized [Func.Hash=" + MEMOIZED_FIBONACCI.GetHashCode() + "]) Fibonacci(" + numberOfFibonacciArguments + ") =");
+            for (int i = 0; i < numberOfFibonacciArguments; ++i) { Console.Write(MEMOIZED_FIBONACCI_2.InvokeWith(i) + " "); }
+            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
+            Console.WriteLine();
+            Console.WriteLine("Took " + durationInMilliseconds + " ms");
+        }
         #endregion
+
+
+
+        // TODO: test when caching with complex objects as parameters
+
+        // TODO: check the behaviour of the MemoryCache name parameter (Gets or sets the name of a particular cache configuration) via multiple memoizer instances at the same time
+
     }
     #endregion
 }

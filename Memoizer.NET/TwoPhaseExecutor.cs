@@ -209,4 +209,7 @@ namespace Memoizer.NET
                 Console.WriteLine(this.GetType().Name + " #" + TaskNumber + " created... [(possible) barrier participant #" + ParticipantNumber + "]");
         }
     }
+
+
+    // TODO: create a "mini-DSL"/builder for easy creation of AbstractTwoPhaseExecutorThread objects
 }
