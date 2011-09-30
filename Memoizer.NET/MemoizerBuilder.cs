@@ -54,15 +54,9 @@ namespace Memoizer.NET
 
     public class MemoizerBuilder<TParam1, TResult>
     {
-        //static readonly Lazy<Memoizer<Memoizer<TParam1, TResult>, Func<TParam1, TResult>>> MEMOIZER_MEMOIZER =
-        //    new Lazy<Memoizer<Memoizer<TParam1, TResult>, Func<TParam1, TResult>>>(
-        //        f => new Memoizer<TParam1, TResult>(f)
-        //);
-
-        //static readonly LazyMemoizer<Memoizer<TParam1, TResult>, Func<TParam1, TResult>> MEMOIZER_MEMOIZER =
-        //    new LazyMemoizer<Memoizer<TParam1, TResult>, Func<TParam1, TResult>>(
-        //        f => new Memoizer<TParam1, TResult>(f)
-        //);
+        static readonly LazyMemoizer<Func<TParam1, TResult>, Memoizer<TParam1, TResult>> MEMOIZER_MEMOIZER =
+            new LazyMemoizer<Func<TParam1, TResult>, Memoizer<TParam1, TResult>>
+                (f => new Memoizer<TParam1, TResult>(f));
 
         public MemoizerBuilder(Func<TParam1, TResult> functionToBeMemoized)
         {
@@ -89,8 +83,8 @@ namespace Memoizer.NET
 
         public IInvocable<TParam1, TResult> Get()
         {
-            Memoizer<TParam1, TResult> memoizer = new Memoizer<TParam1, TResult>(Function); // Not memoized memoizer one-line creation
-            //Memoizer<TParam1, TResult> memoizer = MEMOIZER_MEMOIZER.InvokeWith(this.function);
+            //Memoizer<TParam1, TResult> memoizer = new Memoizer<TParam1, TResult>(Function); // Not memoized memoizer one-line creation
+            Memoizer<TParam1, TResult> memoizer = MEMOIZER_MEMOIZER.InvokeWith(this.function);
 
             if (this.loggingMethod != null) { memoizer.InstrumentWith(this.loggingMethod); }
             return memoizer;
@@ -100,10 +94,9 @@ namespace Memoizer.NET
 
     public class MemoizerBuilder<TParam1, TParam2, TResult>
     {
-        //static readonly LazyMemoizer<Memoizer<TParam1, TParam2, TResult>, Func<TParam1, TParam2, TResult>> MEMOIZER_MEMOIZER =
-        //    new LazyMemoizer<Memoizer<TParam1, TParam2, TResult>, Func<TParam1, TParam2, TResult>>(
-        //        f => new Memoizer<TParam1, TParam2, TResult>(f)
-        //);
+        static readonly LazyMemoizer<Func<TParam1, TParam2, TResult>, Memoizer<TParam1, TParam2, TResult>> MEMOIZER_MEMOIZER =
+            new LazyMemoizer<Func<TParam1, TParam2, TResult>, Memoizer<TParam1, TParam2, TResult>>
+                (f => new Memoizer<TParam1, TParam2, TResult>(f));
 
         public MemoizerBuilder(Func<TParam1, TParam2, TResult> functionToBeMemoized) { this.function = functionToBeMemoized; }
 
@@ -128,8 +121,7 @@ namespace Memoizer.NET
 
         public IInvocable<TParam1, TParam2, TResult> Get()
         {
-            Memoizer<TParam1, TParam2, TResult> memoizer = new Memoizer<TParam1, TParam2, TResult>(this.function); // Not memoized memoizer one-line creation
-            //Memoizer<TParam1, TParam2, TResult> memoizer = MEMOIZER_MEMOIZER.InvokeWith(this.function);
+            Memoizer<TParam1, TParam2, TResult> memoizer = MEMOIZER_MEMOIZER.InvokeWith(this.function);
 
             if (this.cacheItemPolicy != null) { memoizer.CacheItemPolicy(this.cacheItemPolicy); }
             if (this.loggingMethod != null) { memoizer.InstrumentWith(this.loggingMethod); }
