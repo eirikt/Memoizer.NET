@@ -21,31 +21,31 @@ namespace Memoizer.NET
 
     #region LazyMemoizer
     // TODO: some decent documentation would have been appropriate...
-    class LazyMemoizer<TResult, TParam> : IInvocable<TResult, TParam>, IThreadSafe
+    class LazyMemoizer<TParam1, TResult> : IInvocable<TParam1, TResult>, IThreadSafe
     {
-        static readonly bool IS_THREAD_SAFE = typeof(LazyMemoizer<TResult, TParam>) is IThreadSafe;
+        static readonly bool IS_THREAD_SAFE = typeof(LazyMemoizer<TParam1, TResult>) is IThreadSafe;
 
-        readonly Lazy<Memoizer<TResult, TParam>> lazyInitializer;
+        readonly Lazy<Memoizer<TParam1, TResult>> lazyInitializer;
 
         // CacheItemPolicy CacheItemPolicy { get; private set; }
-         Action<string> LoggingMethod { get; set; }
+        Action<string> LoggingMethod { get; set; }
         // String MethodName { get; private set; }
-         bool InstrumentInvocations { get { return LoggingMethod != null; } }
+        bool InstrumentInvocations { get { return LoggingMethod != null; } }
 
-         internal LazyMemoizer(Func<TParam, TResult> methodToBeMemoized, CacheItemPolicy cacheItemPolicy=null)
+        internal LazyMemoizer(Func<TParam1, TResult> methodToBeMemoized, CacheItemPolicy cacheItemPolicy = null)
         {
             if (methodToBeMemoized == null) { throw new ArgumentException("Method to be memoized is missing"); }
-            this.lazyInitializer = new Lazy<Memoizer<TResult, TParam>>(() =>
-                new Memoizer<TResult, TParam>(/*this.methodName,*/ methodToBeMemoized, cacheItemPolicy), IS_THREAD_SAFE);
+            this.lazyInitializer = new Lazy<Memoizer<TParam1, TResult>>(() =>
+                new Memoizer<TParam1, TResult>(methodToBeMemoized, cacheItemPolicy), IS_THREAD_SAFE);
         }
 
-        public TResult InvokeWith(TParam param)
+        public TResult InvokeWith(TParam1 param1)
         {
             if (!InstrumentInvocations)
-                return this.lazyInitializer.Value.InvokeWith(param);
+                return this.lazyInitializer.Value.InvokeWith(param1);
 
             //long startTime = DateTime.Now.Ticks;
-            TResult retVal = this.lazyInitializer.Value.InvokeWith(param);
+            TResult retVal = this.lazyInitializer.Value.InvokeWith(param1);
             //string localMethodId;
             //if (this.invokingType == null || string.IsNullOrEmpty(this.nameOfMethodToBeMemoized))
             //    localMethodId = this.methodId;

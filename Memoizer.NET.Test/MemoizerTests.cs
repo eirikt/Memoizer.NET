@@ -286,7 +286,7 @@ namespace Memoizer.NET.Test
         public void SingleThreadedMemoizedDirectInvocation_Memoizer()
         {
             long startTime = DateTime.Now.Ticks;
-            IInvocable<string, string, long> memoizer = ReallySlowNetworkInvocation1c.Memoize().Get();
+            IInvocable<string, long, string> memoizer = ReallySlowNetworkInvocation1c.Memoize().Get();
             for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
                 for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
                 {
@@ -311,7 +311,7 @@ namespace Memoizer.NET.Test
         {
             long startTime = DateTime.Now.Ticks;
             CacheItemPolicy cacheItemEvictionPolicy = new CacheItemPolicy { SlidingExpiration = TimeSpan.FromMilliseconds(NETWORK_RESPONSE_LATENCY_IN_MILLIS * 3) };
-            IInvocable<string, string, long> memoizer = ReallySlowNetworkInvocation1b.Memoize().CachePolicy(cacheItemEvictionPolicy).Get();
+            IInvocable<string, long, string> memoizer = ReallySlowNetworkInvocation1b.Memoize().CachePolicy(cacheItemEvictionPolicy).Get();
 
             // New function value, not yet cached
             var retVal = memoizer.InvokeWith("SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer", 15L);
@@ -353,10 +353,10 @@ namespace Memoizer.NET.Test
         {
             static int TASK_COUNTER;
             public string Result { get; private set; }
-            readonly IInvocable<string, string, long> memoizer;
+            readonly IInvocable<string, long, string> memoizer;
 
 
-            internal VeryExpensiveMemoizedServiceCallTask_Memoizer(Barrier barrier, IInvocable<string, string, long> memoizer, string stringArg, long longArg)
+            internal VeryExpensiveMemoizedServiceCallTask_Memoizer(Barrier barrier, IInvocable<string, long, string> memoizer, string stringArg, long longArg)
                 : base(barrier)
             {
                 TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
@@ -383,7 +383,7 @@ namespace Memoizer.NET.Test
            [Values(1, 2, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentTasks)
         {
             long startTime = DateTime.Now.Ticks;
-            IInvocable<string, string, long> memoizer =
+            IInvocable<string, long, string> memoizer =
                 ReallySlowNetworkInvocation1a.Memoize().CachePolicy(null).InstrumentWith(Console.WriteLine).Get();
             for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
             {
@@ -414,9 +414,9 @@ namespace Memoizer.NET.Test
         class ClearCacheTask_Memoizer : AbstractTwoPhaseExecutorThread
         {
             static int TASK_COUNTER;
-            readonly IInvocable<string, string, long> memoizer;
+            readonly IInvocable<string, long, string> memoizer;
 
-            public ClearCacheTask_Memoizer(Barrier barrier, IInvocable<string, string, long> memoizer)
+            public ClearCacheTask_Memoizer(Barrier barrier, IInvocable<string, long, string> memoizer)
                 : base(barrier)
             {
                 TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
@@ -468,7 +468,7 @@ namespace Memoizer.NET.Test
             //{
             //const int METHOD_NUMBER_OF_CONCURRENT_TASKS = 50;
             long startTime = DateTime.Now.Ticks;
-            IInvocable<string, string, long> memoizer = TypicalDatabaseInvocation1a.Memoize().Get();
+            IInvocable<string, long, string> memoizer = TypicalDatabaseInvocation1a.Memoize().Get();
             // Arrange
             TwoPhaseExecutor twoPhaseExecutor = new TwoPhaseExecutor(numberOfConcurrentTasks + 3); // + 3 clearing tasks
             //twoPhaseExecutor.Instrumentation = true;

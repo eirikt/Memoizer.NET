@@ -28,7 +28,7 @@ namespace Memoizer.NET.Test
     class TwoPhaseExecutorTests
     {
 
-        [Ignore("Temporary disabled...")]
+        //[Ignore("Temporary disabled...")]
         [Test]
         public void Test()
         {

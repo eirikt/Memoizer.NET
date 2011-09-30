@@ -216,7 +216,7 @@ namespace Memoizer.NET.Test
             long result = memoizedSlowSquare.InvokeWith(123);
             durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("Square(123) = " + result + " [memoized first time invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
-            Assert.That(durationInTicks / 10000, Is.GreaterThan(500)); // ms (not memoized invocation)
+            Assert.That(durationInTicks / 10000, Is.GreaterThanOrEqualTo(500)); // ms (not memoized invocation)
 
             startTime = DateTime.Now.Ticks;
             result = memoizedSlowSquare.InvokeWith(123);

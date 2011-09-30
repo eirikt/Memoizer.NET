@@ -23,49 +23,54 @@ namespace Memoizer.NET
     #region Func extension methods
     public static class FuncExtensionMethods
     {
-        public static MemoizerBuilder<TResult, TParam1> Memoize<TParam1, TResult>(this Func<TParam1, TResult> functionToBeMemoized)
+        public static MemoizerBuilder<TParam1, TResult> Memoize<TParam1, TResult>(this Func<TParam1, TResult> functionToBeMemoized)
         {
-            return new MemoizerBuilder<TResult, TParam1>(functionToBeMemoized);
+            return new MemoizerBuilder<TParam1, TResult>(functionToBeMemoized);
         }
-        public static MemoizerBuilder<TResult, TParam1, TParam2> Memoize<TParam1, TParam2, TResult>(this Func<TParam1, TParam2, TResult> functionToBeMemoized)
+        public static MemoizerBuilder<TParam1, TParam2, TResult> Memoize<TParam1, TParam2, TResult>(this Func<TParam1, TParam2, TResult> functionToBeMemoized)
         {
-            return new MemoizerBuilder<TResult, TParam1, TParam2>(functionToBeMemoized);
+            return new MemoizerBuilder<TParam1, TParam2, TResult>(functionToBeMemoized);
         }
 
         public static Func<TParam1, TResult> MemoizedFunc<TParam1, TResult>(this Func<TParam1, TResult> functionToBeMemoized)
         {
-            return new MemoizerBuilder<TResult, TParam1>(functionToBeMemoized).Function;
+            return new MemoizerBuilder<TParam1, TResult>(functionToBeMemoized).Function;
         }
         public static Func<TParam1, TParam2, TResult> MemoizedFunc<TParam1, TParam2, TResult>(this Func<TParam1, TParam2, TResult> functionToBeMemoized)
         {
-            return new MemoizerBuilder<TResult, TParam1, TParam2>(functionToBeMemoized).Function;
+            return new MemoizerBuilder<TParam1, TParam2, TResult>(functionToBeMemoized).Function;
         }
 
-        public static TResult MemoizedInvoke<TParam1, TResult>(this Func<TParam1, TResult> functionToBeMemoized, TParam1 arg)
+        public static TResult MemoizedInvoke<TParam1, TResult>(this Func<TParam1, TResult> functionToBeMemoized, TParam1 arg1)
         {
-            return new MemoizerBuilder<TResult, TParam1>(functionToBeMemoized).Get().InvokeWith(arg);
+            return new MemoizerBuilder<TParam1, TResult>(functionToBeMemoized).Get().InvokeWith(arg1);
         }
         public static TResult MemoizedInvoke<TParam1, TParam2, TResult>(this Func<TParam1, TParam2, TResult> functionToBeMemoized, TParam1 arg1, TParam2 arg2)
         {
-            return new MemoizerBuilder<TResult, TParam1, TParam2>(functionToBeMemoized).Get().InvokeWith(arg1, arg2);
+            return new MemoizerBuilder<TParam1, TParam2, TResult>(functionToBeMemoized).Get().InvokeWith(arg1, arg2);
         }
     }
     #endregion
 
-    public class MemoizerBuilder<TResult, TParam>
+    public class MemoizerBuilder<TParam1, TResult>
     {
-        static readonly LazyMemoizer<Memoizer<TResult, TParam>, Func<TParam, TResult>> MEMOIZER_MEMOIZER =
-            new LazyMemoizer<Memoizer<TResult, TParam>, Func<TParam, TResult>>(
-                f => new Memoizer<TResult, TParam>(f)
-        );
+        //static readonly Lazy<Memoizer<Memoizer<TParam1, TResult>, Func<TParam1, TResult>>> MEMOIZER_MEMOIZER =
+        //    new Lazy<Memoizer<Memoizer<TParam1, TResult>, Func<TParam1, TResult>>>(
+        //        f => new Memoizer<TParam1, TResult>(f)
+        //);
 
-        public MemoizerBuilder(Func<TParam, TResult> functionToBeMemoized)
+        //static readonly LazyMemoizer<Memoizer<TParam1, TResult>, Func<TParam1, TResult>> MEMOIZER_MEMOIZER =
+        //    new LazyMemoizer<Memoizer<TParam1, TResult>, Func<TParam1, TResult>>(
+        //        f => new Memoizer<TParam1, TResult>(f)
+        //);
+
+        public MemoizerBuilder(Func<TParam1, TResult> functionToBeMemoized)
         {
             this.function = functionToBeMemoized;
         }
 
-        readonly Func<TParam, TResult> function;
-        internal Func<TParam, TResult> Function
+        readonly Func<TParam1, TResult> function;
+        internal Func<TParam1, TResult> Function
         {
             get { return this.function; }
         }
@@ -76,16 +81,16 @@ namespace Memoizer.NET
             get { return this.loggingMethod; }
         }
 
-        public MemoizerBuilder<TResult, TParam> InstrumentWith(Action<String> loggingAction)
+        public MemoizerBuilder<TParam1, TResult> InstrumentWith(Action<String> loggingAction)
         {
             this.loggingMethod = loggingAction;
             return this;
         }
 
-        public IInvocable<TResult, TParam> Get()
+        public IInvocable<TParam1, TResult> Get()
         {
-            //Memoizer<TResult, TParam> memoizer = new Memoizer<TResult, TParam>(Function); // Not memoized memoizer one-line creation
-            Memoizer<TResult, TParam> memoizer = MEMOIZER_MEMOIZER.InvokeWith(this.function);
+            Memoizer<TParam1, TResult> memoizer = new Memoizer<TParam1, TResult>(Function); // Not memoized memoizer one-line creation
+            //Memoizer<TParam1, TResult> memoizer = MEMOIZER_MEMOIZER.InvokeWith(this.function);
 
             if (this.loggingMethod != null) { memoizer.InstrumentWith(this.loggingMethod); }
             return memoizer;
@@ -93,12 +98,12 @@ namespace Memoizer.NET
     }
 
 
-    public class MemoizerBuilder<TResult, TParam1, TParam2>
+    public class MemoizerBuilder<TParam1, TParam2, TResult>
     {
-        static readonly LazyMemoizer<Memoizer<TResult, TParam1, TParam2>, Func<TParam1, TParam2, TResult>> MEMOIZER_MEMOIZER =
-            new LazyMemoizer<Memoizer<TResult, TParam1, TParam2>, Func<TParam1, TParam2, TResult>>(
-                f => new Memoizer<TResult, TParam1, TParam2>(f)
-        );
+        //static readonly LazyMemoizer<Memoizer<TParam1, TParam2, TResult>, Func<TParam1, TParam2, TResult>> MEMOIZER_MEMOIZER =
+        //    new LazyMemoizer<Memoizer<TParam1, TParam2, TResult>, Func<TParam1, TParam2, TResult>>(
+        //        f => new Memoizer<TParam1, TParam2, TResult>(f)
+        //);
 
         public MemoizerBuilder(Func<TParam1, TParam2, TResult> functionToBeMemoized) { this.function = functionToBeMemoized; }
 
@@ -106,7 +111,7 @@ namespace Memoizer.NET
         internal Func<TParam1, TParam2, TResult> Function { get { return this.function; } }
 
         CacheItemPolicy cacheItemPolicy;
-        public MemoizerBuilder<TResult, TParam1, TParam2> CachePolicy(CacheItemPolicy cacheItemPolicy)
+        public MemoizerBuilder<TParam1, TParam2, TResult> CachePolicy(CacheItemPolicy cacheItemPolicy)
         {
             this.cacheItemPolicy = cacheItemPolicy;
             return this;
@@ -115,18 +120,18 @@ namespace Memoizer.NET
         Action<String> loggingMethod;
         internal Action<String> LoggingMethod { get { return this.loggingMethod; } }
 
-        public MemoizerBuilder<TResult, TParam1, TParam2> InstrumentWith(Action<String> loggingAction)
+        public MemoizerBuilder<TParam1, TParam2, TResult> InstrumentWith(Action<String> loggingAction)
         {
             this.loggingMethod = loggingAction;
             return this;
         }
 
-        public IInvocable<TResult, TParam1, TParam2> Get()
+        public IInvocable<TParam1, TParam2, TResult> Get()
         {
-            //Memoizer<TResult, TParam> memoizer = new Memoizer<TResult, TParam>(Function); // Not memoized memoizer one-line creation
-            Memoizer<TResult, TParam1, TParam2> memoizer = MEMOIZER_MEMOIZER.InvokeWith(this.function);
+            Memoizer<TParam1, TParam2, TResult> memoizer = new Memoizer<TParam1, TParam2, TResult>(this.function); // Not memoized memoizer one-line creation
+            //Memoizer<TParam1, TParam2, TResult> memoizer = MEMOIZER_MEMOIZER.InvokeWith(this.function);
 
-            if (this.cacheItemPolicy != null) { memoizer.UseCacheItemPolicy(this.cacheItemPolicy); }
+            if (this.cacheItemPolicy != null) { memoizer.CacheItemPolicy(this.cacheItemPolicy); }
             if (this.loggingMethod != null) { memoizer.InstrumentWith(this.loggingMethod); }
             return memoizer;
         }
