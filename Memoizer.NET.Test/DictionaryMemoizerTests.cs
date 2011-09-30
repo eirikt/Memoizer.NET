@@ -38,7 +38,7 @@ namespace Memoizer.NET.Test
             for (int i = 0; i < MemoizerTests.NUMBER_OF_ITERATIONS; ++i)
                 for (int j = 0; j < MemoizerTests.NUMBER_OF_CONCURRENT_TASKS; ++j)
                 {
-                    string retVal = memoizer.Invoke(new MemoizerTests().ReallySlowNetworkInvocation, "SingleThreadedMemoizedInvocation_DictionaryMemoizer_WithLocks", 14L);
+                    string retVal = memoizer.Invoke(MemoizerTests.ReallySlowNetworkInvocation1c, "SingleThreadedMemoizedInvocation_DictionaryMemoizer_WithLocks", 14L);
                     Assert.That(retVal, Is.EqualTo(MemoizerTests.METHOD_RESPONSE_ELEMENT + "SingleThreadedMemoizedInvocation_DictionaryMemoizer_WithLocks" + 14L));
                 }
             long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;

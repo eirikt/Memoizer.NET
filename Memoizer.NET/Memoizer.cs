@@ -32,6 +32,16 @@ namespace Memoizer.NET
     public interface IThreadSafe { }
     #endregion
 
+    #region IClearable
+    /// <summary>
+    /// Interface for classes that can be cleared.
+    /// </summary>
+    public interface IClearable
+    {
+        void Clear();
+    }
+    #endregion
+
     #region IInvocable
     /// <summary>
     /// Interface for invocable classes.
@@ -69,7 +79,7 @@ namespace Memoizer.NET
             }
             return string.Join(string.Empty, args);
         }
-
+        public static string CreateMethodHash(object source) { return CreateParameterHash(source); }
         public static string CreateMethodHash(Type sourceClass, string methodName) { return CreateParameterHash(sourceClass.ToString(), methodName); }
     }
     #endregion
@@ -93,15 +103,18 @@ namespace Memoizer.NET
     /// <see>http://jcip.net/</see>
     /// <see><code>Memoizer.Net.LazyMemoizer</code></see>
     /// <author>Eirik Torske</author>
-    public abstract class AbstractMemoizer<TResult> : IThreadSafe, IDisposable
+    public interface IMemoizer : IThreadSafe, IDisposable, IClearable
     {
-        protected string name;
-        protected MemoryCache cache;
-        //protected CacheItemPolicy cacheItemPolicy;
-        //protected Action<string> loggingMethod;
+        int NumberOfTimesInvoked { get; }
+        int NumberOfTimesNoCacheInvoked { get; }
+        int NumberOfTimesCleared { get; }
+        int NumberOfElementsCleared { get; }
+    }
 
-        //public CacheItemPolicy CacheItemPolicy { get; set; }
-        //public Action<string> LoggingMethod { get; set; }
+
+    abstract class AbstractMemoizer<TResult> : IMemoizer
+    {
+        protected MemoryCache cache;
         protected CacheItemPolicy cacheItemPolicy;
         protected Action<string> loggingMethod;
 
@@ -114,30 +127,6 @@ namespace Memoizer.NET
         public int NumberOfTimesNoCacheInvoked { get { return this.numberOfTimesNoCacheInvoked; } }
         public int NumberOfTimesCleared { get { return this.numberOfTimesCleared; } }
         public int NumberOfElementsCleared { get { return this.numberOfElementsCleared; } }
-
-        //protected readonly Func<TParam, TResult> methodToBeMemoized;
-
-        //protected AbstractMemoizer(string methodHash,
-        //                           Func<TParam, TResult> methodToBeMemoized,
-        //                           CacheItemPolicy cacheItemPolicy = null)
-        //{
-        //    if (string.IsNullOrEmpty(methodHash)) { throw new ArgumentException("A hash of the method to be memoized must be provided"); }
-        //    //if (methodToBeMemoized == null) { throw new ArgumentException("Method to be memoized is missing"); } // 'methodToBeMemoized' is overloaded field
-        //    this.name = MemoizerHelper.CreateParameterHash(methodHash);
-        //    this.cache = new MemoryCache(name);
-        //    this.methodToBeMemoized = methodToBeMemoized;
-        //    this.cacheItemPolicy = cacheItemPolicy;
-        //}
-
-        //protected AbstractMemoizer(Type sourceClass,
-        //                           string nameOfMethodToBeMemoized,
-        //                           Func<TParam, TResult> methodToBeMemoized,
-        //                           CacheItemPolicy cacheItemPolicy = null)
-        //    : this(MemoizerHelper.CreateMethodHash(sourceClass, nameOfMethodToBeMemoized), methodToBeMemoized, cacheItemPolicy)
-        //{
-        //    if (sourceClass == null) { throw new ArgumentException("Type of invoking class is missing"); }
-        //    if (string.IsNullOrEmpty(nameOfMethodToBeMemoized)) { throw new ArgumentException("Name of method to be memoized is missing"); }
-        //}
 
         /// <summary>
         /// Disposes of the memoizer.
@@ -168,21 +157,17 @@ namespace Memoizer.NET
             }
         }
 
-
         protected void ConditionalLogging(string logMessage)
         {
             if (this.loggingMethod != null) { this.loggingMethod(this.GetType().Namespace + "." + this.GetType().Name + " [" + this.GetHashCode() + "] : " + logMessage); }
         }
 
-
-        public void InstrumentWith(Action<String> instrumenter) { this.loggingMethod = instrumenter; }
-
+        internal void InstrumentWith(Action<String> instrumenter) { this.loggingMethod = instrumenter; }
 
         /// <summary>
         /// Gets the delegate of the function to be memoized, closed under given arguments.
         /// </summary>
         protected abstract Func<TResult> GetMethodClosure(params object[] args);
-
 
         /// <summary>
         /// Invokes the method delegate - consulting the cache on the way.
@@ -238,45 +223,16 @@ namespace Memoizer.NET
     }
 
 
-    public class Memoizer<TResult, TParam> : AbstractMemoizer<TResult>, IInvocable<TResult, TParam>
+    internal class Memoizer<TResult, TParam> : AbstractMemoizer<TResult>, IInvocable<TResult, TParam>
     {
-        public Func<TParam, TResult> methodToBeMemoized;
+        Func<TParam, TResult> methodToBeMemoized;
 
-        //internal Memoizer() { }
-
-        public Memoizer(string methodId,
-                        Func<TParam, TResult> methodToBeMemoized//,
-            //CacheItemPolicy cacheItemPolicy = null,
-            //Action<string> loggingMethod = null
-            )
+        internal Memoizer(Func<TParam, TResult> methodToBeMemoized, CacheItemPolicy cacheItemPolicy = null)
         {
-            if (string.IsNullOrEmpty(methodId)) { throw new ArgumentException("A hash of the method to be memoized must be provided"); }
-            //if (methodToBeMemoized == null) { throw new ArgumentException("Method to be memoized is missing"); } // 'methodToBeMemoized' is overloaded field
-            this.name = MemoizerHelper.CreateParameterHash(methodId);
-            this.cache = new MemoryCache(name);
+            this.cache = new MemoryCache(MemoizerHelper.CreateMethodHash(methodToBeMemoized));
             this.methodToBeMemoized = methodToBeMemoized;
-            //this.cacheItemPolicy = cacheItemPolicy;
-            //this.loggingMethod = loggingMethod;
+            this.cacheItemPolicy = cacheItemPolicy;
         }
-
-        public Memoizer(Type sourceClass,
-                        string nameOfMethodToBeMemoized,
-                        Func<TParam, TResult> methodToBeMemoized//,
-            //CacheItemPolicy cacheItemPolicy = null,
-            //Action<string> loggingMethod = null
-            )
-            : this(MemoizerHelper.CreateMethodHash(sourceClass, nameOfMethodToBeMemoized), methodToBeMemoized)//, cacheItemPolicy, loggingMethod)
-        {
-            if (sourceClass == null) { throw new ArgumentException("Type of invoking class is missing"); }
-            if (string.IsNullOrEmpty(nameOfMethodToBeMemoized)) { throw new ArgumentException("Name of method to be memoized is missing"); }
-        }
-
-        public Memoizer(Func<TParam, TResult> methodToBeMemoized//,
-            //CacheItemPolicy cacheItemPolicy = null,
-            //Action<string> loggingMethod = null
-            )
-            : this(new Random().Next(Int32.MaxValue).ToString(), methodToBeMemoized)//, cacheItemPolicy, loggingMethod)
-        { }
 
         protected override Func<TResult> GetMethodClosure(params object[] args)
         {
@@ -292,46 +248,29 @@ namespace Memoizer.NET
     }
 
 
-    public class Memoizer<TResult, TParam1, TParam2> : AbstractMemoizer<TResult>, IInvocable<TResult, TParam1, TParam2>
+    internal class Memoizer<TResult, TParam1, TParam2> : AbstractMemoizer<TResult>, IInvocable<TResult, TParam1, TParam2>
     {
         readonly Func<TParam1, TParam2, TResult> methodToBeMemoized;
 
-        public Memoizer(string methodHash,
-                        Func<TParam1, TParam2, TResult> methodToBeMemoized//,
-            //CacheItemPolicy cacheItemPolicy = null,
-            //Action<string> loggingMethod = null
-            )
+        public void UseCacheItemPolicy(CacheItemPolicy cachePolicy)
         {
-            if (string.IsNullOrEmpty(methodHash)) { throw new ArgumentException("A hash of the method to be memoized must be provided"); }
-            //if (methodToBeMemoized == null) { throw new ArgumentException("Method to be memoized is missing"); } // 'methodToBeMemoized' is overloaded field
-            this.name = MemoizerHelper.CreateParameterHash(methodHash);
-            this.cache = new MemoryCache(name);
+            throw new NotImplementedException();
+        }
+
+        public Memoizer(Func<TParam1, TParam2, TResult> methodToBeMemoized)
+        {
             this.methodToBeMemoized = methodToBeMemoized;
-            //this.cacheItemPolicy = cacheItemPolicy;
-            //this.loggingMethod = loggingMethod;
         }
 
-        public Memoizer(Type sourceClass,
-                        string nameOfMethodToBeMemoized,
-                        Func<TParam1, TParam2, TResult> methodToBeMemoized,
-                        CacheItemPolicy cacheItemPolicy = null)
-            : this(MemoizerHelper.CreateMethodHash(sourceClass, nameOfMethodToBeMemoized), methodToBeMemoized)//, cacheItemPolicy)
+        protected override Func<TResult> GetMethodClosure(params object[] args)
         {
-            if (sourceClass == null) { throw new ArgumentException("Type of invoking class is missing"); }
-            if (string.IsNullOrEmpty(nameOfMethodToBeMemoized)) { throw new ArgumentException("Name of method to be memoized is missing"); }
-            this.cacheItemPolicy = cacheItemPolicy;
+            return () => this.methodToBeMemoized((TParam1)args[0], (TParam2)args[1]);
         }
 
-        public Memoizer(Func<TParam1, TParam2, TResult> methodToBeMemoized//,
-            //CacheItemPolicy cacheItemPolicy = null,
-            //Action<string> loggingMethod = null
-            )
-            : this(new Random().Next(Int32.MaxValue).ToString(), methodToBeMemoized)//, cacheItemPolicy, loggingMethod)
-        { }
-
-        protected override Func<TResult> GetMethodClosure(params object[] args) { return () => this.methodToBeMemoized((TParam1)args[0], (TParam2)args[1]); }
-
-        public TResult InvokeWith(TParam1 param1, TParam2 param2) { return Invoke(param1, param2); }
+        public TResult InvokeWith(TParam1 param1, TParam2 param2)
+        {
+            return Invoke(param1, param2);
+        }
     }
 
 

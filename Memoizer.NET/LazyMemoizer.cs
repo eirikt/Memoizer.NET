@@ -21,93 +21,30 @@ namespace Memoizer.NET
 
     #region LazyMemoizer
     // TODO: some decent documentation would have been appropriate...
-    public class LazyMemoizer<TResult, TParam> : IInvocable<TResult, TParam>
+    class LazyMemoizer<TResult, TParam> : IInvocable<TResult, TParam>, IThreadSafe
     {
-        //readonly bool doInstrumentInvocations;
-
-        //readonly string methodId;
-        //readonly Type invokingType;
-        //readonly string nameOfMethodToBeMemoized;
-        //readonly Action<string> loggingMethod;
-
-        static readonly bool IS_THREAD_SAFE = typeof(IThreadSafe).IsAssignableFrom(typeof(Memoizer<TResult, TParam>));
+        static readonly bool IS_THREAD_SAFE = typeof(LazyMemoizer<TResult, TParam>) is IThreadSafe;
 
         readonly Lazy<Memoizer<TResult, TParam>> lazyInitializer;
 
-        internal LazyMemoizer(){}
+        // CacheItemPolicy CacheItemPolicy { get; private set; }
+         Action<string> LoggingMethod { get; set; }
+        // String MethodName { get; private set; }
+         bool InstrumentInvocations { get { return LoggingMethod != null; } }
 
-        public LazyMemoizer(Func<TParam, TResult> methodToBeMemoized)
+         internal LazyMemoizer(Func<TParam, TResult> methodToBeMemoized, CacheItemPolicy cacheItemPolicy=null)
         {
-            //if (string.IsNullOrEmpty(methodId)) { throw new ArgumentException("A hash of the method to be memoized must be provided"); }
             if (methodToBeMemoized == null) { throw new ArgumentException("Method to be memoized is missing"); }
-            //this.methodId = methodId;
-            //this.doInstrumentInvocations = doInstrumentInvocations;
-            //this.loggingMethod = loggingMethod;
             this.lazyInitializer = new Lazy<Memoizer<TResult, TParam>>(() =>
-                //new Memoizer<TResult, TParam>(/*this.methodId,*/ methodToBeMemoized), typeof(IThreadSafe).IsAssignableFrom(typeof(Memoizer<TResult, TParam>)));
-                new Memoizer<TResult, TParam>(/*this.methodId,*/ methodToBeMemoized), IS_THREAD_SAFE);
+                new Memoizer<TResult, TParam>(/*this.methodName,*/ methodToBeMemoized, cacheItemPolicy), IS_THREAD_SAFE);
         }
-
-        //public LazyMemoizer(string methodId, Func<TParam, TResult> methodToBeMemoized, bool doInstrumentInvocations = false, Action<string> loggingMethod = null)
-        //{
-        //    //if (string.IsNullOrEmpty(methodId)) { throw new ArgumentException("A hash of the method to be memoized must be provided"); }
-        //    if (methodToBeMemoized == null) { throw new ArgumentException("Method to be memoized is missing"); }
-        //    this.methodId = methodId;
-        //    //this.doInstrumentInvocations = doInstrumentInvocations;
-        //    //this.loggingMethod = loggingMethod;
-        //    this.lazyInitializer = new Lazy<Memoizer<TResult, TParam>>(() =>
-        //        new Memoizer<TResult, TParam>(this.methodId, methodToBeMemoized), true);
-        //}
-
-        //public LazyMemoizer(Type invokingType, string nameOfMethodToBeMemoized, Func<TParam, TResult> methodToBeMemoized, bool doInstrumentInvocations = false, Action<string> loggingMethod = null)
-        //{
-        //    if (invokingType == null) { throw new ArgumentException("Type of invoking class is missing"); }
-        //    if (string.IsNullOrEmpty(nameOfMethodToBeMemoized)) { throw new ArgumentException("Name of method to be memoized is missing"); }
-        //    if (methodToBeMemoized == null) { throw new ArgumentException("Method to be memoized is missing"); }
-        //    this.invokingType = invokingType;
-        //    this.nameOfMethodToBeMemoized = nameOfMethodToBeMemoized;
-        //    //this.doInstrumentInvocations = doInstrumentInvocations;
-        //    //this.loggingMethod = loggingMethod;
-        //    this.lazyInitializer = new Lazy<Memoizer<TResult, TParam>>(() =>
-        //        new Memoizer<TResult, TParam>(//MemoizerHelper.CreateMethodHash(invokingType, nameOfMethodToBeMemoized), 
-        //                                      invokingType, nameOfMethodToBeMemoized,
-        //                                      methodToBeMemoized//,
-        //            //null as CacheItemPolicy
-        //            //Console.WriteLine(String.Empty,
-        //            //doInstrumentInvocations,
-        //            //loggingMethod),
-        //                                      ),
-        //               true);
-        //}
-
-        //public CacheItemPolicy CacheItemPolicy
-        //{
-        //    get { return this.lazyInitializer.Value.CacheItemPolicy; }
-        //    set { this.lazyInitializer.Value.CacheItemPolicy = value; }
-        //}
-
-        //public Action<string> LoggingMethod
-        //{
-        //    get { return this.lazyInitializer.Value.LoggingMethod; }
-        //    set { this.lazyInitializer.Value.LoggingMethod = value; }
-        //}
-
-
-        public CacheItemPolicy CacheItemPolicy { get; set; }
-
-        public Action<string> LoggingMethod { get; set; }
-
-        public String MethodName { get; set; }
-
-        public bool InstrumentInvocations { get { return LoggingMethod != null; } }
-
 
         public TResult InvokeWith(TParam param)
         {
             if (!InstrumentInvocations)
                 return this.lazyInitializer.Value.InvokeWith(param);
 
-            long startTime = DateTime.Now.Ticks;
+            //long startTime = DateTime.Now.Ticks;
             TResult retVal = this.lazyInitializer.Value.InvokeWith(param);
             //string localMethodId;
             //if (this.invokingType == null || string.IsNullOrEmpty(this.nameOfMethodToBeMemoized))
@@ -115,18 +52,17 @@ namespace Memoizer.NET
             //else
             //    localMethodId = this.invokingType.Name + "." + this.nameOfMethodToBeMemoized;
 
-            string retValLogVersion;
-            if (retVal is string)
-                retValLogVersion = "'" + retVal + "'";
-            else if (retVal == null)
-                retValLogVersion = "null";
-            else
-                retValLogVersion = retVal.ToString();
+            //string retValLogVersion;
+            //if (retVal is string)
+            //    retValLogVersion = "'" + retVal + "'";
+            //else if (retVal == null)
+            //    retValLogVersion = "null";
+            //else
+            //    retValLogVersion = retVal.ToString();
 
-            long durationInTicks = DateTime.Now.Ticks - startTime;
-            //LoggingMethod(localMethodId + "(" + param + ") :: " + retValLogVersion + " [duration " + durationInTicks + " ticks (" + durationInTicks / 10000 + " ms)]");
-            string methodId = string.IsNullOrEmpty(MethodName) ? "<unknown method name/ID>" : MethodName;
-            LoggingMethod(methodId + "(" + param + ") :: " + retValLogVersion + " [duration " + durationInTicks + " ticks (~" + durationInTicks / 10000 + " ms)]");
+            //long durationInTicks = DateTime.Now.Ticks - startTime;
+            //string methodId = string.IsNullOrEmpty(MethodName) ? "<unknown method name/ID>" : MethodName;
+            //LoggingMethod(methodId + "(" + param + ") :: " + retValLogVersion + " [duration " + durationInTicks + " ticks (~" + durationInTicks / 10000 + " ms)]");
 
             return retVal;
         }
