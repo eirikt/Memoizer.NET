@@ -166,7 +166,7 @@ namespace Memoizer.NET.Test
                     var retVal = ReallySlowNetworkInvocation3("SingleThreadedDirectInvocation", 13L);
                     Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "SingleThreadedDirectInvocation" + 13L));
                 }
-            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
+            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
             Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(NUMBER_OF_ITERATIONS * NETWORK_RESPONSE_LATENCY_IN_MILLIS));
             Console.WriteLine(
                 "SingleThreadedDirectInvocation: " + NUMBER_OF_ITERATIONS + " iterations of " + NUMBER_OF_CONCURRENT_TASKS + " sequential, identical, non-memoized method invocations with " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms latency" +
@@ -214,7 +214,7 @@ namespace Memoizer.NET.Test
                 for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
                     Assert.That(tasks[j].Result, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "MultiThreadedDirectInvocation" + 15L));
             }
-            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
+            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
             Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(NUMBER_OF_ITERATIONS * NETWORK_RESPONSE_LATENCY_IN_MILLIS));
             Console.WriteLine(
                 "MultiThreadedDirectInvocation: " + NUMBER_OF_CONCURRENT_TASKS + " concurrent, identical, non-memoized method invocations." +
@@ -260,7 +260,7 @@ namespace Memoizer.NET.Test
             string result2 = VeryExpensiveNullInvocation("whatever");
             Assert.That(result2, Is.Null);
 
-            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
+            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
             Console.WriteLine("2 invocations of non-memoized null-return-functions took " + durationInMilliseconds + " milliseconds (should take > " + 2 * NETWORK_RESPONSE_LATENCY_IN_MILLIS + ")");
             Assert.That(durationInMilliseconds, Is.InRange(1990L, 2100L)); // < 2000L due to CLR/platform magic
 
@@ -272,7 +272,7 @@ namespace Memoizer.NET.Test
             string result4 = memoizer.InvokeWith("whatever");
             Assert.That(result4, Is.Null);
 
-            durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
+            durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
             Console.WriteLine("2 invocations of memoized null-return-functions took " + durationInMilliseconds + " milliseconds (should take > " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + ")");
             Assert.That(durationInMilliseconds, Is.InRange(990L, 1200L)); // < 1000L due to CLR/platform magic
         }
@@ -293,7 +293,7 @@ namespace Memoizer.NET.Test
                     var retVal = memoizer.InvokeWith("SingleThreadedMemoizedDirectInvocation_Memoizer", 14L);
                     Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "SingleThreadedMemoizedDirectInvocation_Memoizer" + 14L));
                 }
-            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
+            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
             Assert.That(durationInMilliseconds, Is.InRange(1000L, 1050L));
             Console.WriteLine(
                 "SingleThreadedMemoizedDirectInvocation_Memoizer: " + NUMBER_OF_ITERATIONS + " iterations of " + NUMBER_OF_CONCURRENT_TASKS + " sequential, identical, memoized method invocations with " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms latency" +
@@ -316,7 +316,7 @@ namespace Memoizer.NET.Test
             // New function value, not yet cached
             var retVal = memoizer.InvokeWith("SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer", 15L);
             Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer" + 15L));
-            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
+            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
             Assert.That(durationInMilliseconds, Is.InRange(1000L, 1200L));
             Console.WriteLine("SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer: first non-memoized method invocation with latency " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take >= " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + ")");
 
@@ -324,7 +324,7 @@ namespace Memoizer.NET.Test
             startTime = DateTime.Now.Ticks;
             retVal = memoizer.InvokeWith("SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer", 15L);
             Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer" + 15L));
-            durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
+            durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
             Assert.That(durationInMilliseconds, Is.LessThan(10L));
             Console.WriteLine("SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer: second memoized method invocation with latency " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take < 10 ms)");
 
@@ -332,7 +332,7 @@ namespace Memoizer.NET.Test
             startTime = DateTime.Now.Ticks;
             retVal = memoizer.InvokeWith("SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer", 16L);
             Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer" + 16L));
-            durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
+            durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
             Assert.That(durationInMilliseconds, Is.InRange(1000L, 1200L));
             Console.WriteLine("SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer: another first non-memoized method invocation with latency " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take >= " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + ")");
 
@@ -343,7 +343,7 @@ namespace Memoizer.NET.Test
             startTime = DateTime.Now.Ticks;
             retVal = memoizer.InvokeWith("SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer", 15L);
             Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer" + 15L));
-            durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
+            durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
             Assert.That(durationInMilliseconds, Is.InRange(1000L, 1200L));
             Console.WriteLine("SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer: third memoized (but evicted) method invocation with latency " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take >= " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + ")");
         }
@@ -402,7 +402,7 @@ namespace Memoizer.NET.Test
                 for (int j = 0; j < numberOfConcurrentTasks; ++j)
                     Assert.That(tasks[j].Result, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "MultiThreadedMemoizedInvocation_Memoizer" + 15L));
             }
-            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
+            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
             Assert.That(durationInMilliseconds, Is.InRange(NETWORK_RESPONSE_LATENCY_IN_MILLIS, 2600L));
             Console.WriteLine(
                 "MultiThreadedMemoizedInvocation_Memoizer: " + NUMBER_OF_ITERATIONS + " rounds with " + numberOfConcurrentTasks + " concurrent, identical, memoized method invocations:" +
@@ -502,12 +502,12 @@ namespace Memoizer.NET.Test
             for (int j = 0; j < numberOfConcurrentTasks; ++j)
                 Assert.That(tasks[j].Result, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "MultiThreadedMemoizedInvocationWithClearing_Memoizer" + 15L));
             //}
-            //long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
+            //long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
             //Assert.That(durationInMilliseconds, Is.GreaterThan(METHOD_RESPONSE_LATENCY_IN_MILLIS * NUMBER_OF_ITERATIONS));// - 2000L)); // -2000 due to possible CLR optomizations
             //Assert.That(durationInMilliseconds, Is.LessThan(METHOD_RESPONSE_LATENCY_IN_MILLIS * NUMBER_OF_ITERATIONS + METHOD_RESPONSE_LATENCY_IN_MILLIS));
             //Console.WriteLine("MultiThreadedMemoizedInvocationWithClearing_Memoizer: " + NUMBER_OF_ITERATIONS + " * " + NUMBER_OF_CONCURRENT_TASKS + " concurrent, identical method invocations (latency: " + METHOD_RESPONSE_LATENCY_IN_MILLIS + " ms) took " + durationInMilliseconds + " ms");
 
-            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
+            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
 
             // The more threads, the more contention overhard, and the longer this test will take.
             // Just a silly empiric hack emulating the CLR resource contention behaviour...
@@ -577,7 +577,7 @@ namespace Memoizer.NET.Test
             long startTime = DateTime.Now.Ticks;
             Console.WriteLine("Fibonacci(" + numberOfFibonacciArguments + ") =");
             for (int i = 0; i < numberOfFibonacciArguments; ++i) { Console.Write(FIBONACCI(i) + " "); }
-            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
+            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
             Console.WriteLine();
             Console.WriteLine("Took " + durationInMilliseconds + " ms");
         }
@@ -591,7 +591,7 @@ namespace Memoizer.NET.Test
             long startTime = DateTime.Now.Ticks;
             Console.WriteLine("(Memoized [Func.Hash=" + MEMOIZED_FIBONACCI.GetHashCode() + "]) Fibonacci(" + numberOfFibonacciArguments + ") =");
             for (int i = 0; i < numberOfFibonacciArguments; ++i) { Console.Write(MEMOIZED_FIBONACCI(i) + " "); }
-            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
+            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
             Console.WriteLine();
             Console.WriteLine("Took " + durationInMilliseconds + " ms");
         }
@@ -605,12 +605,11 @@ namespace Memoizer.NET.Test
             long startTime = DateTime.Now.Ticks;
             Console.WriteLine("(Memoized [Func.Hash=" + MEMOIZED_FIBONACCI.GetHashCode() + "]) Fibonacci(" + numberOfFibonacciArguments + ") =");
             for (int i = 0; i < numberOfFibonacciArguments; ++i) { Console.Write(MEMOIZED_FIBONACCI_2.InvokeWith(i) + " "); }
-            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
+            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
             Console.WriteLine();
             Console.WriteLine("Took " + durationInMilliseconds + " ms");
         }
         #endregion
-
 
 
         // TODO: test when caching with complex objects as parameters

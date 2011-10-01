@@ -98,7 +98,7 @@ namespace Memoizer.NET.Test
 
         string ExpensiveFunction2b(long someId)
         {
-            return MyExpensiveFunction2b.Memoize().KeepItemsAliveFor(30).Minutes.Get().InvokeWith(someId);
+            return MyExpensiveFunction2b.Memoize().KeepItemsCachedFor(1).Seconds.Get().InvokeWith(someId);
         }
 
 
@@ -109,7 +109,7 @@ namespace Memoizer.NET.Test
             string retVal = ExpensiveFunction1(42L);
             Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
             long durationInTicks = DateTime.Now.Ticks - startTime;
-            long durationInMilliseconds = durationInTicks / 10000;
+            long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
             Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
             Console.WriteLine("Example 1: first memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)");
 
@@ -117,7 +117,7 @@ namespace Memoizer.NET.Test
             retVal = ExpensiveFunction1(42L);
             Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
             durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / 10000;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
             Assert.That(durationInMilliseconds, Is.LessThan(10));
             Console.WriteLine("Example 1: second memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take < 10 ms)");
         }
@@ -130,7 +130,7 @@ namespace Memoizer.NET.Test
             string retVal = ExpensiveFunction2a(42L);
             Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
             long durationInTicks = DateTime.Now.Ticks - startTime;
-            long durationInMilliseconds = durationInTicks / 10000;
+            long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
             Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
             Console.WriteLine("Example 2a: first memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)");
 
@@ -138,7 +138,7 @@ namespace Memoizer.NET.Test
             retVal = ExpensiveFunction2a(42L);
             Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
             durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / 10000;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
             Assert.That(durationInMilliseconds, Is.LessThan(10));
             Console.WriteLine("Example 2a: second memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take < 10 ms)");
 
@@ -148,7 +148,7 @@ namespace Memoizer.NET.Test
             retVal = ExpensiveFunction2a(42L);
             Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
             durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / 10000;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
             Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
             Console.WriteLine("Example 2a: third memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)");
         }
@@ -161,7 +161,7 @@ namespace Memoizer.NET.Test
             string retVal = ExpensiveFunction2b(42L);
             Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
             long durationInTicks = DateTime.Now.Ticks - startTime;
-            long durationInMilliseconds = durationInTicks / 10000;
+            long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
             Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
             Console.WriteLine("Example 2b: first memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)");
 
@@ -169,7 +169,7 @@ namespace Memoizer.NET.Test
             retVal = ExpensiveFunction2b(42L);
             Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
             durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / 10000;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
             Assert.That(durationInMilliseconds, Is.LessThan(10));
             Console.WriteLine("Example 2b: second memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take < 10 ms)");
 
@@ -179,7 +179,7 @@ namespace Memoizer.NET.Test
             retVal = ExpensiveFunction2b(42L);
             Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
             durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / 10000;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
             Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
             Console.WriteLine("Example 2b: third memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)");
         }
