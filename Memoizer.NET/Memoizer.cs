@@ -58,6 +58,10 @@ namespace Memoizer.NET
     {
         TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3);
     }
+    public interface IInvocable<in TParam1, in TParam2, in TParam3, in TParam4, out TResult>
+    {
+        TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3in, TParam4 param4);
+    }
     #endregion
 
     #region IMemoizer
@@ -161,11 +165,6 @@ namespace Memoizer.NET
             }
         }
 
-        protected void ConditionalLogging(string logMessage)
-        {
-            if (this.loggingMethod != null) { this.loggingMethod(this.GetType().Namespace + "." + this.GetType().Name + " [" + this.GetHashCode() + "] : " + logMessage); }
-        }
-
         internal void CacheItemPolicy(CacheItemPolicy cacheItemPolicy)
         {
             this.cacheItemPolicy = cacheItemPolicy;
@@ -174,6 +173,11 @@ namespace Memoizer.NET
         internal void InstrumentWith(Action<String> instrumenter)
         {
             this.loggingMethod = instrumenter;
+        }
+
+        protected void ConditionalLogging(string logMessage)
+        {
+            if (this.loggingMethod != null) { this.loggingMethod(this.GetType().Namespace + "." + this.GetType().Name + " [" + this.GetHashCode() + "] : " + logMessage); }
         }
 
         /// <summary>
@@ -285,6 +289,20 @@ namespace Memoizer.NET
         }
         protected override Func<TResult> GetMethodClosure(params object[] args) { return () => this.methodToBeMemoized((TParam1)args[0], (TParam2)args[1], (TParam3)args[2]); }
         public TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3) { return Invoke(param1, param2, param3); }
+    }
+
+
+    internal class Memoizer<TParam1, TParam2, TParam3, TParam4, TResult> : AbstractMemoizer<TResult>, IInvocable<TParam1, TParam2, TParam3, TParam4, TResult>
+    {
+        readonly Func<TParam1, TParam2, TParam3, TParam4, TResult> methodToBeMemoized;
+        internal Memoizer(Func<TParam1, TParam2, TParam3, TParam4, TResult> methodToBeMemoized, CacheItemPolicy cacheItemPolicy = null)
+        {
+            this.methodToBeMemoized = methodToBeMemoized;
+            this.cache = new MemoryCache(MemoizerHelper.CreateMethodHash(this.methodToBeMemoized));
+            this.cacheItemPolicy = cacheItemPolicy;
+        }
+        protected override Func<TResult> GetMethodClosure(params object[] args) { return () => this.methodToBeMemoized((TParam1)args[0], (TParam2)args[1], (TParam3)args[2], (TParam4)args[3]); }
+        public TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3, TParam4 param4) { return Invoke(param1, param2, param3, param4); }
     }
     #endregion
 

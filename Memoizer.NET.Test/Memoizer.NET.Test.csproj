@@ -41,6 +41,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ConcurrentDictionaryMemoizerTests.cs" />
+    <Compile Include="ExamplesTests.cs" />
     <Compile Include="MemoizerBuilderTests.cs" />
     <Compile Include="MemoryCacheMemoizerTests.cs" />
     <Compile Include="DictionaryMemoizerTests.cs" />

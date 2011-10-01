@@ -69,6 +69,18 @@ namespace Memoizer.NET
             get { return this.function; }
         }
 
+        CacheItemPolicy cacheItemPolicy;
+        public MemoizerBuilder<TParam1, TResult> CachePolicy(CacheItemPolicy cacheItemPolicy)
+        {
+            this.cacheItemPolicy = cacheItemPolicy;
+            return this;
+        }
+
+        public MemoizerBuilder_AwaitingExpirationUnit<TParam1, TResult> KeepItemsAliveFor(long cacheItemExpiration)
+        {
+            return new MemoizerBuilder_AwaitingExpirationUnit<TParam1, TResult>(cacheItemExpiration, this);
+        }
+
         Action<String> loggingMethod;
         internal Action<String> LoggingMethod
         {
@@ -86,8 +98,27 @@ namespace Memoizer.NET
             //Memoizer<TParam1, TResult> memoizer = new Memoizer<TParam1, TResult>(Function); // Not memoized memoizer one-line creation
             Memoizer<TParam1, TResult> memoizer = MEMOIZER_MEMOIZER.InvokeWith(this.function);
 
+            if (this.cacheItemPolicy != null) { memoizer.CacheItemPolicy(this.cacheItemPolicy); }
             if (this.loggingMethod != null) { memoizer.InstrumentWith(this.loggingMethod); }
             return memoizer;
+        }
+    }
+
+
+    public class MemoizerBuilder_AwaitingExpirationUnit<TParam1, TResult>
+    {
+        public MemoizerBuilder_AwaitingExpirationUnit(long cacheItemExpiration, MemoizerBuilder<TParam1, TResult> memoizerBuilder)
+        {
+            throw new NotImplementedException();
+        }
+
+
+        public MemoizerBuilder<TParam1, TResult> Minutes
+        {
+            get
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 

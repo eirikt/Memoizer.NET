@@ -13,23 +13,26 @@ Default cache configuration is: items to be held as long as the CLR is alive or 
 #### Usage
 Example, default caching policy:
 
-    static readonly Func<long, string> MyExpensiveFunction = ...
+    readonly Func<long, string> MyExpensiveFunction = ...
 
-    public static string ExpensiveFunction(long someId) { 
+    public string ExpensiveFunction(long someId) { 
         return MyExpensiveFunction.MemoizedInvoke<long, string>(someId);
     }
 
-Example, expiration policy:
+Example 1, expiration policy (keep items alive for 30 minutes):
 
 	readonly CacheItemPolicy cacheItemEvictionPolicy = new CacheItemPolicy { SlidingExpiration = TimeSpan.FromMinutes(30) };
 
-    public static string ExpensiveFunction(long someId) { 
+    public string ExpensiveFunction(long someId) { 
         return MyExpensiveFunction.Memoize().CachePolicy(cacheItemEvictionPolicy).Get().InvokeWith(someId);
     }
 
-#### ToDo
+Example 2, expiration policy (keep items alive for 30 minutes):
 
-- Can all this be accomplished using C# attributes? _#lazyweb_
+	public string ExpensiveFunction(long someId) { 
+        return MyExpensiveFunction.Memoize().KeepItemsAliveFor(30).Minutes.InvokeWith(someId);
+    }
+
 
 ### Memoizer.Net.TwoPhaseExecutor
 
@@ -63,4 +66,6 @@ See the `Memoizer.NET.Test.MemoizerTests` class for usage examples. In v0.6 a mi
 ---
 
 ### HELP
+
+- Can all this be accomplished using C# attributes? _#lazyweb_
 - How do I set up NuGet properly so I can remove the silly "packages"/"lib" folders in Git? _#lazyweb_
