@@ -11,32 +11,30 @@ enabling configuration via the [`System.Runtime.Caching.CacheItemPolicy`](http:/
 Default cache configuration is: items to be held as long as the CLR is alive or the memoizer is disposed/cleared. 
 
 #### Usage
-Example, default caching policy:
 
-    readonly Func<long, string> MyExpensiveFunction = ...
+Example 1 [default caching policy]
 
-    public string ExpensiveFunction(long someId) { 
-        return MyExpensiveFunction.MemoizedInvoke<long, string>(someId);
+	readonly Func<long, string> MyExpensiveFunction1 = ...
+
+	public string ExpensiveFunction1(long someId)
+    {
+		return MyExpensiveFunction1.MemoizedInvoke(someId);
     }
 
-Example 1, expiration policy (keep items alive for 30 minutes):
+Example 2 [expiration policy: keep items cached for 30 minutes]
 
-	readonly CacheItemPolicy cacheItemEvictionPolicy = new CacheItemPolicy { SlidingExpiration = TimeSpan.FromMinutes(30) };
-
-    public string ExpensiveFunction(long someId) { 
-        return MyExpensiveFunction.Memoize().CachePolicy(cacheItemEvictionPolicy).Get().InvokeWith(someId);
+	public string ExpensiveFunction2(long someId)
+    {
+        return MyExpensiveFunction2.Memoize().KeepItemsCachedFor(30).Minutes.Get().InvokeWith(someId);
     }
 
-Example 2, expiration policy (keep items alive for 30 minutes):
-
-	public string ExpensiveFunction(long someId) { 
-        return MyExpensiveFunction.Memoize().KeepItemsAliveFor(30).Minutes.InvokeWith(someId);
-    }
-
+This "inlined" style works because the memoized function handles are themselves memoized (behind the curtain).
+__NB!__ Memoization of recursive functions are not yet supported - so e.g. the Fibonacci sequence function will not work this way. 
 
 ### Memoizer.Net.TwoPhaseExecutor
 
-A class for synchronized execution of an arbitrary number of worker/task threads. All participating worker/task threads must derive from the `Memoizer.Net.AbstractTwoPhaseExecutorThread` class.
+A class for synchronized execution of an arbitrary number of worker/task threads. 
+All participating worker/task threads must derive from the `Memoizer.Net.AbstractTwoPhaseExecutorThread` class.
 
 #### Usage
 See the `Memoizer.NET.Test.MemoizerTests` class for usage examples. In v0.6 a mini DSL/builder for easy `Memoizer.Net.TwoPhaseExecutor` usage will be included. Right now the API kind of sucks...
