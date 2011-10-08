@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 using System;
+using System.Runtime.Caching;
 using System.Threading;
 using NUnit.Framework;
 
@@ -41,68 +42,68 @@ namespace Memoizer.NET.Test
             durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
             Console.WriteLine("Fibonacci(40) = " + result + " [non-memoized func invocation took " + durationInMilliseconds + " ms]");
 
-            startTime = DateTime.Now.Ticks;
-            result = (long)FIBONACCI.MemoizedFunc().DynamicInvoke(40);
-            durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
-            Console.WriteLine("Fibonacci(40) = " + result + " [first time 'on-the-spot-memoized' func dynamic invocation took " + durationInMilliseconds + " ms]");
+            //startTime = DateTime.Now.Ticks;
+            //result = (long)FIBONACCI.MemoizedFunc().DynamicInvoke(40);
+            //durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
+            //Console.WriteLine("Fibonacci(40) = " + result + " [first time 'on-the-spot-memoized' func dynamic invocation took " + durationInMilliseconds + " ms]");
+
+            //startTime = DateTime.Now.Ticks;
+            //result = (long)FIBONACCI.MemoizedFunc().DynamicInvoke(40);
+            //durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
+            //Console.WriteLine("Fibonacci(40) = " + result + " [second time time 'on-the-spot-memoized' func dynamic invocation took " + durationInMilliseconds + " ms]");
+
+            //startTime = DateTime.Now.Ticks;
+            //result = FIBONACCI.MemoizedFunc().Invoke(40);
+            //durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
+            //Console.WriteLine("Fibonacci(40) = " + result + " [first time 'on-the-spot-memoized' func invocation took " + durationInMilliseconds + " ms]");
+
+            //startTime = DateTime.Now.Ticks;
+            //result = FIBONACCI.MemoizedFunc().Invoke(40);
+            //durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
+            //Console.WriteLine("Fibonacci(40) = " + result + " [second time time 'on-the-spot-memoized' func invocation took " + durationInMilliseconds + " ms]");
+
+            //startTime = DateTime.Now.Ticks;
+            //Func<long, long> MEMOIZED_FIBONACCI = FIBONACCI.MemoizedFunc();
+            //long durationInTicks = DateTime.Now.Ticks - startTime;
+            //Console.WriteLine("FIBONACCI.Memoize().Function took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks [1 tick ~= 100 ns]");
+
+            //startTime = DateTime.Now.Ticks;
+            //result = (long)MEMOIZED_FIBONACCI.DynamicInvoke(40);
+            //durationInTicks = DateTime.Now.Ticks - startTime;
+            //Console.WriteLine("Fibonacci(40) = " + result + " [memoized first time dynamic invocation (of memoized func) took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
+
+            //startTime = DateTime.Now.Ticks;
+            //result = (long)MEMOIZED_FIBONACCI.DynamicInvoke(40);
+            //durationInTicks = DateTime.Now.Ticks - startTime;
+            //Console.WriteLine("Fibonacci(40) = " + result + " [memoized second time dynamic invocation (of memoized func) took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
+
+            //startTime = DateTime.Now.Ticks;
+            //result = MEMOIZED_FIBONACCI.Invoke(40);
+            //durationInTicks = DateTime.Now.Ticks - startTime;
+            //Console.WriteLine("Fibonacci(40) = " + result + " [memoized first time invocation (of memoized func) took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
+
+            //startTime = DateTime.Now.Ticks;
+            //result = MEMOIZED_FIBONACCI.Invoke(40);
+            //durationInTicks = DateTime.Now.Ticks - startTime;
+            //Console.WriteLine("Fibonacci(40) = " + result + " [memoized second time invocation (of memoized func) took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
 
             startTime = DateTime.Now.Ticks;
-            result = (long)FIBONACCI.MemoizedFunc().DynamicInvoke(40);
-            durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
-            Console.WriteLine("Fibonacci(40) = " + result + " [second time time 'on-the-spot-memoized' func dynamic invocation took " + durationInMilliseconds + " ms]");
-
-            startTime = DateTime.Now.Ticks;
-            result = FIBONACCI.MemoizedFunc().Invoke(40);
-            durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
-            Console.WriteLine("Fibonacci(40) = " + result + " [first time 'on-the-spot-memoized' func invocation took " + durationInMilliseconds + " ms]");
-
-            startTime = DateTime.Now.Ticks;
-            result = FIBONACCI.MemoizedFunc().Invoke(40);
-            durationInMilliseconds = (DateTime.Now.Ticks - startTime) / 10000;
-            Console.WriteLine("Fibonacci(40) = " + result + " [second time time 'on-the-spot-memoized' func invocation took " + durationInMilliseconds + " ms]");
-
-            startTime = DateTime.Now.Ticks;
-            Func<long, long> MEMOIZED_FIBONACCI = FIBONACCI.MemoizedFunc();
+            result = FIBONACCI.GetMemoizer().InvokeWith(40);
             long durationInTicks = DateTime.Now.Ticks - startTime;
-            Console.WriteLine("FIBONACCI.Memoize().Function took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks [1 tick ~= 100 ns]");
-
-            startTime = DateTime.Now.Ticks;
-            result = (long)MEMOIZED_FIBONACCI.DynamicInvoke(40);
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            Console.WriteLine("Fibonacci(40) = " + result + " [memoized first time dynamic invocation (of memoized func) took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
-
-            startTime = DateTime.Now.Ticks;
-            result = (long)MEMOIZED_FIBONACCI.DynamicInvoke(40);
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            Console.WriteLine("Fibonacci(40) = " + result + " [memoized second time dynamic invocation (of memoized func) took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
-
-            startTime = DateTime.Now.Ticks;
-            result = MEMOIZED_FIBONACCI.Invoke(40);
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            Console.WriteLine("Fibonacci(40) = " + result + " [memoized first time invocation (of memoized func) took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
-
-            startTime = DateTime.Now.Ticks;
-            result = MEMOIZED_FIBONACCI.Invoke(40);
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            Console.WriteLine("Fibonacci(40) = " + result + " [memoized second time invocation (of memoized func) took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
-
-            startTime = DateTime.Now.Ticks;
-            result = FIBONACCI.Memoize().Get().InvokeWith(40);
-            durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("Fibonacci(40) = " + result + " [first time 'on-the-spot-memoized' memoizerbuilder invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
 
             startTime = DateTime.Now.Ticks;
-            result = FIBONACCI.Memoize().Get().InvokeWith(40);
+            result = FIBONACCI.GetMemoizer().InvokeWith(40);
             durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("Fibonacci(40) = " + result + " [second time time 'on-the-spot-memoized' memoizerbuilder invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
 
             startTime = DateTime.Now.Ticks;
-            result = FIBONACCI.MemoizedInvoke<long, long>(40);
+            result = FIBONACCI.CachedInvoke<long, long>(40);
             durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("Fibonacci(40) = " + result + " [first time 'on-the-spot-memoized' invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
 
             startTime = DateTime.Now.Ticks;
-            result = FIBONACCI.MemoizedInvoke<long, long>(40);
+            result = FIBONACCI.CachedInvoke<long, long>(40);
             durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("Fibonacci(40) = " + result + " [second time time 'on-the-spot-memoized' invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
         }
@@ -146,59 +147,63 @@ namespace Memoizer.NET.Test
 
 
             startTime = DateTime.Now.Ticks;
-            result = slow500Square.Memoize().InstrumentWith(Console.WriteLine).Get().InvokeWith(40);
+            result = slow500Square.Cache().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(40);
             durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("Square(40) = " + result + " [first time 'on-the-spot-memoized', instrumented invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
             Assert.That(durationInTicks / 10000, Is.GreaterThanOrEqualTo(500)); // ms (not memoized invocation)
 
             startTime = DateTime.Now.Ticks;
-            result = slow500Square.Memoize().InstrumentWith(Console.WriteLine).Get().InvokeWith(40);
+            result = slow500Square.Cache().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(40);
             durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("Square(40) = " + result + " [second time time 'on-the-spot-memoized' instrumented invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
             Assert.That(durationInTicks / 10000, Is.LessThan(20)); // ms (memoized invocation)
 
             startTime = DateTime.Now.Ticks;
-            result = slow500Square.Memoize().InstrumentWith(Console.WriteLine).Get().InvokeWith(50);
+            result = slow500Square.Cache().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(50);
             durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("Square(50) = " + result + " [first time 'on-the-spot-memoized' instrumented invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
             Assert.That(durationInTicks / 10000, Is.GreaterThanOrEqualTo(500)); // ms (not memoized invocation)
 
             startTime = DateTime.Now.Ticks;
-            result = slow500Square.Memoize().InstrumentWith(Console.WriteLine).Get().InvokeWith(60);
+            result = slow500Square.Cache().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(60);
             durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("Square(60) = " + result + " [first time 'on-the-spot-memoized' instrumented invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
             Assert.That(durationInTicks / 10000, Is.GreaterThanOrEqualTo(500)); // ms (not memoized invocation)
 
             startTime = DateTime.Now.Ticks;
-            result = slow500Square.Memoize().InstrumentWith(Console.WriteLine).Get().InvokeWith(50);
+            result = slow500Square.Cache().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(50);
             durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("Square(50) = " + result + " [second time time 'on-the-spot-memoized' instrumented invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
             Assert.That(durationInTicks / 10000, Is.LessThan(20)); // ms (memoized invocation)
 
             startTime = DateTime.Now.Ticks;
-            result = slow500Square.Memoize().InstrumentWith(Console.WriteLine).Get().InvokeWith(60);
+            result = slow500Square.Cache().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(60);
             durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("Square(60) = " + result + " [second time time 'on-the-spot-memoized' instrumented invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
             Assert.That(durationInTicks / 10000, Is.LessThan(20)); // ms (memoized invocation)
 
 
+            // TODO: fails!!
             startTime = DateTime.Now.Ticks;
-            result = slow1000PowerOfThree.Memoize().InstrumentWith(Console.WriteLine).Get().InvokeWith(40);
+            IMemoizer<long, long> slow1000PowerOfThreeMemoizer1 = slow1000PowerOfThree.Cache().InstrumentWith(Console.WriteLine).GetMemoizer();
+            result = slow1000PowerOfThree.Cache().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(40);
             durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("PowerOfThree(40) = " + result + " [first time 'on-the-spot-memoized' instrumented invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
-            Assert.That(durationInTicks / 10000, Is.GreaterThanOrEqualTo(500)); // ms (not memoized invocation)
+            Assert.That(durationInTicks / 10000, Is.GreaterThanOrEqualTo(1000)); // ms (not memoized invocation)
 
             startTime = DateTime.Now.Ticks;
-            result = slow1000PowerOfThree.Memoize().InstrumentWith(Console.WriteLine).Get().InvokeWith(40);
+            IMemoizer<long, long> slow1000PowerOfThreeMemoizer2 = slow1000PowerOfThree.Cache().InstrumentWith(Console.WriteLine).GetMemoizer();
+            result = slow1000PowerOfThree.Cache().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(40);
             durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("PowerOfThree(40) = " + result + " [second time time 'on-the-spot-memoized' instrumented invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
-            Assert.That(durationInTicks / 10000, Is.LessThan(20)); // ms (memoized invocation)
+            Assert.That(slow1000PowerOfThreeMemoizer1, Is.SameAs(slow1000PowerOfThreeMemoizer2));
+            Assert.That(durationInTicks / 10000, Is.LessThan(10)); // ms (memoized invocation)
 
             startTime = DateTime.Now.Ticks;
-            result = slow1000PowerOfThree.MemoizedInvoke<long, long>(40);
+            result = slow1000PowerOfThree.CachedInvoke<long, long>(40);
             durationInTicks = DateTime.Now.Ticks - startTime;
-            Console.WriteLine("PowerOfThree(40) = " + result + " [third time time 'on-the-spot-memoized' invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
-            Assert.That(durationInTicks / 10000, Is.LessThan(20)); // ms (memoized invocation)
+            Console.WriteLine("PowerOfThree(40) = " + result + " [third time time 'on-the-spot-memoized' not-instrumented invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
+            Assert.That(durationInTicks / 10000, Is.LessThan(10)); // ms (memoized invocation)
         }
 
 
@@ -206,8 +211,8 @@ namespace Memoizer.NET.Test
         public void ShouldBuildFullBlownMemoizerWithOnelineAndStillGetMemoization()
         {
             long startTime = DateTime.Now.Ticks;
-            MemoizerBuilder<long, long> slowSquareMemoizerBuilder = slow500Square.Memoize();
-            IInvocable<long, long> memoizedSlowSquare = slowSquareMemoizerBuilder.Get();
+            MemoizerBuilder<long, long> slowSquareMemoizerBuilder = slow500Square.Cache();
+            IMemoizer<long, long> memoizedSlowSquare = slowSquareMemoizerBuilder.GetMemoizer();
             long durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("Memoizer construction: square.Memoize().Get() took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
             Assert.That(durationInTicks / 10000, Is.LessThan(20)); // ms (MemoizerBuilder and Memoizer creation)
@@ -226,10 +231,10 @@ namespace Memoizer.NET.Test
 
 
             slowSquareMemoizerBuilder.InstrumentWith(Console.WriteLine);
-            IInvocable<long, long> memoizedSlowSquare2 = slowSquareMemoizerBuilder.Get();
+            IMemoizer<long, long> memoizedSlowSquare2 = slowSquareMemoizerBuilder.GetMemoizer();
 
             startTime = DateTime.Now.Ticks;
-            result = slowSquareMemoizerBuilder.Get().InvokeWith(123);
+            result = slowSquareMemoizerBuilder.GetMemoizer().InvokeWith(123);
             //result = memoizedSlowSquare2.InvokeWith(123);
             durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("Square(123) = " + result + " [memoized first time (instrumented) invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
@@ -241,5 +246,36 @@ namespace Memoizer.NET.Test
             Console.WriteLine("Square(123) = " + result + " [memoized second time (instrumented) invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
             Assert.That(durationInTicks / 10000, Is.LessThan(10)); // ms (memoized invocation)
         }
+
+
+        [Test]
+        //[Ignore]
+        public void MultipleCacheItemPolicies_LatestAddedOverridesPrevouslyAddedOnes()
+        {
+            MemoizerBuilder<long, long> memoizerBuilder1 =
+                slow1000PowerOfThree.Cache()
+                                    .CachePolicy(default(CacheItemPolicy))
+                                    .InstrumentWith(Console.WriteLine);
+            MemoizerBuilder<long, long> memoizerBuilder2 =
+                 memoizerBuilder1.CachePolicy(default(CacheItemPolicy))
+                                 .KeepElementsCachedFor(0).Milliseconds
+                                 .KeepElementsCachedFor(12).Milliseconds
+                                 .KeepElementsCachedFor(120).Milliseconds;
+
+            Assert.That(memoizerBuilder1, Is.EqualTo(memoizerBuilder2));
+            Assert.That(memoizerBuilder1, Is.EqualTo(memoizerBuilder2));
+            Assert.That(memoizerBuilder1.GetMemoizer(), Is.SameAs(memoizerBuilder2.GetMemoizer()));
+
+            //// TODO: ajaj - this test is not thread-safe!!
+            //Assert.That(LatencyInstrumentedRun(myMessyMemoizerBuilder, DATABASE_RESPONSE_LATENCY_IN_MILLIS, "First method invocation", "(should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)"),
+            //    Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS * TimeSpan.TicksPerMillisecond));
+            //Assert.That(LatencyInstrumentedRun(myMessyMemoizerBuilder, DATABASE_RESPONSE_LATENCY_IN_MILLIS, "Second method invocation", "(cached, should take < 5 ms)"),
+            //    Is.LessThan(5)); // ms
+            //Thread.Sleep(30);
+            //Assert.That(LatencyInstrumentedRun(myMessyMemoizerBuilder, DATABASE_RESPONSE_LATENCY_IN_MILLIS, "Third method invocation", "(cached, should take < 5 ms)"),
+            //    Is.LessThan(5)); // ms
+        }
+
+
     }
 }

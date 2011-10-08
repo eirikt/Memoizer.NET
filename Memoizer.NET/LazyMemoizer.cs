@@ -19,18 +19,16 @@ using System.Runtime.Caching;
 namespace Memoizer.NET
 {
 
-    #region LazyMemoizer
-    // TODO: some decent documentation would have been appropriate...
-    class LazyMemoizer<TParam1, TResult> : IInvocable<TParam1, TResult>, IThreadSafe
+    class LazyMemoizer<TParam1, TResult> //: IMemoizer<TParam1, TResult>, IThreadSafe
     {
         static readonly bool IS_THREAD_SAFE = typeof(LazyMemoizer<TParam1, TResult>) is IThreadSafe;
 
         readonly Lazy<Memoizer<TParam1, TResult>> lazyInitializer;
 
         // CacheItemPolicy CacheItemPolicy { get; private set; }
-        Action<string> LoggingMethod { get; set; }
+        //Action<string> LoggingMethod { get; set; }
         // String MethodName { get; private set; }
-        bool InstrumentInvocations { get { return LoggingMethod != null; } }
+        //bool InstrumentInvocations { get { return LoggingMethod != null; } }
 
         internal LazyMemoizer(Func<TParam1, TResult> methodToBeMemoized, CacheItemPolicy cacheItemPolicy = null)
         {
@@ -39,10 +37,10 @@ namespace Memoizer.NET
                 new Memoizer<TParam1, TResult>(methodToBeMemoized, cacheItemPolicy), IS_THREAD_SAFE);
         }
 
-        public TResult InvokeWith(TParam1 param1)
+        internal TResult InvokeWith(TParam1 param1)
         {
-            if (!InstrumentInvocations)
-                return this.lazyInitializer.Value.InvokeWith(param1);
+            //if (!InstrumentInvocations)
+            //    return this.lazyInitializer.Value.InvokeWith(param1);
 
             //long startTime = DateTime.Now.Ticks;
             TResult retVal = this.lazyInitializer.Value.InvokeWith(param1);
@@ -67,8 +65,4 @@ namespace Memoizer.NET
             return retVal;
         }
     }
-
-    // TODO: create classes with more parameters
-
-    #endregion
 }

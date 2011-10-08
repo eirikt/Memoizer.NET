@@ -265,11 +265,10 @@ namespace Memoizer.NET.Test
             Assert.That(durationInMilliseconds, Is.InRange(1990L, 2100L)); // < 2000L due to CLR/platform magic
 
             startTime = DateTime.Now.Ticks;
-            IInvocable<string, string> memoizer = VeryExpensiveNullInvocationFunc.Memoize().Get();
-            string result3 = memoizer.InvokeWith("whatever");
+            string result3 = VeryExpensiveNullInvocationFunc.CachedInvoke("whatever");
             Assert.That(result3, Is.Null);
 
-            string result4 = memoizer.InvokeWith("whatever");
+            string result4 = VeryExpensiveNullInvocationFunc.CachedInvoke("whatever");
             Assert.That(result4, Is.Null);
 
             durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
@@ -286,11 +285,11 @@ namespace Memoizer.NET.Test
         public void SingleThreadedMemoizedDirectInvocation_Memoizer()
         {
             long startTime = DateTime.Now.Ticks;
-            IInvocable<string, long, string> memoizer = ReallySlowNetworkInvocation1c.Memoize().Get();
+            //IMemoizer<string, long, string> memoizer = ReallySlowNetworkInvocation1c.Memoize().GetMemoizer();
             for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
                 for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
                 {
-                    var retVal = memoizer.InvokeWith("SingleThreadedMemoizedDirectInvocation_Memoizer", 14L);
+                    var retVal = ReallySlowNetworkInvocation1c.CachedInvoke("SingleThreadedMemoizedDirectInvocation_Memoizer", 14L);
                     Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "SingleThreadedMemoizedDirectInvocation_Memoizer" + 14L));
                 }
             long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
@@ -310,8 +309,7 @@ namespace Memoizer.NET.Test
         public void SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer()
         {
             long startTime = DateTime.Now.Ticks;
-            CacheItemPolicy cacheItemEvictionPolicy = new CacheItemPolicy { SlidingExpiration = TimeSpan.FromMilliseconds(NETWORK_RESPONSE_LATENCY_IN_MILLIS * 3) };
-            IInvocable<string, long, string> memoizer = ReallySlowNetworkInvocation1b.Memoize().CachePolicy(cacheItemEvictionPolicy).Get();
+            IMemoizer<string, long, string> memoizer = ReallySlowNetworkInvocation1b.CacheFor(NETWORK_RESPONSE_LATENCY_IN_MILLIS * 3).Milliseconds.GetMemoizer();
 
             // New function value, not yet cached
             var retVal = memoizer.InvokeWith("SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer", 15L);
@@ -353,10 +351,10 @@ namespace Memoizer.NET.Test
         {
             static int TASK_COUNTER;
             public string Result { get; private set; }
-            readonly IInvocable<string, long, string> memoizer;
+            readonly IMemoizer<string, long, string> memoizer;
 
 
-            internal VeryExpensiveMemoizedServiceCallTask_Memoizer(Barrier barrier, IInvocable<string, long, string> memoizer, string stringArg, long longArg)
+            internal VeryExpensiveMemoizedServiceCallTask_Memoizer(Barrier barrier, IMemoizer<string, long, string> memoizer, string stringArg, long longArg)
                 : base(barrier)
             {
                 TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
@@ -383,8 +381,8 @@ namespace Memoizer.NET.Test
            [Values(1, 2, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentTasks)
         {
             long startTime = DateTime.Now.Ticks;
-            IInvocable<string, long, string> memoizer =
-                ReallySlowNetworkInvocation1a.Memoize().CachePolicy(null).InstrumentWith(Console.WriteLine).Get();
+            IMemoizer<string, long, string> memoizer =
+                ReallySlowNetworkInvocation1a.Cache().CachePolicy(null).InstrumentWith(Console.WriteLine).GetMemoizer();
             for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
             {
                 // Arrange
@@ -414,9 +412,9 @@ namespace Memoizer.NET.Test
         class ClearCacheTask_Memoizer : AbstractTwoPhaseExecutorThread
         {
             static int TASK_COUNTER;
-            readonly IInvocable<string, long, string> memoizer;
+            readonly IMemoizer<string, long, string> memoizer;
 
-            public ClearCacheTask_Memoizer(Barrier barrier, IInvocable<string, long, string> memoizer)
+            public ClearCacheTask_Memoizer(Barrier barrier, IMemoizer<string, long, string> memoizer)
                 : base(barrier)
             {
                 TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
@@ -468,7 +466,7 @@ namespace Memoizer.NET.Test
             //{
             //const int METHOD_NUMBER_OF_CONCURRENT_TASKS = 50;
             long startTime = DateTime.Now.Ticks;
-            IInvocable<string, long, string> memoizer = TypicalDatabaseInvocation1a.Memoize().Get();
+            IMemoizer<string, long, string> memoizer = TypicalDatabaseInvocation1a.GetMemoizer();
             // Arrange
             TwoPhaseExecutor twoPhaseExecutor = new TwoPhaseExecutor(numberOfConcurrentTasks + 3); // + 3 clearing tasks
             //twoPhaseExecutor.Instrumentation = true;
@@ -533,9 +531,9 @@ namespace Memoizer.NET.Test
             if (numberOfConcurrentTasks > 1000)
                 threadContentionFactor += 2;
 
-            int numberOfMemoizerElementsCleared = ((IMemoizer)memoizer).NumberOfElementsCleared;
-            int numberOfMemoizerInvocations = ((IMemoizer)memoizer).NumberOfTimesInvoked;
-            int numberOfMemoizerNoCachedExecutions = ((IMemoizer)memoizer).NumberOfTimesNoCacheInvoked;
+            int numberOfMemoizerElementsCleared = memoizer.NumberOfElementsCleared;
+            int numberOfMemoizerInvocations = memoizer.NumberOfTimesInvoked;
+            int numberOfMemoizerNoCachedExecutions = memoizer.NumberOfTimesNoCacheInvoked;
 
             Assert.That(numberOfMemoizerInvocations, Is.GreaterThanOrEqualTo(numberOfMemoizerNoCachedExecutions));
             Assert.That(numberOfMemoizerElementsCleared, Is.LessThanOrEqualTo(numberOfMemoizerNoCachedExecutions));
@@ -566,8 +564,8 @@ namespace Memoizer.NET.Test
         //Memoizer<long, long> MEMOIZED_FIBONACCI = new Memoizer<long, long>("fibonacci", FIBONACCI).InstrumentUsing(Console.WriteLine);
         //Memoizer<long, long> MEMOIZED_FIBONACCI_INSTRUMENTED = new Memoizer<long, long>("fibonacci", (arg => arg < 2 ? arg : FIBONACCI(arg - 1) + FIBONACCI(arg - 2)));
         //MEMOIZED_FIBONACCI_INSTRUMENTED.InstrumentWith(Console.WriteLine);
-        readonly Func<long, long> MEMOIZED_FIBONACCI = FIBONACCI.MemoizedFunc();
-        readonly IInvocable<long, long> MEMOIZED_FIBONACCI_2 = FIBONACCI.Memoize().Get();
+        //readonly Func<long, long> MEMOIZED_FIBONACCI = FIBONACCI.MemoizedFunc();
+        readonly IMemoizer<long, long> MEMOIZED_FIBONACCI_IINVOCABLE = FIBONACCI.Cache().GetMemoizer();
 
         [Test]
         public void FibonacciNumbers(
@@ -582,19 +580,19 @@ namespace Memoizer.NET.Test
             Console.WriteLine("Took " + durationInMilliseconds + " ms");
         }
 
-        // TODO: Memoization of recursive functions not yet supported
-        [Test]
-        public void MemoizedFibonacciNumbers_Nope(
-            [Values(1, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40)] int numberOfFibonacciArguments)
-        //[Values(6)] int numberOfFibonacciArguments)
-        {
-            long startTime = DateTime.Now.Ticks;
-            Console.WriteLine("(Memoized [Func.Hash=" + MEMOIZED_FIBONACCI.GetHashCode() + "]) Fibonacci(" + numberOfFibonacciArguments + ") =");
-            for (int i = 0; i < numberOfFibonacciArguments; ++i) { Console.Write(MEMOIZED_FIBONACCI(i) + " "); }
-            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
-            Console.WriteLine();
-            Console.WriteLine("Took " + durationInMilliseconds + " ms");
-        }
+        //// TODO: Memoization of recursive functions not yet supported
+        //[Test]
+        //public void MemoizedFibonacciNumbers_Nope(
+        //    [Values(1, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40)] int numberOfFibonacciArguments)
+        ////[Values(6)] int numberOfFibonacciArguments)
+        //{
+        //    long startTime = DateTime.Now.Ticks;
+        //    Console.WriteLine("(Memoized [Func.Hash=" + MEMOIZED_FIBONACCI.GetHashCode() + "]) Fibonacci(" + numberOfFibonacciArguments + ") =");
+        //    for (int i = 0; i < numberOfFibonacciArguments; ++i) { Console.Write(MEMOIZED_FIBONACCI(i) + " "); }
+        //    long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
+        //    Console.WriteLine();
+        //    Console.WriteLine("Took " + durationInMilliseconds + " ms");
+        //}
 
         // TODO: Memoization of recursive functions not yet supported
         [Test]
@@ -603,8 +601,8 @@ namespace Memoizer.NET.Test
         //[Values(6)] int numberOfFibonacciArguments)
         {
             long startTime = DateTime.Now.Ticks;
-            Console.WriteLine("(Memoized [Func.Hash=" + MEMOIZED_FIBONACCI.GetHashCode() + "]) Fibonacci(" + numberOfFibonacciArguments + ") =");
-            for (int i = 0; i < numberOfFibonacciArguments; ++i) { Console.Write(MEMOIZED_FIBONACCI_2.InvokeWith(i) + " "); }
+            Console.WriteLine("(Memoized [IInvocable.Hash=" + MEMOIZED_FIBONACCI_IINVOCABLE.GetHashCode() + "]) Fibonacci(" + numberOfFibonacciArguments + ") =");
+            for (int i = 0; i < numberOfFibonacciArguments; ++i) { Console.Write(MEMOIZED_FIBONACCI_IINVOCABLE.InvokeWith(i) + " "); }
             long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
             Console.WriteLine();
             Console.WriteLine("Took " + durationInMilliseconds + " ms");

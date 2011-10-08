@@ -25,7 +25,7 @@ Example 2 [expiration policy: keep items cached for 30 minutes]
 
 	public string ExpensiveFunction2(long someId)
     {
-        return MyExpensiveFunction2.Memoize().KeepItemsCachedFor(30).Minutes.Get().InvokeWith(someId);
+        return MyExpensiveFunction.Memoize().KeepItemsCachedFor(30).Minutes.Get().InvokeWith(someId);
     }
 
 This "inlined" style works because the memoized function handles are themselves memoized (behind the curtain).

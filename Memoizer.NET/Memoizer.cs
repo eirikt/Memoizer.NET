@@ -42,40 +42,56 @@ namespace Memoizer.NET
     }
     #endregion
 
-    #region IInvocable
-    /// <summary>
-    /// Interface for invocable classes.
-    /// </summary>
-    public interface IInvocable<in TParam1, out TResult>
-    {
-        TResult InvokeWith(TParam1 param);
-    }
-    public interface IInvocable<in TParam1, in TParam2, out TResult>
-    {
-        TResult InvokeWith(TParam1 param1, TParam2 param2);
-    }
-    public interface IInvocable<in TParam1, in TParam2, in TParam3, out TResult>
-    {
-        TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3);
-    }
-    public interface IInvocable<in TParam1, in TParam2, in TParam3, in TParam4, out TResult>
-    {
-        TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3in, TParam4 param4);
-    }
-    #endregion
-
     #region IMemoizer
-    public interface IMemoizer : IThreadSafe, IDisposable, IClearable
+    public interface IManageableMemoizer : IThreadSafe, IDisposable, IClearable
     {
         int NumberOfTimesInvoked { get; }
         int NumberOfTimesNoCacheInvoked { get; }
         int NumberOfTimesCleared { get; }
         int NumberOfElementsCleared { get; }
     }
+    public interface IMemoizer<in TParam1, out TResult> : IManageableMemoizer
+    {
+        TResult InvokeWith(TParam1 param);
+    }
+    public interface IMemoizer<in TParam1, in TParam2, out TResult> : IManageableMemoizer
+    {
+        TResult InvokeWith(TParam1 param1, TParam2 param2);
+    }
+    public interface IMemoizer<in TParam1, in TParam2, in TParam3, out TResult> : IManageableMemoizer
+    {
+        TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3);
+    }
+    public interface IMemoizer<in TParam1, in TParam2, in TParam3, in TParam4, out TResult> : IManageableMemoizer
+    {
+        TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3in, TParam4 param4);
+    }
     #endregion
 
+    //#region IInvocable
+    ///// <summary>
+    ///// Interface for invocable classes.
+    ///// </summary>
+    //public interface IInvocable<in TParam1, out TResult>
+    //{
+    //    TResult InvokeWith(TParam1 param);
+    //}
+    //public interface IInvocable<in TParam1, in TParam2, out TResult>
+    //{
+    //    TResult InvokeWith(TParam1 param1, TParam2 param2);
+    //}
+    //public interface IInvocable<in TParam1, in TParam2, in TParam3, out TResult>
+    //{
+    //    TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3);
+    //}
+    //public interface IInvocable<in TParam1, in TParam2, in TParam3, in TParam4, out TResult>
+    //{
+    //    TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3in, TParam4 param4);
+    //}
+    //#endregion
+
     #region MemoizerHelper
-    // TODO: write tests and improve algorithms!
+    // TODO: write tests and improve algorithms!!
     public class MemoizerHelper
     {
         static readonly ObjectIDGenerator OBJECT_ID_GENERATOR = new ObjectIDGenerator();
@@ -117,7 +133,7 @@ namespace Memoizer.NET
     /// <see>http://jcip.net/</see>
     /// <see><code>Memoizer.Net.LazyMemoizer</code></see>
     /// <author>Eirik Torske</author>
-    abstract class AbstractMemoizer<TResult> : IMemoizer
+    abstract class AbstractMemoizer<TResult> : IManageableMemoizer
     {
         protected MemoryCache cache;
         protected CacheItemPolicy cacheItemPolicy;
@@ -165,11 +181,13 @@ namespace Memoizer.NET
             }
         }
 
+        // TODO: try once more to put these into memoizer constructor
         internal void CacheItemPolicy(CacheItemPolicy cacheItemPolicy)
         {
             this.cacheItemPolicy = cacheItemPolicy;
         }
 
+        // TODO: try once more to put these into memoizer constructor
         internal void InstrumentWith(Action<String> instrumenter)
         {
             this.loggingMethod = instrumenter;
@@ -232,14 +250,14 @@ namespace Memoizer.NET
             //Console.WriteLine("OS thread ID=" + AppDomain.GetCurrentThreadId() + ", " + "Managed thread ID=" + Thread.CurrentThread.GetHashCode() + "/" + Thread.CurrentThread.ManagedThreadId + ": Invoke(" + args + ") took " + (DateTime.Now.Ticks - startTime) + " ticks");
 
             Interlocked.Increment(ref this.numberOfTimesInvoked);
-            ConditionalLogging("Invocation #" + this.numberOfTimesInvoked + " took " + (DateTime.Now.Ticks - startTime) + " ticks");
+            ConditionalLogging("Invocation #" + this.numberOfTimesInvoked + " took " + (DateTime.Now.Ticks - startTime) + " ticks | " + (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond + " ms");
 
             return retVal;
         }
     }
 
 
-    internal class Memoizer<TParam1, TResult> : AbstractMemoizer<TResult>, IInvocable<TParam1, TResult>
+    internal class Memoizer<TParam1, TResult> : AbstractMemoizer<TResult>, IMemoizer<TParam1, TResult>
     {
         readonly Func<TParam1, TResult> methodToBeMemoized;
 
@@ -264,7 +282,7 @@ namespace Memoizer.NET
     }
 
 
-    internal class Memoizer<TParam1, TParam2, TResult> : AbstractMemoizer<TResult>, IInvocable<TParam1, TParam2, TResult>
+    internal class Memoizer<TParam1, TParam2, TResult> : AbstractMemoizer<TResult>, IMemoizer<TParam1, TParam2, TResult>
     {
         readonly Func<TParam1, TParam2, TResult> methodToBeMemoized;
         internal Memoizer(Func<TParam1, TParam2, TResult> methodToBeMemoized, CacheItemPolicy cacheItemPolicy = null)
@@ -278,7 +296,7 @@ namespace Memoizer.NET
     }
 
 
-    internal class Memoizer<TParam1, TParam2, TParam3, TResult> : AbstractMemoizer<TResult>, IInvocable<TParam1, TParam2, TParam3, TResult>
+    internal class Memoizer<TParam1, TParam2, TParam3, TResult> : AbstractMemoizer<TResult>, IMemoizer<TParam1, TParam2, TParam3, TResult>
     {
         readonly Func<TParam1, TParam2, TParam3, TResult> methodToBeMemoized;
         internal Memoizer(Func<TParam1, TParam2, TParam3, TResult> methodToBeMemoized, CacheItemPolicy cacheItemPolicy = null)
@@ -292,7 +310,7 @@ namespace Memoizer.NET
     }
 
 
-    internal class Memoizer<TParam1, TParam2, TParam3, TParam4, TResult> : AbstractMemoizer<TResult>, IInvocable<TParam1, TParam2, TParam3, TParam4, TResult>
+    internal class Memoizer<TParam1, TParam2, TParam3, TParam4, TResult> : AbstractMemoizer<TResult>, IMemoizer<TParam1, TParam2, TParam3, TParam4, TResult>
     {
         readonly Func<TParam1, TParam2, TParam3, TParam4, TResult> methodToBeMemoized;
         internal Memoizer(Func<TParam1, TParam2, TParam3, TParam4, TResult> methodToBeMemoized, CacheItemPolicy cacheItemPolicy = null)
