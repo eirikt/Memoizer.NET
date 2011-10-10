@@ -18,7 +18,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Caching;
-using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -89,30 +88,6 @@ namespace Memoizer.NET
     //    TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3in, TParam4 param4);
     //}
     //#endregion
-
-    #region MemoizerHelper
-    // TODO: write tests and improve algorithms!!
-    public class MemoizerHelper
-    {
-        static readonly ObjectIDGenerator OBJECT_ID_GENERATOR = new ObjectIDGenerator();
-
-        public static string CreateParameterHash(params object[] args)
-        {
-            if (args.Length == 1)
-            {
-                if (!args[0].GetType().IsPrimitive && args[0].GetType() != typeof(String))
-                {
-                    bool firstTime;
-                    long hash = OBJECT_ID_GENERATOR.GetId(args[0], out firstTime);
-                    return hash.ToString();
-                }
-            }
-            return string.Join(string.Empty, args);
-        }
-        public static string CreateMethodHash(object source) { return CreateParameterHash(source); }
-        public static string CreateMethodHash(Type sourceClass, string methodName) { return CreateParameterHash(sourceClass.ToString(), methodName); }
-    }
-    #endregion
 
     #region Memoizer (using a MemoryCache instance and Goetz's algorithm)
     /// <remarks>
@@ -335,7 +310,7 @@ namespace Memoizer.NET
 
         public MemoryCacheMemoizer(Type sourceClass, string nameOfMethodToBeMemoized)
         {
-            this.name = MemoizerHelper.CreateMethodHash(sourceClass, nameOfMethodToBeMemoized);
+            this.name = MemoizerHelper.CreateParameterHash(sourceClass, nameOfMethodToBeMemoized);
             this.cache = new MemoryCache(this.name);
         }
 

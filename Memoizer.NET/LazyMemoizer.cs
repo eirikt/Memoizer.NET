@@ -19,6 +19,7 @@ using System.Runtime.Caching;
 namespace Memoizer.NET
 {
 
+    // TODO: to be removed, I guess
     class LazyMemoizer<TParam1, TResult> //: IMemoizer<TParam1, TResult>, IThreadSafe
     {
         static readonly bool IS_THREAD_SAFE = typeof(LazyMemoizer<TParam1, TResult>) is IThreadSafe;

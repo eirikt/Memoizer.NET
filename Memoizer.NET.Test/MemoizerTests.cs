@@ -18,7 +18,6 @@
 
 #region Using
 using System;
-using System.Runtime.Caching;
 using System.Threading;
 using NUnit.Framework;
 #endregion

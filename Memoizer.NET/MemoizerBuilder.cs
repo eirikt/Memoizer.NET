@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 using System;
+using System.Linq;
 using System.Runtime.Caching;
-
+using System.Runtime.Serialization;
 
 namespace Memoizer.NET
 {
-    public enum TimeUnit { Milliseconds, Seconds, Minutes, Hours, Days }
-
     #region Func extension methods
     public static class FuncExtensionMethods
     {
@@ -139,6 +138,65 @@ namespace Memoizer.NET
     }
     #endregion
 
+
+    public enum ExpirationType { Relative, Absolute }
+
+
+    public enum TimeUnit { Milliseconds, Seconds, Minutes, Hours, Days }
+
+
+    #region CacheItemPolicyBuilder
+    public class CacheItemPolicyBuilder
+    {
+        // TODO: ...
+        public static CacheItemPolicy CreateCacheItemPolicy(ExpirationType expirationType, int expirationValue, TimeUnit expirationTimeUnit)
+        {
+            return null;
+        }
+    }
+    #endregion
+
+    #region MemoizerHelper
+    public class MemoizerHelper
+    {
+        public static string CreateParameterHash(params object[] args) { return args.Aggregate(String.Empty, (current, arg) => current + arg.GetHashCode().ToString()); }
+
+        static readonly ObjectIDGenerator OBJECT_ID_GENERATOR = new ObjectIDGenerator();
+        public static string CreateMemoizerBuilderHash<TParam1, TResult>(MemoizerBuilder<TParam1, TResult> memoizerBuilder)
+        {
+            Func<TParam1, TResult> func = memoizerBuilder.Function;
+            CacheItemPolicy cacheItemPolicy = memoizerBuilder.CacheItemPolicy;
+            Action<String> loggerAction = memoizerBuilder.LoggerAction;
+
+            bool firstTime;
+            long funcId = OBJECT_ID_GENERATOR.GetId(func, out firstTime);
+
+            long cacheItemPolicyHashCode = cacheItemPolicy == null ? 0 : cacheItemPolicy.GetHashCode();
+
+            return funcId.ToString() + cacheItemPolicyHashCode.ToString();
+        }
+
+        public static string CreateMemoizerBuilderHash<TParam1, TParam2, TResult>(MemoizerBuilder<TParam1, TParam2, TResult> memoizerBuilder)
+        {
+            throw new NotImplementedException();
+        }
+
+        public static string CreateMemoizerBuilderHash<TParam1, TParam2, TParam3, TResult>(MemoizerBuilder<TParam1, TParam2, TParam3, TResult> memoizerBuilder)
+        {
+            throw new NotImplementedException();
+        }
+
+        public static string CreateMemoizerBuilderHash<TParam1, TParam2, TParam3, TParam4, TResult>(MemoizerBuilder<TParam1, TParam2, TParam3, TParam4, TResult> memoizerBuilder)
+        {
+            throw new NotImplementedException();
+        }
+
+        public static string CreateMethodHash(object source) { return CreateParameterHash(source); }
+
+        //public static string CreateMethodHash(Type sourceClass, string methodName) { return CreateParameterHash(sourceClass.ToString(), methodName); }
+    }
+    #endregion
+
     #region MemoizerBuilder<TParam1, TResult>
     /// <summary>
     /// Not thread-safe memoizer builder.
@@ -151,14 +209,24 @@ namespace Memoizer.NET
 
         readonly Func<TParam1, TResult> function;
         CacheItemPolicy cacheItemPolicy;
-        Action<String> loggingMethod;
+        Action<String> loggerMethod;
 
         internal MemoizerBuilder(Func<TParam1, TResult> functionToBeMemoized, int expirationValue = 0) { this.function = functionToBeMemoized; }
 
-        //Func<TParam1, TResult> Function
-        //{
-        //    get { return this.function; }
-        //}
+        internal Func<TParam1, TResult> Function
+        {
+            get { return this.function; }
+        }
+
+        internal CacheItemPolicy CacheItemPolicy
+        {
+            get { return this.cacheItemPolicy; }
+        }
+
+        internal Action<String> LoggerAction
+        {
+            get { return this.loggerMethod; }
+        }
 
         public MemoizerBuilder<TParam1, TResult> CachePolicy(CacheItemPolicy cacheItemPolicy)
         {
@@ -170,17 +238,12 @@ namespace Memoizer.NET
             return new MemoizerBuilder_AwaitingExpirationUnit<TParam1, TResult>(cacheItemExpiration, this);
         }
 
-        //public Action<String> LoggingMethod
-        //{
-        //    get { return this.loggingMethod; }
-        //}
-
         /// <summary>
         /// Mutable logging action.
         /// </summary>
         public MemoizerBuilder<TParam1, TResult> InstrumentWith(Action<String> loggingAction)
         {
-            this.loggingMethod = loggingAction;
+            this.loggerMethod = loggingAction;
             return this;
         }
 
@@ -195,12 +258,21 @@ namespace Memoizer.NET
         public IMemoizer<TParam1, TResult> GetMemoizer(bool cacheAndShareMemoizerInstance = true)
         {
             Memoizer<TParam1, TResult> memoizer =
-                cacheAndShareMemoizerInstance ? MEMOIZER_MEMOIZER.InvokeWith(this.function) : new Memoizer<TParam1, TResult>(this.function);
+                cacheAndShareMemoizerInstance ?
+                MEMOIZER_MEMOIZER.InvokeWith(this.function) :
+                new Memoizer<TParam1, TResult>(this.function, this.cacheItemPolicy);
+
+            // TODO: replace above with:
+            //System.Runtime.Caching.CacheItemPolicy cacheItemPolicy = CacheItemPolicyBuilder.CreateCacheItemPolicy(this.cacheItemExpirationType, this.cacheItemExpirationValue, this.cacheItemExpirationTimeUnit);
+            //Memoizer<TParam1, TResult> memoizer =
+            //    cacheAndShareMemoizerInstance ?
+            //    MEMOIZER_MEMOIZER.InvokeWith(this.function) :
+            //    new Memoizer<TParam1, TResult>(this.function, cacheItemPolicy);
 
             /*if (this.cacheItemPolicy != null) {*/
-            memoizer.CacheItemPolicy(this.cacheItemPolicy); /*}*/
+            //memoizer.CacheItemPolicy(this.cacheItemPolicy); /*}*/
             /*if (this.loggingMethod != null) {*/
-            memoizer.InstrumentWith(this.loggingMethod); /*}*/
+            //memoizer.InstrumentWith(this.loggingMethod); /*}*/
             return memoizer;
         }
 
