@@ -14,19 +14,28 @@ Default cache configuration is: items to be held as long as the CLR is alive or 
 
 Example 1 [default caching policy]
 
-	readonly Func<long, string> MyExpensiveFunction1 = ...
+	readonly Func<long, string> myExpensiveFunction = ...
 
-	public string ExpensiveFunction1(long someId)
+	string ExpensiveFunction1(long someId)
     {
-		return MyExpensiveFunction1.MemoizedInvoke(someId);
+        return myExpensiveFunction.CachedInvoke(someId);
     }
 
 Example 2 [expiration policy: keep items cached for 30 minutes]
 
-	public string ExpensiveFunction2(long someId)
-    {
-        return MyExpensiveFunction.Memoize().KeepItemsCachedFor(30).Minutes.Get().InvokeWith(someId);
+	string ExpensiveFunction2(long someId)
+	{
+        return myExpensiveFunction.Memoize().KeepItemsCachedFor(30).Minutes.GetMemoizer().InvokeWith(someId);
+		// Or
+		//return myExpensiveFunction.CacheFor(30).Minutes.GetMemoizer().InvokeWith(someId);
     }
+
+There are three `Func` extension methods at work here.
+The first one, `CachedInvoke()`, just gives you the default cache configuration.
+(It is named mimicking the regular `Func` methods `Invoke()` and `DynamicInvoke()`.)
+The second method `Memoize()`, is the one that gets you into "memoizer config mode".
+The third method `CacheFor()`, is a shortcut for `Memoize()` and gets you right into cache expiration configuration.
+The two last extension methods must be ended by `GetMemoizer()` to get hold of the `IMemoizer` object - ready for invocation.
 
 This "inlined" style works because the memoized function handles are themselves memoized (behind the curtain).
 __NB!__ Memoization of recursive functions are not yet supported - so e.g. the Fibonacci sequence function will not work this way. 
