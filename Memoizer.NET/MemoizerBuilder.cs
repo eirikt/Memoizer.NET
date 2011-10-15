@@ -84,39 +84,21 @@ namespace Memoizer.NET
         #region CacheFor(int expirationValue)
         public static MemoizerBuilder_AwaitingExpirationUnit<TParam1, TResult> CacheFor<TParam1, TResult>(this Func<TParam1, TResult> functionToBeMemoized, int expirationValue)
         {
-            return new MemoizerBuilder<TParam1, TResult>(functionToBeMemoized).KeepElementsCachedFor(expirationValue);
+            return new MemoizerBuilder<TParam1, TResult>(functionToBeMemoized).KeepItemsCachedFor(expirationValue);
         }
         public static MemoizerBuilder_AwaitingExpirationUnit<TParam1, TParam2, TResult> CacheFor<TParam1, TParam2, TResult>(this Func<TParam1, TParam2, TResult> functionToBeMemoized, int expirationValue)
         {
-            return new MemoizerBuilder<TParam1, TParam2, TResult>(functionToBeMemoized).KeepElementsCachedFor(expirationValue);
+            return new MemoizerBuilder<TParam1, TParam2, TResult>(functionToBeMemoized).KeepItemsCachedFor(expirationValue);
         }
         public static MemoizerBuilder_AwaitingExpirationUnit<TParam1, TParam2, TParam3, TResult> CacheFor<TParam1, TParam2, TParam3, TResult>(this Func<TParam1, TParam2, TParam3, TResult> functionToBeMemoized, int expirationValue)
         {
-            return new MemoizerBuilder<TParam1, TParam2, TParam3, TResult>(functionToBeMemoized).KeepElementsCachedFor(expirationValue);
+            return new MemoizerBuilder<TParam1, TParam2, TParam3, TResult>(functionToBeMemoized).KeepItemsCachedFor(expirationValue);
         }
         public static MemoizerBuilder_AwaitingExpirationUnit<TParam1, TParam2, TParam3, TParam4, TResult> CacheFor<TParam1, TParam2, TParam3, TParam4, TResult>(this Func<TParam1, TParam2, TParam3, TParam4, TResult> functionToBeMemoized, int expirationValue)
         {
-            return new MemoizerBuilder<TParam1, TParam2, TParam3, TParam4, TResult>(functionToBeMemoized).KeepElementsCachedFor(expirationValue);
+            return new MemoizerBuilder<TParam1, TParam2, TParam3, TParam4, TResult>(functionToBeMemoized).KeepItemsCachedFor(expirationValue);
         }
         #endregion
-
-        // Hmm, what's the point...
-        //public static Func<TParam1, TResult> MemoizedFunc<TParam1, TResult>(this Func<TParam1, TResult> functionToBeMemoized)
-        //{
-        //    return new MemoizerBuilder<TParam1, TResult>(functionToBeMemoized).Function;
-        //}
-        //public static Func<TParam1, TParam2, TResult> MemoizedFunc<TParam1, TParam2, TResult>(this Func<TParam1, TParam2, TResult> functionToBeMemoized)
-        //{
-        //    return new MemoizerBuilder<TParam1, TParam2, TResult>(functionToBeMemoized).Function;
-        //}
-        //public static Func<TParam1, TParam2, TParam3, TResult> MemoizedFunc<TParam1, TParam2, TParam3, TResult>(this Func<TParam1, TParam2, TParam3, TResult> functionToBeMemoized)
-        //{
-        //    return new MemoizerBuilder<TParam1, TParam2, TParam3, TResult>(functionToBeMemoized).Function;
-        //}
-        //public static Func<TParam1, TParam2, TParam3, TParam4, TResult> MemoizedFunc<TParam1, TParam2, TParam3, TParam4, TResult>(this Func<TParam1, TParam2, TParam3, TParam4, TResult> functionToBeMemoized)
-        //{
-        //    return new MemoizerBuilder<TParam1, TParam2, TParam3, TParam4, TResult>(functionToBeMemoized).Function;
-        //}
 
         #region CachedInvoke(TParam... args)
         public static TResult CachedInvoke<TParam1, TResult>(this Func<TParam1, TResult> functionToBeMemoized, TParam1 arg1)
@@ -202,12 +184,13 @@ namespace Memoizer.NET
     }
     #endregion
 
-    #region MemoizerHelper
+    #region MemoizerHelper (mostly reflection-based for the time being...)
     public class MemoizerHelper
     {
         public static int[] PRIMES = new[] { 31, 37, 43, 47, 59, 61, 71, 73, 89, 97, 101, 103, 113, 127, 131, 137 };
 
         static readonly ObjectIDGenerator OBJECT_ID_GENERATOR = new ObjectIDGenerator();
+
 
         public static string CreateMemoizerBuilderHash(object memoizerBuilder)
         {
@@ -221,6 +204,7 @@ namespace Memoizer.NET
 
             return CreateParameterHash(funcId, expirationType, expirationValue, expirationTimeUnit);
         }
+
 
         public static string CreateParameterHash(params object[] args)
         {
@@ -247,34 +231,14 @@ namespace Memoizer.NET
             return retVal.ToString();
         }
 
-        //public static string CreateMemoizerBuilderHash<TParam1, TParam2, TResult>(MemoizerBuilder<TParam1, TParam2, TResult> memoizerBuilder)
-        //{
-        //    throw new NotImplementedException();
-        //}
-
-        //public static string CreateMemoizerBuilderHash<TParam1, TParam2, TParam3, TResult>(MemoizerBuilder<TParam1, TParam2, TParam3, TResult> memoizerBuilder)
-        //{
-        //    throw new NotImplementedException();
-        //}
-
-        //public static string CreateMemoizerBuilderHash<TParam1, TParam2, TParam3, TParam4, TResult>(MemoizerBuilder<TParam1, TParam2, TParam3, TParam4, TResult> memoizerBuilder)
-        //{
-        //    throw new NotImplementedException();
-        //}
 
         public static string CreateFunctionHash(object source) { return CreateParameterHash(source); }
     }
     #endregion
 
     #region MemoizerBuilder<TParam1, TResult>
-    public class MemoizerBuilder<TParam1, TResult> //: IInvocable<TParam1, TResult>
+    public class MemoizerBuilder<TParam1, TResult>
     {
-        static readonly ObjectIDGenerator OBJECT_ID_GENERATOR = new ObjectIDGenerator();
-
-        //static readonly LazyMemoizer<MemoizerBuilder<TParam1, TResult>, Memoizer<TParam1, TResult>> MEMOIZER_MEMOIZER =
-        //    new LazyMemoizer<MemoizerBuilder<TParam1, TResult>, Memoizer<TParam1, TResult>>
-        //        ((MemoizerBuilder<TParam1, TResult> mb) => new Memoizer<MemoizerBuilder<TParam1, TResult>, Memoizer<TParam1, TResult>>(mb));
-
         static Func<MemoizerBuilder<TParam1, TResult>, Memoizer<TParam1, TResult>> CREATE_MEMOIZER_FROM_BUILDER =
             new Func<MemoizerBuilder<TParam1, TResult>, Memoizer<TParam1, TResult>>(
                 delegate(MemoizerBuilder<TParam1, TResult> memoizerBuilder)
@@ -282,10 +246,6 @@ namespace Memoizer.NET
                     Console.WriteLine("Creating Memoizer<TParam1, TResult> from MemoizerBuilder<TParam1, TResult> [hash=" + MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder) + "]...");
                     return new Memoizer<TParam1, TResult>(memoizerBuilder);
                 });
-
-        //static Memoizer<MemoizerBuilder<TParam1, TResult>, Memoizer<TParam1, TResult>> MEMOIZER_MEMOIZER =
-        //    new Memoizer<MemoizerBuilder<TParam1, TResult>, Memoizer<TParam1, TResult>>(CREATE_MEMOIZER_FROM_BUILDER);
-
 
         static Func<Memoizer<MemoizerBuilder<TParam1, TResult>, Memoizer<TParam1, TResult>>> CREATE_MEMOIZER_MEMOIZER =
             new Func<Memoizer<MemoizerBuilder<TParam1, TResult>, Memoizer<TParam1, TResult>>>(
@@ -298,12 +258,10 @@ namespace Memoizer.NET
         static Lazy<Memoizer<MemoizerBuilder<TParam1, TResult>, Memoizer<TParam1, TResult>>> LAZY_MEMOIZER_MEMOIZER =
             new Lazy<Memoizer<MemoizerBuilder<TParam1, TResult>, Memoizer<TParam1, TResult>>>(
                 CREATE_MEMOIZER_MEMOIZER,
-                isThreadSafe: typeof(Memoizer<TParam1, TResult>) is IThreadSafe);
+                isThreadSafe: typeof(Memoizer<MemoizerBuilder<TParam1, TResult>, Memoizer<TParam1, TResult>>) is IThreadSafe);
 
 
         readonly Func<TParam1, TResult> function;
-
-        //CacheItemPolicy cacheItemPolicy;
 
         internal ExpirationType ExpirationType { get; set; }
         internal int ExpirationValue { get; set; }
@@ -312,40 +270,27 @@ namespace Memoizer.NET
         Action<String> loggerMethod;
 
 
-        internal MemoizerBuilder(Func<TParam1, TResult> functionToBeMemoized, int expirationValue = 0)
+        internal MemoizerBuilder(Func<TParam1, TResult> functionToBeMemoized)
         {
             this.function = functionToBeMemoized;
         }
-
 
         internal Func<TParam1, TResult> Function
         {
             get { return this.function; }
         }
 
-        //internal CacheItemPolicy CacheItemPolicy
-        //{
-        //    get { return this.cacheItemPolicy; }
-        //}
-
         internal Action<String> LoggerAction
         {
             get { return this.loggerMethod; }
         }
 
-        //public MemoizerBuilder<TParam1, TResult> CachePolicy(CacheItemPolicy cacheItemPolicy)
-        //{
-        //    this.cacheItemPolicy = cacheItemPolicy;
-        //    return this;
-        //}
-        public MemoizerBuilder_AwaitingExpirationUnit<TParam1, TResult> KeepElementsCachedFor(int cacheItemExpiration)
+
+        public MemoizerBuilder_AwaitingExpirationUnit<TParam1, TResult> KeepItemsCachedFor(int cacheExpirationValue)
         {
-            return new MemoizerBuilder_AwaitingExpirationUnit<TParam1, TResult>(cacheItemExpiration, this);
+            return new MemoizerBuilder_AwaitingExpirationUnit<TParam1, TResult>(cacheExpirationValue, this);
         }
 
-        /// <summary>
-        /// Mutable logging action.
-        /// </summary>
         public MemoizerBuilder<TParam1, TResult> InstrumentWith(Action<String> loggingAction)
         {
             this.loggerMethod = loggingAction;
@@ -353,74 +298,17 @@ namespace Memoizer.NET
         }
 
         /// <summary>
-        /// Force creation and <i>not</i> caching of created memoizer instance.
+        /// Force creation and <i>not</i> caching/sharing of created memoizer instance.
         /// </summary>
         public IMemoizer<TParam1, TResult> CreateMemoizer()
         {
-            return GetMemoizer(false);
+            return GetMemoizer(cacheAndShareMemoizerInstance: false);
         }
 
         public IMemoizer<TParam1, TResult> GetMemoizer(bool cacheAndShareMemoizerInstance = true)
         {
-            //Memoizer<TParam1, TResult> memoizer =
-            //    cacheAndShareMemoizerInstance ?
-            //    MEMOIZER_MEMOIZER.InvokeWith(this.function) :
-            //    new Memoizer<TParam1, TResult>(this.function, this.cacheItemPolicy);
-
-            //CacheItemPolicy cacheItemPolicy = CacheItemPolicyBuilder.CreateCacheItemPolicy(this.ExpirationType, this.ExpirationValue, this.ExpirationTimeUnit);
-            Memoizer<TParam1, TResult> memoizer =
-                cacheAndShareMemoizerInstance ?
-                //MEMOIZER_MEMOIZER.InvokeWith(this) :
-                LAZY_MEMOIZER_MEMOIZER.Value.InvokeWith(this) :
-                //new Memoizer<TParam1, TResult>(this.function, CacheItemPolicyBuilder.CreateCacheItemPolicy(this.ExpirationType, this.ExpirationValue, this.ExpirationTimeUnit));
-                new Memoizer<TParam1, TResult>(this);
-
-            /*if (this.cacheItemPolicy != null) {*/
-            //memoizer.CacheItemPolicy(this.cacheItemPolicy); /*}*/
-            /*if (this.loggingMethod != null) {*/
-            //memoizer.InstrumentWith(this.loggingMethod); /*}*/
-            return memoizer;
+            return cacheAndShareMemoizerInstance ? LAZY_MEMOIZER_MEMOIZER.Value.InvokeWith(this) : new Memoizer<TParam1, TResult>(this);
         }
-
-        //public TResult InvokeWith(TParam1 someId) { return GetMemoizer().InvokeWith(someId); }
-
-        //public override int GetHashCode()
-        //{
-        //    bool firstTime;
-        //    long funcId = OBJECT_ID_GENERATOR.GetId(this.function, out firstTime);
-
-        //    long hash = 1;
-        //    hash = hash * 17 + funcId;
-        //    hash = hash * 31 + StringProperty.GetHashCode();
-        //    if (ChildrenProperty != null)
-        //        foreach (var someValueClass in ChildrenProperty)
-        //            hash = hash * 13 + someValueClass.GetHashCode();
-        //    return hash;
-        //}
-
-        //public override bool Equals(object otherObject)
-        //{
-        //    bool firstTime;
-        //    long funcId = OBJECT_ID_GENERATOR.GetId(this.function, out firstTime);
-
-        //    if (ReferenceEquals(null, otherObject)) { return false; }
-        //    if (ReferenceEquals(this, otherObject)) { return true; }
-        //    if (!(otherObject is MemoizerBuilder<TParam1, TResult>)) { return false; }
-        //    MemoizerBuilder<TParam1, TResult> otherMemoizerBuilder = otherObject as MemoizerBuilder<TParam1, TResult>;
-        //    return this.IntProperty.Equals(otherMemoizerBuilder.IntProperty)
-        //        && this.StringProperty.Equals(otherMemoizerBuilder.StringProperty)
-        //        && this.ChildrenProperty.Equals(otherMemoizerBuilder.ChildrenProperty);
-        //}
-
-        ////public override int GetHashCode()
-        ////{
-        ////    bool firstTime;
-        ////    long funcId = OBJECT_ID_GENERATOR.GetId(func, out firstTime);
-
-        ////    return CreateParameterHash(funcId, expirationType, expirationValue, expirationTimeUnit);
-
-        ////}
-
     }
 
 
@@ -437,7 +325,7 @@ namespace Memoizer.NET
             this.memoizerBuilder = memoizerBuilder;
         }
 
-        MemoizerBuilder<TParam1, TResult> InjectCacheItemPolicy(TimeUnit timeUnit)
+        MemoizerBuilder<TParam1, TResult> ConfigureCacheItemPolicyWithTimeUnit(TimeUnit timeUnit)
         {
             this.memoizerBuilder.ExpirationType = this.expirationType;
             this.memoizerBuilder.ExpirationValue = this.expirationValue;
@@ -445,11 +333,12 @@ namespace Memoizer.NET
 
             return this.memoizerBuilder;
         }
-        public MemoizerBuilder<TParam1, TResult> Milliseconds { get { return InjectCacheItemPolicy(TimeUnit.Milliseconds); } }
-        public MemoizerBuilder<TParam1, TResult> Seconds { get { return InjectCacheItemPolicy(TimeUnit.Seconds); } }
-        public MemoizerBuilder<TParam1, TResult> Minutes { get { return InjectCacheItemPolicy(TimeUnit.Minutes); } }
-        public MemoizerBuilder<TParam1, TResult> Hours { get { return InjectCacheItemPolicy(TimeUnit.Hours); } }
-        public MemoizerBuilder<TParam1, TResult> Days { get { return InjectCacheItemPolicy(TimeUnit.Days); } }
+
+        public MemoizerBuilder<TParam1, TResult> Milliseconds { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Milliseconds); } }
+        public MemoizerBuilder<TParam1, TResult> Seconds { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Seconds); } }
+        public MemoizerBuilder<TParam1, TResult> Minutes { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Minutes); } }
+        public MemoizerBuilder<TParam1, TResult> Hours { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Hours); } }
+        public MemoizerBuilder<TParam1, TResult> Days { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Days); } }
     }
     #endregion
 
@@ -460,7 +349,7 @@ namespace Memoizer.NET
             new Lazy<Memoizer<MemoizerBuilder<TParam1, TParam2, TResult>, Memoizer<TParam1, TParam2, TResult>>>(
                 () => new Memoizer<MemoizerBuilder<TParam1, TParam2, TResult>, Memoizer<TParam1, TParam2, TResult>>(
                     memoizerBuilder => new Memoizer<TParam1, TParam2, TResult>(memoizerBuilder)),
-                isThreadSafe: typeof(Memoizer<TParam1, TParam2, TResult>) is IThreadSafe);
+                isThreadSafe: typeof(Memoizer<MemoizerBuilder<TParam1, TParam2, TResult>, Memoizer<TParam1, TParam2, TResult>>) is IThreadSafe);
 
         readonly Func<TParam1, TParam2, TResult> function;
         internal Func<TParam1, TParam2, TResult> Function { get { return this.function; } }
@@ -477,9 +366,9 @@ namespace Memoizer.NET
             this.function = functionToBeMemoized;
         }
 
-        public MemoizerBuilder_AwaitingExpirationUnit<TParam1, TParam2, TResult> KeepElementsCachedFor(int cacheItemExpiration)
+        public MemoizerBuilder_AwaitingExpirationUnit<TParam1, TParam2, TResult> KeepItemsCachedFor(int cacheExpirationValue)
         {
-            return new MemoizerBuilder_AwaitingExpirationUnit<TParam1, TParam2, TResult>(cacheItemExpiration, this);
+            return new MemoizerBuilder_AwaitingExpirationUnit<TParam1, TParam2, TResult>(cacheExpirationValue, this);
         }
 
         public MemoizerBuilder<TParam1, TParam2, TResult> InstrumentWith(Action<String> loggerMethod)
@@ -510,7 +399,7 @@ namespace Memoizer.NET
             this.memoizerBuilder = memoizerBuilder;
         }
 
-        MemoizerBuilder<TParam1, TParam2, TResult> InjectCacheItemPolicy(TimeUnit timeUnit)
+        MemoizerBuilder<TParam1, TParam2, TResult> ConfigureCacheItemPolicyWithTimeUnit(TimeUnit timeUnit)
         {
             this.memoizerBuilder.ExpirationType = this.expirationType;
             this.memoizerBuilder.ExpirationValue = this.expirationValue;
@@ -519,11 +408,11 @@ namespace Memoizer.NET
             return this.memoizerBuilder;
         }
 
-        public MemoizerBuilder<TParam1, TParam2, TResult> Milliseconds { get { return InjectCacheItemPolicy(TimeUnit.Milliseconds); } }
-        public MemoizerBuilder<TParam1, TParam2, TResult> Seconds { get { return InjectCacheItemPolicy(TimeUnit.Seconds); } }
-        public MemoizerBuilder<TParam1, TParam2, TResult> Minutes { get { return InjectCacheItemPolicy(TimeUnit.Minutes); } }
-        public MemoizerBuilder<TParam1, TParam2, TResult> Hours { get { return InjectCacheItemPolicy(TimeUnit.Hours); } }
-        public MemoizerBuilder<TParam1, TParam2, TResult> Days { get { return InjectCacheItemPolicy(TimeUnit.Days); } }
+        public MemoizerBuilder<TParam1, TParam2, TResult> Milliseconds { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Milliseconds); } }
+        public MemoizerBuilder<TParam1, TParam2, TResult> Seconds { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Seconds); } }
+        public MemoizerBuilder<TParam1, TParam2, TResult> Minutes { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Minutes); } }
+        public MemoizerBuilder<TParam1, TParam2, TResult> Hours { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Hours); } }
+        public MemoizerBuilder<TParam1, TParam2, TResult> Days { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Days); } }
     }
     #endregion
 
@@ -534,7 +423,7 @@ namespace Memoizer.NET
             new Lazy<Memoizer<MemoizerBuilder<TParam1, TParam2, TParam3, TResult>, Memoizer<TParam1, TParam2, TParam3, TResult>>>(
                 () => new Memoizer<MemoizerBuilder<TParam1, TParam2, TParam3, TResult>, Memoizer<TParam1, TParam2, TParam3, TResult>>(
                     memoizerBuilder => new Memoizer<TParam1, TParam2, TParam3, TResult>(memoizerBuilder)),
-                isThreadSafe: typeof(Memoizer<TParam1, TParam2, TParam3, TResult>) is IThreadSafe);
+                isThreadSafe: typeof(Memoizer<MemoizerBuilder<TParam1, TParam2, TParam3, TResult>, Memoizer<TParam1, TParam2, TParam3, TResult>>) is IThreadSafe);
 
         readonly Func<TParam1, TParam2, TParam3, TResult> function;
         internal Func<TParam1, TParam2, TParam3, TResult> Function { get { return this.function; } }
@@ -551,9 +440,9 @@ namespace Memoizer.NET
             this.function = functionToBeMemoized;
         }
 
-        public MemoizerBuilder_AwaitingExpirationUnit<TParam1, TParam2, TParam3, TResult> KeepElementsCachedFor(int cacheItemExpiration)
+        public MemoizerBuilder_AwaitingExpirationUnit<TParam1, TParam2, TParam3, TResult> KeepItemsCachedFor(int cacheExpirationValue)
         {
-            return new MemoizerBuilder_AwaitingExpirationUnit<TParam1, TParam2, TParam3, TResult>(cacheItemExpiration, this);
+            return new MemoizerBuilder_AwaitingExpirationUnit<TParam1, TParam2, TParam3, TResult>(cacheExpirationValue, this);
         }
 
         public MemoizerBuilder<TParam1, TParam2, TParam3, TResult> InstrumentWith(Action<String> loggerMethod)
@@ -584,7 +473,7 @@ namespace Memoizer.NET
             this.memoizerBuilder = memoizerBuilder;
         }
 
-        MemoizerBuilder<TParam1, TParam2, TParam3, TResult> InjectCacheItemPolicy(TimeUnit timeUnit)
+        MemoizerBuilder<TParam1, TParam2, TParam3, TResult> ConfigureCacheItemPolicyWithTimeUnit(TimeUnit timeUnit)
         {
             this.memoizerBuilder.ExpirationType = this.expirationType;
             this.memoizerBuilder.ExpirationValue = this.expirationValue;
@@ -593,11 +482,11 @@ namespace Memoizer.NET
             return this.memoizerBuilder;
         }
 
-        public MemoizerBuilder<TParam1, TParam2, TParam3, TResult> Milliseconds { get { return InjectCacheItemPolicy(TimeUnit.Milliseconds); } }
-        public MemoizerBuilder<TParam1, TParam2, TParam3, TResult> Seconds { get { return InjectCacheItemPolicy(TimeUnit.Seconds); } }
-        public MemoizerBuilder<TParam1, TParam2, TParam3, TResult> Minutes { get { return InjectCacheItemPolicy(TimeUnit.Minutes); } }
-        public MemoizerBuilder<TParam1, TParam2, TParam3, TResult> Hours { get { return InjectCacheItemPolicy(TimeUnit.Hours); } }
-        public MemoizerBuilder<TParam1, TParam2, TParam3, TResult> Days { get { return InjectCacheItemPolicy(TimeUnit.Days); } }
+        public MemoizerBuilder<TParam1, TParam2, TParam3, TResult> Milliseconds { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Milliseconds); } }
+        public MemoizerBuilder<TParam1, TParam2, TParam3, TResult> Seconds { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Seconds); } }
+        public MemoizerBuilder<TParam1, TParam2, TParam3, TResult> Minutes { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Minutes); } }
+        public MemoizerBuilder<TParam1, TParam2, TParam3, TResult> Hours { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Hours); } }
+        public MemoizerBuilder<TParam1, TParam2, TParam3, TResult> Days { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Days); } }
     }
     #endregion
 
@@ -608,7 +497,7 @@ namespace Memoizer.NET
             new Lazy<Memoizer<MemoizerBuilder<TParam1, TParam2, TParam3, TParam4, TResult>, Memoizer<TParam1, TParam2, TParam3, TParam4, TResult>>>(
                 () => new Memoizer<MemoizerBuilder<TParam1, TParam2, TParam3, TParam4, TResult>, Memoizer<TParam1, TParam2, TParam3, TParam4, TResult>>(
                     memoizerBuilder => new Memoizer<TParam1, TParam2, TParam3, TParam4, TResult>(memoizerBuilder)),
-                isThreadSafe: typeof(Memoizer<TParam1, TParam2, TParam3, TParam4, TResult>) is IThreadSafe);
+                isThreadSafe: typeof(Memoizer<MemoizerBuilder<TParam1, TParam2, TParam3, TParam4, TResult>, Memoizer<TParam1, TParam2, TParam3, TParam4, TResult>>) is IThreadSafe);
 
         readonly Func<TParam1, TParam2, TParam3, TParam4, TResult> function;
         internal Func<TParam1, TParam2, TParam3, TParam4, TResult> Function { get { return this.function; } }
@@ -625,9 +514,9 @@ namespace Memoizer.NET
             this.function = functionToBeMemoized;
         }
 
-        public MemoizerBuilder_AwaitingExpirationUnit<TParam1, TParam2, TParam3, TParam4, TResult> KeepElementsCachedFor(int cacheItemExpiration)
+        public MemoizerBuilder_AwaitingExpirationUnit<TParam1, TParam2, TParam3, TParam4, TResult> KeepItemsCachedFor(int cacheExpirationValue)
         {
-            return new MemoizerBuilder_AwaitingExpirationUnit<TParam1, TParam2, TParam3, TParam4, TResult>(cacheItemExpiration, this);
+            return new MemoizerBuilder_AwaitingExpirationUnit<TParam1, TParam2, TParam3, TParam4, TResult>(cacheExpirationValue, this);
         }
 
         public MemoizerBuilder<TParam1, TParam2, TParam3, TParam4, TResult> InstrumentWith(Action<String> loggerMethod)
@@ -658,7 +547,7 @@ namespace Memoizer.NET
             this.memoizerBuilder = memoizerBuilder;
         }
 
-        MemoizerBuilder<TParam1, TParam2, TParam3, TParam4, TResult> InjectCacheItemPolicy(TimeUnit timeUnit)
+        MemoizerBuilder<TParam1, TParam2, TParam3, TParam4, TResult> ConfigureCacheItemPolicyWithTimeUnit(TimeUnit timeUnit)
         {
             this.memoizerBuilder.ExpirationType = this.expirationType;
             this.memoizerBuilder.ExpirationValue = this.expirationValue;
@@ -667,11 +556,11 @@ namespace Memoizer.NET
             return this.memoizerBuilder;
         }
 
-        public MemoizerBuilder<TParam1, TParam2, TParam3, TParam4, TResult> Milliseconds { get { return InjectCacheItemPolicy(TimeUnit.Milliseconds); } }
-        public MemoizerBuilder<TParam1, TParam2, TParam3, TParam4, TResult> Seconds { get { return InjectCacheItemPolicy(TimeUnit.Seconds); } }
-        public MemoizerBuilder<TParam1, TParam2, TParam3, TParam4, TResult> Minutes { get { return InjectCacheItemPolicy(TimeUnit.Minutes); } }
-        public MemoizerBuilder<TParam1, TParam2, TParam3, TParam4, TResult> Hours { get { return InjectCacheItemPolicy(TimeUnit.Hours); } }
-        public MemoizerBuilder<TParam1, TParam2, TParam3, TParam4, TResult> Days { get { return InjectCacheItemPolicy(TimeUnit.Days); } }
+        public MemoizerBuilder<TParam1, TParam2, TParam3, TParam4, TResult> Milliseconds { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Milliseconds); } }
+        public MemoizerBuilder<TParam1, TParam2, TParam3, TParam4, TResult> Seconds { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Seconds); } }
+        public MemoizerBuilder<TParam1, TParam2, TParam3, TParam4, TResult> Minutes { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Minutes); } }
+        public MemoizerBuilder<TParam1, TParam2, TParam3, TParam4, TResult> Hours { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Hours); } }
+        public MemoizerBuilder<TParam1, TParam2, TParam3, TParam4, TResult> Days { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Days); } }
     }
     #endregion
 }

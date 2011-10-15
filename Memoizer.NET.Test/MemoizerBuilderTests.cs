@@ -210,11 +210,11 @@ namespace Memoizer.NET.Test
         {
             MemoizerBuilder<long, long> slow500Square_MemoizerBuilder = new Func<long, long>(slow500Square).Memoize();
 
-            MemoizerBuilder<long, long> memoizerBuilder1 = FIBONACCI.Memoize().KeepElementsCachedFor(13).Minutes.InstrumentWith(Console.WriteLine);
-            MemoizerBuilder<long, long> memoizerBuilder2 = FIBONACCI.Memoize().KeepElementsCachedFor(13).Minutes.InstrumentWith(Console.WriteLine);
-            MemoizerBuilder<long, long> memoizerBuilder3 = FIBONACCI.Memoize().KeepElementsCachedFor(13).Minutes;
-            MemoizerBuilder<long, long> memoizerBuilder4 = FIBONACCI.Memoize().KeepElementsCachedFor(13).Seconds.InstrumentWith(Console.WriteLine);
-            MemoizerBuilder<long, long> memoizerBuilder5 = slow500Square_MemoizerBuilder.KeepElementsCachedFor(13).Minutes.InstrumentWith(Console.WriteLine);
+            MemoizerBuilder<long, long> memoizerBuilder1 = FIBONACCI.Memoize().KeepItemsCachedFor(13).Minutes.InstrumentWith(Console.WriteLine);
+            MemoizerBuilder<long, long> memoizerBuilder2 = FIBONACCI.Memoize().KeepItemsCachedFor(13).Minutes.InstrumentWith(Console.WriteLine);
+            MemoizerBuilder<long, long> memoizerBuilder3 = FIBONACCI.Memoize().KeepItemsCachedFor(13).Minutes;
+            MemoizerBuilder<long, long> memoizerBuilder4 = FIBONACCI.Memoize().KeepItemsCachedFor(13).Seconds.InstrumentWith(Console.WriteLine);
+            MemoizerBuilder<long, long> memoizerBuilder5 = slow500Square_MemoizerBuilder.KeepItemsCachedFor(13).Minutes.InstrumentWith(Console.WriteLine);
 
             Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder1), Is.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder1)));
             Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder1), Is.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder2)));
@@ -467,9 +467,9 @@ namespace Memoizer.NET.Test
                 slow1000PowerOfThree.Memoize().InstrumentWith(Console.WriteLine);
 
             MemoizerBuilder<long, long> memoizerBuilder2 =
-                memoizerBuilder1.KeepElementsCachedFor(0).Milliseconds
-                                .KeepElementsCachedFor(12).Milliseconds
-                                .KeepElementsCachedFor(120).Milliseconds;
+                memoizerBuilder1.KeepItemsCachedFor(0).Milliseconds
+                                .KeepItemsCachedFor(12).Milliseconds
+                                .KeepItemsCachedFor(120).Milliseconds;
 
             Assert.That(memoizerBuilder1, Is.EqualTo(memoizerBuilder2));
             Assert.That(memoizerBuilder1, Is.EqualTo(memoizerBuilder2));

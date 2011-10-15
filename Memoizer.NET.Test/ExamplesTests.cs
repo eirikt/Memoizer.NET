@@ -327,9 +327,9 @@ namespace Memoizer.NET.Test
             Assert.That(durationInTicks, Is.LessThan(50000)); // ticks
             Assert.That(durationInMilliseconds, Is.LessThan(5)); // ms
 
-            myMessyMemoizerBuilder = myMessyMemoizerBuilder.KeepElementsCachedFor(0).Milliseconds
+            myMessyMemoizerBuilder = myMessyMemoizerBuilder.KeepItemsCachedFor(0).Milliseconds
                                                            .InstrumentWith(Console.WriteLine)
-                                                           .KeepElementsCachedFor(120).Milliseconds;
+                                                           .KeepItemsCachedFor(120).Milliseconds;
 
             IMemoizer<long, string> myMemoizedFunction2 = myMessyMemoizerBuilder.GetMemoizer();
 
