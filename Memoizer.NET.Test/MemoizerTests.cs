@@ -524,11 +524,11 @@ namespace Memoizer.NET.Test
             if (numberOfConcurrentTasks > 700)
                 threadContentionFactor += 2;
             if (numberOfConcurrentTasks > 800)
-                threadContentionFactor += 2;
+                threadContentionFactor += 3;
             if (numberOfConcurrentTasks > 900)
-                threadContentionFactor += 2;
+                threadContentionFactor += 3;
             if (numberOfConcurrentTasks > 1000)
-                threadContentionFactor += 2;
+                threadContentionFactor += 3;
 
             int numberOfMemoizerElementsCleared = memoizer.NumberOfElementsCleared;
             int numberOfMemoizerInvocations = memoizer.NumberOfTimesInvoked;
@@ -552,7 +552,7 @@ namespace Memoizer.NET.Test
                 /*" " + NUMBER_OF_ITERATIONS + " iterations*/ "1 iteration with " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms latency and " + numberOfMemoizerNoCachedExecutions + " function execution(s) took " + durationInMilliseconds + " ms" +
                 " (should take [" + minimumExpectedLatencyInMillis + " < " + durationInMilliseconds + " < " + maximumExpectedLatencyInMillis + "] ms) (threadContentionFactor=" + threadContentionFactor + ").");
 
-            Assert.That(durationInMilliseconds, Is.GreaterThan(minimumExpectedLatencyInMillis));
+            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(minimumExpectedLatencyInMillis));
             Assert.That(durationInMilliseconds, Is.LessThan(maximumExpectedLatencyInMillis));
             //}
         }

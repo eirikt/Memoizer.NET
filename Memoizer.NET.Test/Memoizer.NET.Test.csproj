@@ -45,7 +45,6 @@
     <Compile Include="MemoizerBuilderTests.cs" />
     <Compile Include="MemoryCacheMemoizerTests.cs" />
     <Compile Include="DictionaryMemoizerTests.cs" />
-    <Compile Include="LazyMemoizerTests.cs" />
     <Compile Include="MemoizerTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TwoPhaseExecutorTests.cs" />
