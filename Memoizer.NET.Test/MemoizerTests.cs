@@ -126,8 +126,9 @@ namespace Memoizer.NET.Test
 
         #region MemoizerHelper
         Func<long, long> slow500Square = (arg1 => { Thread.Sleep(500); return arg1 * arg1; });
-        Func<long, long> slow1000Square = (arg1 => { Thread.Sleep(1000); return arg1 * arg1; });
         Func<long, long> slow500PowerOfThree = (arg1 => { Thread.Sleep(500); return arg1 * arg1 * arg1; });
+
+        Func<long, long> slow1000Square = (arg1 => { Thread.Sleep(1000); return arg1 * arg1; });
         Func<long, long> slow1000PowerOfThree = (arg1 => { Thread.Sleep(1000); return arg1 * arg1 * arg1; });
 
         [Test]
@@ -137,7 +138,7 @@ namespace Memoizer.NET.Test
             Assert.That(typeof(Int64).IsPrimitive, Is.True);
             Assert.That(typeof(ulong).IsPrimitive, Is.True);
             Assert.That(typeof(UInt64).IsPrimitive, Is.True);
-            Assert.That(typeof(String).IsPrimitive, Is.False); // Nope
+            Assert.That(typeof(String).IsPrimitive, Is.False); // Nope, they're not
         }
 
         [Test]
@@ -284,7 +285,6 @@ namespace Memoizer.NET.Test
         public void SingleThreadedMemoizedDirectInvocation_Memoizer()
         {
             long startTime = DateTime.Now.Ticks;
-            //IMemoizer<string, long, string> memoizer = ReallySlowNetworkInvocation1c.Memoize().GetMemoizer();
             for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
                 for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
                 {
@@ -292,11 +292,11 @@ namespace Memoizer.NET.Test
                     Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "SingleThreadedMemoizedDirectInvocation_Memoizer" + 14L));
                 }
             long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.InRange(1000L, 1050L));
+            Assert.That(durationInMilliseconds, Is.InRange(NETWORK_RESPONSE_LATENCY_IN_MILLIS, NETWORK_RESPONSE_LATENCY_IN_MILLIS + 200));
             Console.WriteLine(
                 "SingleThreadedMemoizedDirectInvocation_Memoizer: " + NUMBER_OF_ITERATIONS + " iterations of " + NUMBER_OF_CONCURRENT_TASKS + " sequential, identical, memoized method invocations with " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms latency" +
                 " took " + durationInMilliseconds + " ms" +
-                " (should take > " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms)");
+                " (should take [ " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + ", " + (NETWORK_RESPONSE_LATENCY_IN_MILLIS + 200) + "] ms)");
         }
 
 
@@ -381,7 +381,7 @@ namespace Memoizer.NET.Test
         {
             long startTime = DateTime.Now.Ticks;
             IMemoizer<string, long, string> memoizer =
-                ReallySlowNetworkInvocation1a.Cache().CachePolicy(null).InstrumentWith(Console.WriteLine).GetMemoizer();
+                ReallySlowNetworkInvocation1a.Memoize().InstrumentWith(Console.WriteLine).GetMemoizer();
             for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
             {
                 // Arrange
@@ -506,7 +506,7 @@ namespace Memoizer.NET.Test
 
             long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
 
-            // The more threads, the more contention overhard, and the longer this test will take.
+            // The more threads, the more contention overhead, and the longer this test will take.
             // Just a silly empiric hack emulating the CLR resource contention behaviour...
             int threadContentionFactor = 1;
             if (numberOfConcurrentTasks > 100)
@@ -564,7 +564,7 @@ namespace Memoizer.NET.Test
         //Memoizer<long, long> MEMOIZED_FIBONACCI_INSTRUMENTED = new Memoizer<long, long>("fibonacci", (arg => arg < 2 ? arg : FIBONACCI(arg - 1) + FIBONACCI(arg - 2)));
         //MEMOIZED_FIBONACCI_INSTRUMENTED.InstrumentWith(Console.WriteLine);
         //readonly Func<long, long> MEMOIZED_FIBONACCI = FIBONACCI.MemoizedFunc();
-        readonly IMemoizer<long, long> MEMOIZED_FIBONACCI_IINVOCABLE = FIBONACCI.Cache().GetMemoizer();
+        readonly IMemoizer<long, long> MEMOIZED_FIBONACCI = FIBONACCI.GetMemoizer();
 
         [Test]
         public void FibonacciNumbers(
@@ -600,8 +600,8 @@ namespace Memoizer.NET.Test
         //[Values(6)] int numberOfFibonacciArguments)
         {
             long startTime = DateTime.Now.Ticks;
-            Console.WriteLine("(Memoized [IInvocable.Hash=" + MEMOIZED_FIBONACCI_IINVOCABLE.GetHashCode() + "]) Fibonacci(" + numberOfFibonacciArguments + ") =");
-            for (int i = 0; i < numberOfFibonacciArguments; ++i) { Console.Write(MEMOIZED_FIBONACCI_IINVOCABLE.InvokeWith(i) + " "); }
+            Console.WriteLine("(Memoized [IInvocable.Hash=" + MEMOIZED_FIBONACCI.GetHashCode() + "]) Fibonacci(" + numberOfFibonacciArguments + ") =");
+            for (int i = 0; i < numberOfFibonacciArguments; ++i) { Console.Write(MEMOIZED_FIBONACCI.InvokeWith(i) + " "); }
             long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
             Console.WriteLine();
             Console.WriteLine("Took " + durationInMilliseconds + " ms");

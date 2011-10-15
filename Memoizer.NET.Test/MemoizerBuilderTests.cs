@@ -14,10 +14,7 @@
  * limitations under the License.
  */
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Runtime.Caching;
 using System.Threading;
 using NUnit.Framework;
 
@@ -29,12 +26,33 @@ namespace Memoizer.NET.Test
     {
 
         #region Test classes
-        class SomeDomainClass
+        class SomeClass
         {
             internal int IntProperty { get; set; }
             internal string StringProperty { get; set; }
-            internal ICollection<SomeDomainClass> ChildrenProperty { get; set; }
+            internal ICollection<SomeClass> ChildrenProperty { get; set; }
         }
+
+        class SomeEntityClass
+        {
+            readonly string entityId = Guid.NewGuid().ToString();
+            internal int IntProperty { get; set; }
+            internal string StringProperty { get; set; }
+            internal ICollection<SomeEntityClass> ChildrenProperty { get; set; }
+            public override int GetHashCode()
+            {
+                return this.entityId.GetHashCode();
+            }
+            public override bool Equals(object otherObject)
+            {
+                if (ReferenceEquals(null, otherObject)) { return false; }
+                if (ReferenceEquals(this, otherObject)) { return true; }
+                if (!(otherObject is SomeEntityClass)) { return false; }
+                SomeEntityClass otherSomeEntityClass = otherObject as SomeEntityClass;
+                return this.entityId == otherSomeEntityClass.entityId;
+            }
+        }
+
         class SomeValueClass
         {
             internal int IntProperty { get; set; }
@@ -42,28 +60,23 @@ namespace Memoizer.NET.Test
             internal ICollection<SomeValueClass> ChildrenProperty { get; set; }
             public override int GetHashCode()
             {
-                int intPropertyHashCode = IntProperty.GetHashCode();
-                int stringPropertyHashCode = StringProperty.GetHashCode();
-                int childrenPropertyHashCode = -1;
+                int hash = 1;
+                hash = hash * 17 + IntProperty.GetHashCode();
+                hash = hash * 31 + StringProperty.GetHashCode();
                 if (ChildrenProperty != null)
                     foreach (var someValueClass in ChildrenProperty)
-                        childrenPropertyHashCode = childrenPropertyHashCode + someValueClass.GetHashCode();
-                //Console.WriteLine("IntProperty.GetHashCode()=" + intPropertyHashCode);
-                //Console.WriteLine("StringProperty.GetHashCode()=" + stringPropertyHashCode);
-                //Console.WriteLine("Children.GetHashCode()=" + childrenPropertyHashCode);
-                return intPropertyHashCode + stringPropertyHashCode + childrenPropertyHashCode;
+                        hash = hash * 13 + someValueClass.GetHashCode();
+                return hash;
             }
-
             public override bool Equals(object otherObject)
             {
-                if (otherObject == null) { return false; }
-                if (otherObject == this) { return true; }
+                if (ReferenceEquals(null, otherObject)) { return false; }
+                if (ReferenceEquals(this, otherObject)) { return true; }
                 if (!(otherObject is SomeValueClass)) { return false; }
                 SomeValueClass otherSomeValueClass = otherObject as SomeValueClass;
-                bool equal = this.IntProperty.Equals(otherSomeValueClass.IntProperty)
-                             && this.StringProperty.Equals(otherSomeValueClass.StringProperty)
-                             && this.ChildrenProperty.Equals(otherSomeValueClass.ChildrenProperty);
-                return equal;
+                return this.IntProperty.Equals(otherSomeValueClass.IntProperty)
+                    && this.StringProperty.Equals(otherSomeValueClass.StringProperty)
+                    && this.ChildrenProperty.Equals(otherSomeValueClass.ChildrenProperty);
             }
         }
         #endregion
@@ -72,6 +85,12 @@ namespace Memoizer.NET.Test
         [Test]
         public void PrimitiveParameterHashingTests()
         {
+            //Console.WriteLine(2L.GetHashCode());
+            //Console.WriteLine(2M.GetHashCode());
+            //Console.WriteLine(2L.GetType().GetHashCode());
+            //Console.WriteLine(2M.GetType().GetHashCode());
+            //Assert.That(2L.GetHashCode(), Is.Not.EqualTo(2M.GetHashCode()));
+
             Assert.That(MemoizerHelper.CreateParameterHash(2L), Is.EqualTo(MemoizerHelper.CreateParameterHash(2L)));
             Assert.That(MemoizerHelper.CreateParameterHash(2L), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(2M)));
             Assert.That(MemoizerHelper.CreateParameterHash(2L, 2M), Is.EqualTo(MemoizerHelper.CreateParameterHash(2L, 2M)));
@@ -85,28 +104,58 @@ namespace Memoizer.NET.Test
 
 
         [Test]
-        public void ComplexParameterHashingTests()
+        public void DefaultObjectParameterHashingTests()
         {
-            SomeDomainClass someDomainObject1A = new SomeDomainClass { IntProperty = 1, StringProperty = "1" };
-            SomeDomainClass someDomainObject1B = new SomeDomainClass { IntProperty = 1, StringProperty = "1" };
-            SomeDomainClass someDomainObject1C = new SomeDomainClass { IntProperty = 1, StringProperty = "1" };
-            SomeDomainClass someDomainObject2 = new SomeDomainClass { IntProperty = 2, StringProperty = "2" };
-            SomeDomainClass someDomainObject3 = new SomeDomainClass { IntProperty = 3, StringProperty = "3" };
-            someDomainObject1A.ChildrenProperty = new List<SomeDomainClass> { someDomainObject2, someDomainObject3 };
-            someDomainObject1B.ChildrenProperty = new List<SomeDomainClass> { someDomainObject2, someDomainObject3 };
-            someDomainObject1C.ChildrenProperty = new List<SomeDomainClass> { someDomainObject2, someDomainObject3, someDomainObject2, someDomainObject3 };
+            SomeClass someObject1A = new SomeClass { IntProperty = 1, StringProperty = "1" };
+            SomeClass someObject1B = new SomeClass { IntProperty = 1, StringProperty = "1" };
+            SomeClass someObject1C = new SomeClass { IntProperty = 1, StringProperty = "1" };
+            SomeClass someObject2 = new SomeClass { IntProperty = 2, StringProperty = "2" };
+            SomeClass someObject3 = new SomeClass { IntProperty = 3, StringProperty = "3" };
+            someObject1A.ChildrenProperty = new List<SomeClass> { someObject2, someObject3 };
+            someObject1B.ChildrenProperty = new List<SomeClass> { someObject2, someObject3 };
+            someObject1C.ChildrenProperty = new List<SomeClass> { someObject2, someObject3, someObject2, someObject3 };
 
-            Assert.That(MemoizerHelper.CreateParameterHash(someDomainObject1A), Is.EqualTo(MemoizerHelper.CreateParameterHash(someDomainObject1A)));
-            // NB!
-            Assert.That(MemoizerHelper.CreateParameterHash(someDomainObject1A), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(someDomainObject1B)));
+            Assert.That(MemoizerHelper.CreateParameterHash(someObject1A), Is.EqualTo(MemoizerHelper.CreateParameterHash(someObject1A)));
+            // NB! Default hashing is referende equality...
+            Assert.That(MemoizerHelper.CreateParameterHash(someObject1A), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(someObject1B)));
 
-            Assert.That(MemoizerHelper.CreateParameterHash(someDomainObject1A), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(someDomainObject1C)));
-            Assert.That(MemoizerHelper.CreateParameterHash(someDomainObject1A), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(someDomainObject2)));
-            Assert.That(MemoizerHelper.CreateParameterHash(someDomainObject1A), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(someDomainObject3)));
+            Assert.That(MemoizerHelper.CreateParameterHash(someObject1A), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(someObject1C)));
+            Assert.That(MemoizerHelper.CreateParameterHash(someObject1A), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(someObject2)));
+            Assert.That(MemoizerHelper.CreateParameterHash(someObject1A), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(someObject3)));
 
-            Assert.That(MemoizerHelper.CreateParameterHash(someDomainObject1A, someDomainObject2), Is.EqualTo(MemoizerHelper.CreateParameterHash(someDomainObject1A, someDomainObject2)));
-            Assert.That(MemoizerHelper.CreateParameterHash(someDomainObject1A, someDomainObject2), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(someDomainObject1A, someDomainObject1A)));
+            Assert.That(MemoizerHelper.CreateParameterHash(someObject1A, someObject2), Is.EqualTo(MemoizerHelper.CreateParameterHash(someObject1A, someObject2)));
+            Assert.That(MemoizerHelper.CreateParameterHash(someObject1A, someObject2), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(someObject1A, someObject1A)));
+        }
 
+
+        [Test]
+        public void EntityObjectParameterHashingTests()
+        {
+            SomeEntityClass someEntityObject1A = new SomeEntityClass { IntProperty = 1, StringProperty = "1" };
+            SomeEntityClass someEntityObject1B = new SomeEntityClass { IntProperty = 1, StringProperty = "1" };
+            SomeEntityClass someEntityObject1C = new SomeEntityClass { IntProperty = 1, StringProperty = "1" };
+            SomeEntityClass someEntityObject2 = new SomeEntityClass { IntProperty = 2, StringProperty = "2" };
+            SomeEntityClass someEntityObject3 = new SomeEntityClass { IntProperty = 3, StringProperty = "3" };
+            someEntityObject1A.ChildrenProperty = new List<SomeEntityClass> { someEntityObject2, someEntityObject3 };
+            someEntityObject1B.ChildrenProperty = new List<SomeEntityClass> { someEntityObject2, someEntityObject3 };
+            someEntityObject1C.ChildrenProperty = new List<SomeEntityClass> { someEntityObject2, someEntityObject3, someEntityObject2, someEntityObject3 };
+
+            Assert.That(MemoizerHelper.CreateParameterHash(someEntityObject1A), Is.EqualTo(MemoizerHelper.CreateParameterHash(someEntityObject1A)));
+            // NB! Different entity objects are never equal
+            Assert.That(MemoizerHelper.CreateParameterHash(someEntityObject1A), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(someEntityObject1B)));
+
+            Assert.That(MemoizerHelper.CreateParameterHash(someEntityObject1A), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(someEntityObject1C)));
+            Assert.That(MemoizerHelper.CreateParameterHash(someEntityObject1A), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(someEntityObject2)));
+            Assert.That(MemoizerHelper.CreateParameterHash(someEntityObject1A), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(someEntityObject3)));
+
+            Assert.That(MemoizerHelper.CreateParameterHash(someEntityObject1A, someEntityObject2), Is.EqualTo(MemoizerHelper.CreateParameterHash(someEntityObject1A, someEntityObject2)));
+            Assert.That(MemoizerHelper.CreateParameterHash(someEntityObject1A, someEntityObject2), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(someEntityObject1A, someEntityObject1A)));
+        }
+
+
+        [Test]
+        public void ValueObjectParameterHashingTests()
+        {
             SomeValueClass someValueObject1A = new SomeValueClass { IntProperty = 1, StringProperty = "1" };
             SomeValueClass someValueObject1B = new SomeValueClass { IntProperty = 1, StringProperty = "1" };
             SomeValueClass someValueObject1C = new SomeValueClass { IntProperty = 1, StringProperty = "1" };
@@ -117,17 +166,17 @@ namespace Memoizer.NET.Test
             someValueObject1C.ChildrenProperty = new List<SomeValueClass> { someValueObject2, someValueObject3, someValueObject2, someValueObject3 };
 
             Assert.That(MemoizerHelper.CreateParameterHash(someValueObject1A), Is.EqualTo(MemoizerHelper.CreateParameterHash(someValueObject1A)));
-            // NB!
+            // NB! Value equality
             Assert.That(MemoizerHelper.CreateParameterHash(someValueObject1A), Is.EqualTo(MemoizerHelper.CreateParameterHash(someValueObject1B)));
-            Assert.That(MemoizerHelper.CreateParameterHash(someValueObject1A, someValueObject1B), Is.EqualTo(MemoizerHelper.CreateParameterHash(someValueObject1A, someValueObject1B)));
-            // NB!
-            Assert.That(MemoizerHelper.CreateParameterHash(someValueObject1A, someValueObject1B), Is.EqualTo(MemoizerHelper.CreateParameterHash(someValueObject1B, someValueObject1A)));
-            Assert.That(MemoizerHelper.CreateParameterHash(someValueObject1A, someValueObject1C), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(someValueObject1C, someValueObject1A)));
 
             Assert.That(MemoizerHelper.CreateParameterHash(someValueObject1A), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(someValueObject1C)));
             Assert.That(MemoizerHelper.CreateParameterHash(someValueObject1A), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(someValueObject2)));
             Assert.That(MemoizerHelper.CreateParameterHash(someValueObject1A), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(someValueObject3)));
 
+            Assert.That(MemoizerHelper.CreateParameterHash(someValueObject1A, someValueObject1B), Is.EqualTo(MemoizerHelper.CreateParameterHash(someValueObject1A, someValueObject1B)));
+            // NB! Value equality
+            Assert.That(MemoizerHelper.CreateParameterHash(someValueObject1A, someValueObject1B), Is.EqualTo(MemoizerHelper.CreateParameterHash(someValueObject1B, someValueObject1A)));
+            Assert.That(MemoizerHelper.CreateParameterHash(someValueObject1A, someValueObject1C), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(someValueObject1C, someValueObject1A)));
             Assert.That(MemoizerHelper.CreateParameterHash(someValueObject1A, someValueObject2), Is.EqualTo(MemoizerHelper.CreateParameterHash(someValueObject1A, someValueObject2)));
             Assert.That(MemoizerHelper.CreateParameterHash(someValueObject1A, someValueObject2), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(someValueObject1A, someValueObject1A)));
         }
@@ -138,94 +187,71 @@ namespace Memoizer.NET.Test
         static Func<long, long> FIBONACCI3 = (arg => arg <= 1 ? arg : FIBONACCI(arg - 1) + FIBONACCI(arg - 2));
         static Func<long, long> FIBONACCI4 = (arg => arg <= 1 ? arg : FIBONACCI4(arg - 1) + FIBONACCI4(arg - 2));
 
-        // Func<long, long> nonStaticFibonacci= (arg => arg <= 1 ? arg : nonStaticFibonacci(arg - 1) + nonStaticFibonacci(arg - 2)); // Does not compile
+        //Func<long, long> nonStaticFibonacci= (arg => arg <= 1 ? arg : nonStaticFibonacci(arg - 1) + nonStaticFibonacci(arg - 2)); // Does not compile
 
 
-        Func<long, long> slow500Square = (arg1 => { Thread.Sleep(500); return arg1 * arg1; });
-        long Slow500Square(long arg)
+        static readonly Func<long, long> slow500Square = (arg1 =>
+        {
+            Thread.Sleep(500);
+            return arg1 * arg1;
+        });
+        static long Slow500Square(long arg)
         {
             Thread.Sleep(500);
             return arg * arg;
         }
 
 
-        Func<long, long> slow1000PowerOfThree = (arg1 => { Thread.Sleep(1000); return arg1 * arg1 * arg1; });
-
-        //Func<long, long> memSlowSquare = slowSquare.Memoize();
-        //long Square(long arg)
-        //{
-        //    return memSlowSquare.Invoke(arg);
-        //}
-
-
-        static readonly MemoizerBuilder<long, long> FIBONACCI_MEMOIZER_BUILDER = new Func<long, long>(FIBONACCI).Cache();
-        static readonly MemoizerBuilder<long, long> FIBONACCI2_MEMOIZER_BUILDER = new Func<long, long>(FIBONACCI2).Cache();
-        static readonly MemoizerBuilder<long, long> FIBONACCI3_MEMOIZER_BUILDER = new Func<long, long>(FIBONACCI3).Cache();
-        static readonly MemoizerBuilder<long, long> FIBONACCI4_MEMOIZER_BUILDER = new Func<long, long>(FIBONACCI4).Cache();
-
-        //MemoizerBuilder<long, long> slow500Square_MemoizerBuilder = new Func<long, long>(slow500Square).Cache(); // Does not compile
-        //MemoizerBuilder<long, long> Slow500Square_MemoizerBuilder = new Func<long, long>(Slow500Square).Cache(); // Does not compile
+        readonly Func<long, long> slow1000PowerOfThree = (arg1 => { Thread.Sleep(1000); return arg1 * arg1 * arg1; });
 
 
         [Test]
-        public void MemoizerBuilderHashingTests()
+        public void MemoizerBuilderHashingTests_ConfigValueEquality()
         {
-            MemoizerBuilder<long, long> slow500Square_MemoizerBuilder = new Func<long, long>(slow500Square).Cache();
-            MemoizerBuilder<long, long> slow1000PowerOfThree_MemoizerBuilder = new Func<long, long>(slow1000PowerOfThree).Cache();
+            MemoizerBuilder<long, long> slow500Square_MemoizerBuilder = new Func<long, long>(slow500Square).Memoize();
+
+            MemoizerBuilder<long, long> memoizerBuilder1 = FIBONACCI.Memoize().KeepElementsCachedFor(13).Minutes.InstrumentWith(Console.WriteLine);
+            MemoizerBuilder<long, long> memoizerBuilder2 = FIBONACCI.Memoize().KeepElementsCachedFor(13).Minutes.InstrumentWith(Console.WriteLine);
+            MemoizerBuilder<long, long> memoizerBuilder3 = FIBONACCI.Memoize().KeepElementsCachedFor(13).Minutes;
+            MemoizerBuilder<long, long> memoizerBuilder4 = FIBONACCI.Memoize().KeepElementsCachedFor(13).Seconds.InstrumentWith(Console.WriteLine);
+            MemoizerBuilder<long, long> memoizerBuilder5 = slow500Square_MemoizerBuilder.KeepElementsCachedFor(13).Minutes.InstrumentWith(Console.WriteLine);
+
+            Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder1), Is.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder1)));
+            Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder1), Is.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder2)));
+            // Logger action property not included in MemoizerBuilder equality ...yet
+            Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder1), Is.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder3)));
+            Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder1), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder4)));
+            Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder1), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder5)));
+        }
+
+
+        static readonly MemoizerBuilder<long, long> FIBONACCI_MEMOIZER_BUILDER = new Func<long, long>(FIBONACCI).Memoize();
+        static readonly MemoizerBuilder<long, long> FIBONACCI2_MEMOIZER_BUILDER = new Func<long, long>(FIBONACCI2).Memoize();
+        static readonly MemoizerBuilder<long, long> FIBONACCI3_MEMOIZER_BUILDER = new Func<long, long>(FIBONACCI3).Memoize();
+        static readonly MemoizerBuilder<long, long> FIBONACCI4_MEMOIZER_BUILDER = new Func<long, long>(FIBONACCI4).Memoize();
+
+        //MemoizerBuilder<long, long> slow500Square_MemoizerBuilder = new Func<long, long>(slow500Square).Memoize(); // Does not compile
+        //MemoizerBuilder<long, long> Slow500Square_MemoizerBuilder = new Func<long, long>(Slow500Square).Memoize(); // Does not compile
+
+
+        [Test]
+        public void MemoizerBuilderHashingTests_FuncReferenceEquality()
+        {
+            MemoizerBuilder<long, long> slow500Square_MemoizerBuilder = new Func<long, long>(Slow500Square).Memoize();
+            MemoizerBuilder<long, long> slow1000PowerOfThree_MemoizerBuilder = slow1000PowerOfThree.Memoize();
 
             Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(FIBONACCI_MEMOIZER_BUILDER), Is.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(FIBONACCI_MEMOIZER_BUILDER)));
-            // NB!
+            // NB! Separate MemoizerBuilder instances are not equal due to Func reference equality demand
             Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(FIBONACCI_MEMOIZER_BUILDER), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(FIBONACCI2_MEMOIZER_BUILDER)));
             Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(FIBONACCI_MEMOIZER_BUILDER), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(FIBONACCI3_MEMOIZER_BUILDER)));
             Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(FIBONACCI_MEMOIZER_BUILDER), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(FIBONACCI4_MEMOIZER_BUILDER)));
             Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(FIBONACCI_MEMOIZER_BUILDER), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(slow500Square_MemoizerBuilder)));
+            Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(FIBONACCI_MEMOIZER_BUILDER), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(slow1000PowerOfThree_MemoizerBuilder)));
 
-            Console.WriteLine(MemoizerHelper.CreateMemoizerBuilderHash(slow500Square_MemoizerBuilder));
-            Console.WriteLine(MemoizerHelper.CreateMemoizerBuilderHash(slow1000PowerOfThree_MemoizerBuilder));
             Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(slow500Square_MemoizerBuilder), Is.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(slow500Square_MemoizerBuilder)));
             Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(slow500Square_MemoizerBuilder), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(slow1000PowerOfThree_MemoizerBuilder)));
             Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(slow1000PowerOfThree_MemoizerBuilder), Is.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(slow1000PowerOfThree_MemoizerBuilder)));
             Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(slow1000PowerOfThree_MemoizerBuilder), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(slow500Square_MemoizerBuilder)));
-
-            MemoizerBuilder<long, long> memoizerBuilder1 = FIBONACCI_MEMOIZER_BUILDER.KeepElementsCachedFor(13).Minutes.InstrumentWith(Console.WriteLine);
-            MemoizerBuilder<long, long> memoizerBuilder2 = FIBONACCI_MEMOIZER_BUILDER.KeepElementsCachedFor(23).Minutes.InstrumentWith(Console.WriteLine);
-            MemoizerBuilder<long, long> memoizerBuilder3 = FIBONACCI_MEMOIZER_BUILDER.KeepElementsCachedFor(23).Seconds.InstrumentWith(Console.WriteLine);
-            MemoizerBuilder<long, long> memoizerBuilder4 = slow500Square_MemoizerBuilder.KeepElementsCachedFor(13).Minutes.InstrumentWith(Console.WriteLine);
-            MemoizerBuilder<long, long> memoizerBuilder5 = FIBONACCI_MEMOIZER_BUILDER.KeepElementsCachedFor(13).Minutes;
-            MemoizerBuilder<long, long> memoizerBuilder6 = FIBONACCI_MEMOIZER_BUILDER.KeepElementsCachedFor(13).Minutes.InstrumentWith(Console.WriteLine);
-
-            //Console.WriteLine(MemoizerHelper.CreateParameterHash(memoizerBuilder1));
-            //Console.WriteLine(MemoizerHelper.CreateParameterHash(memoizerBuilder2));
-            //Console.WriteLine(MemoizerHelper.CreateParameterHash(memoizerBuilder3));
-            //Console.WriteLine(MemoizerHelper.CreateParameterHash(memoizerBuilder4));
-            //Console.WriteLine(MemoizerHelper.CreateParameterHash(memoizerBuilder5));
-            //Console.WriteLine(MemoizerHelper.CreateParameterHash(memoizerBuilder6));
-            Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder1), Is.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder1)));
-            Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder1), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder2)));
-            Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder1), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder3)));
-            Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder1), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder4)));
-            Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder1), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder5)));
-            Assert.That(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder1), Is.EqualTo(MemoizerHelper.CreateMemoizerBuilderHash(memoizerBuilder6)));
-
-
-
-            CacheItemPolicy cacheItemPolicy1 = new CacheItemPolicy { SlidingExpiration = new TimeSpan(0, 2, 0, 2) };
-            CacheItemPolicy cacheItemPolicy2 = new CacheItemPolicy { SlidingExpiration = new TimeSpan(0, 2, 0, 2) };
-            CacheItemPolicy cacheItemPolicy3 = new CacheItemPolicy { SlidingExpiration = new TimeSpan(0, 2, 0, 3) };
-
-            Console.WriteLine(MemoizerHelper.CreateParameterHash(cacheItemPolicy1));
-            Console.WriteLine(MemoizerHelper.CreateParameterHash(cacheItemPolicy2));
-            Console.WriteLine(MemoizerHelper.CreateParameterHash(cacheItemPolicy3));
-            Assert.That(MemoizerHelper.CreateParameterHash(cacheItemPolicy1), Is.EqualTo(MemoizerHelper.CreateParameterHash(cacheItemPolicy1)));
-            Assert.That(MemoizerHelper.CreateParameterHash(cacheItemPolicy1), Is.EqualTo(MemoizerHelper.CreateParameterHash(cacheItemPolicy2)));
-            Assert.That(MemoizerHelper.CreateParameterHash(cacheItemPolicy1), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(cacheItemPolicy3)));
-
-
-            Action<String> loggingAction = Console.WriteLine;
-
-            Console.WriteLine(MemoizerHelper.CreateParameterHash(loggingAction));
-            Assert.That(MemoizerHelper.CreateParameterHash(loggingAction), Is.EqualTo(MemoizerHelper.CreateParameterHash(loggingAction)));
-
         }
         #endregion
 
@@ -333,37 +359,37 @@ namespace Memoizer.NET.Test
 
 
             startTime = DateTime.Now.Ticks;
-            result = slow500Square.Cache().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(40);
+            result = slow500Square.Memoize().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(40);
             durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("Square(40) = " + result + " [first time 'on-the-spot-memoized', instrumented invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
             Assert.That(durationInTicks / 10000, Is.GreaterThanOrEqualTo(500)); // ms (not memoized invocation)
 
             startTime = DateTime.Now.Ticks;
-            result = slow500Square.Cache().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(40);
+            result = slow500Square.Memoize().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(40);
             durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("Square(40) = " + result + " [second time time 'on-the-spot-memoized' instrumented invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
             Assert.That(durationInTicks / 10000, Is.LessThan(20)); // ms (memoized invocation)
 
             startTime = DateTime.Now.Ticks;
-            result = slow500Square.Cache().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(50);
+            result = slow500Square.Memoize().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(50);
             durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("Square(50) = " + result + " [first time 'on-the-spot-memoized' instrumented invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
             Assert.That(durationInTicks / 10000, Is.GreaterThanOrEqualTo(500)); // ms (not memoized invocation)
 
             startTime = DateTime.Now.Ticks;
-            result = slow500Square.Cache().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(60);
+            result = slow500Square.Memoize().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(60);
             durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("Square(60) = " + result + " [first time 'on-the-spot-memoized' instrumented invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
             Assert.That(durationInTicks / 10000, Is.GreaterThanOrEqualTo(500)); // ms (not memoized invocation)
 
             startTime = DateTime.Now.Ticks;
-            result = slow500Square.Cache().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(50);
+            result = slow500Square.Memoize().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(50);
             durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("Square(50) = " + result + " [second time time 'on-the-spot-memoized' instrumented invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
             Assert.That(durationInTicks / 10000, Is.LessThan(20)); // ms (memoized invocation)
 
             startTime = DateTime.Now.Ticks;
-            result = slow500Square.Cache().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(60);
+            result = slow500Square.Memoize().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(60);
             durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("Square(60) = " + result + " [second time time 'on-the-spot-memoized' instrumented invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
             Assert.That(durationInTicks / 10000, Is.LessThan(20)); // ms (memoized invocation)
@@ -371,15 +397,15 @@ namespace Memoizer.NET.Test
 
             // TODO: fails!!
             startTime = DateTime.Now.Ticks;
-            IMemoizer<long, long> slow1000PowerOfThreeMemoizer1 = slow1000PowerOfThree.Cache().InstrumentWith(Console.WriteLine).GetMemoizer();
-            result = slow1000PowerOfThree.Cache().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(40);
+            IMemoizer<long, long> slow1000PowerOfThreeMemoizer1 = slow1000PowerOfThree.Memoize().InstrumentWith(Console.WriteLine).GetMemoizer();
+            result = slow1000PowerOfThree.Memoize().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(40);
             durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("PowerOfThree(40) = " + result + " [first time 'on-the-spot-memoized' instrumented invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
             Assert.That(durationInTicks / 10000, Is.GreaterThanOrEqualTo(1000)); // ms (not memoized invocation)
 
             startTime = DateTime.Now.Ticks;
-            IMemoizer<long, long> slow1000PowerOfThreeMemoizer2 = slow1000PowerOfThree.Cache().InstrumentWith(Console.WriteLine).GetMemoizer();
-            result = slow1000PowerOfThree.Cache().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(40);
+            IMemoizer<long, long> slow1000PowerOfThreeMemoizer2 = slow1000PowerOfThree.Memoize().InstrumentWith(Console.WriteLine).GetMemoizer();
+            result = slow1000PowerOfThree.Memoize().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(40);
             durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("PowerOfThree(40) = " + result + " [second time time 'on-the-spot-memoized' instrumented invocation took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
             Assert.That(slow1000PowerOfThreeMemoizer1, Is.SameAs(slow1000PowerOfThreeMemoizer2));
@@ -397,7 +423,7 @@ namespace Memoizer.NET.Test
         public void ShouldBuildFullBlownMemoizerWithOnelineAndStillGetMemoization()
         {
             long startTime = DateTime.Now.Ticks;
-            MemoizerBuilder<long, long> slowSquareMemoizerBuilder = slow500Square.Cache();
+            MemoizerBuilder<long, long> slowSquareMemoizerBuilder = slow500Square.Memoize();
             IMemoizer<long, long> memoizedSlowSquare = slowSquareMemoizerBuilder.GetMemoizer();
             long durationInTicks = DateTime.Now.Ticks - startTime;
             Console.WriteLine("Memoizer construction: square.Memoize().Get() took " + durationInTicks / 10000 + " ms | " + durationInTicks + " ticks]");
@@ -435,33 +461,19 @@ namespace Memoizer.NET.Test
 
 
         [Test]
-        //[Ignore]
-        public void MultipleCacheItemPolicies_LatestAddedOverridesPrevouslyAddedOnes()
+        public void MemoizerBuilderIsMutable()
         {
             MemoizerBuilder<long, long> memoizerBuilder1 =
-                slow1000PowerOfThree.Cache()
-                                    .CachePolicy(default(CacheItemPolicy))
-                                    .InstrumentWith(Console.WriteLine);
+                slow1000PowerOfThree.Memoize().InstrumentWith(Console.WriteLine);
+
             MemoizerBuilder<long, long> memoizerBuilder2 =
-                 memoizerBuilder1.CachePolicy(default(CacheItemPolicy))
-                                 .KeepElementsCachedFor(0).Milliseconds
-                                 .KeepElementsCachedFor(12).Milliseconds
-                                 .KeepElementsCachedFor(120).Milliseconds;
+                memoizerBuilder1.KeepElementsCachedFor(0).Milliseconds
+                                .KeepElementsCachedFor(12).Milliseconds
+                                .KeepElementsCachedFor(120).Milliseconds;
 
             Assert.That(memoizerBuilder1, Is.EqualTo(memoizerBuilder2));
             Assert.That(memoizerBuilder1, Is.EqualTo(memoizerBuilder2));
             Assert.That(memoizerBuilder1.GetMemoizer(), Is.SameAs(memoizerBuilder2.GetMemoizer()));
-
-            //// TODO: ajaj - this test is not thread-safe!!
-            //Assert.That(LatencyInstrumentedRun(myMessyMemoizerBuilder, DATABASE_RESPONSE_LATENCY_IN_MILLIS, "First method invocation", "(should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)"),
-            //    Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS * TimeSpan.TicksPerMillisecond));
-            //Assert.That(LatencyInstrumentedRun(myMessyMemoizerBuilder, DATABASE_RESPONSE_LATENCY_IN_MILLIS, "Second method invocation", "(cached, should take < 5 ms)"),
-            //    Is.LessThan(5)); // ms
-            //Thread.Sleep(30);
-            //Assert.That(LatencyInstrumentedRun(myMessyMemoizerBuilder, DATABASE_RESPONSE_LATENCY_IN_MILLIS, "Third method invocation", "(cached, should take < 5 ms)"),
-            //    Is.LessThan(5)); // ms
         }
-
-
     }
 }

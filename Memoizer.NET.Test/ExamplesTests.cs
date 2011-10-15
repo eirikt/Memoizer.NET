@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 using System;
-using System.Runtime.Caching;
 using System.Threading;
 using NUnit.Framework;
 
@@ -36,36 +35,44 @@ namespace Memoizer.NET.Test
             return METHOD_RESPONSE_ELEMENT + longArg;
         }
 
-        string TypicalDatabaseInvocation1(long longArg)
+        string TypicalDatabaseInvocation(long longArg)
         {
-            return TypicalDatabaseStaticInvocation(longArg);
+            Console.WriteLine("TypicalDatabaseInvocation invoked...");
+            Thread.Sleep(DATABASE_RESPONSE_LATENCY_IN_MILLIS);
+            Console.WriteLine("TypicalDatabaseInvocation returns...");
+            return METHOD_RESPONSE_ELEMENT + longArg;
         }
 
-        Func<long, string> TypicalDatabaseInvocation2a =
-           new Func<long, string>(delegate(long longArg)
+        Func<long, string> typicalDatabaseInvocation_InlinedFunc1 = new Func<long, string>(delegate(long longArg)
            {
                Console.WriteLine("TypicalDatabaseInvocation invoked...");
                Thread.Sleep(DATABASE_RESPONSE_LATENCY_IN_MILLIS);
                Console.WriteLine("TypicalDatabaseInvocation returns...");
                return METHOD_RESPONSE_ELEMENT + longArg;
-               // Or via _static_ method declaration:
-               //return TypicalDatabaseStaticInvocation(longArg);
            });
 
-        Func<long, string> TypicalDatabaseInvocation2b =
-          delegate(long longArg)
+        Func<long, string> typicalDatabaseInvocation_InlinedFunc2 = delegate(long longArg)
           {
               Console.WriteLine("TypicalDatabaseInvocation invoked...");
               Thread.Sleep(DATABASE_RESPONSE_LATENCY_IN_MILLIS);
               Console.WriteLine("TypicalDatabaseInvocation returns...");
               return METHOD_RESPONSE_ELEMENT + longArg;
-              // Or via _static_ method declaration:
-              //return TypicalDatabaseStaticInvocation(longArg);
           };
 
-        Func<long, string> TypicalDatabaseInvocation2c = TypicalDatabaseStaticInvocation;
 
-        Func<long, string> TypicalDatabaseInvocation3(long longArg)
+        Func<long, string> typicalDatabaseInvocation_DelegatedFunc1 = new Func<long, string>(delegate(long longArg)
+           {
+               return TypicalDatabaseStaticInvocation(longArg);
+           });
+
+        Func<long, string> typicalDatabaseInvocation_DelegatedFunc2 = delegate(long longArg)
+          {
+              return TypicalDatabaseStaticInvocation(longArg);
+          };
+
+        Func<long, string> typicalDatabaseInvocation_DelegatedFunc3 = TypicalDatabaseStaticInvocation;
+
+        Func<long, string> typicalDatabaseInvocation_DelegatedFunc4(long longArg)
         {
             TypicalDatabaseStaticInvocation(longArg);
             return null;
@@ -73,14 +80,15 @@ namespace Memoizer.NET.Test
 
 
         // Example 1 [default caching policy]
-        readonly Func<long, string> MyExpensiveFunction1 = TypicalDatabaseStaticInvocation;
+        readonly Func<long, string> myExpensiveFunction = TypicalDatabaseStaticInvocation;
 
         string ExpensiveFunction1(long someId)
         {
-            return MyExpensiveFunction1.CachedInvoke(someId);
+            return myExpensiveFunction.CachedInvoke(someId);
         }
 
 
+        // TODO: explicit CacheItemPolicy setting not supported - should we?
         //// Example 2a [expiration policy: keep items alive for 30 minutes]
         //readonly Func<long, string> MyExpensiveFunction2a = TypicalDatabaseStaticInvocation;
 
@@ -93,102 +101,16 @@ namespace Memoizer.NET.Test
         //}
 
 
-        // Example 2b [expiration policy: keep items alive for 30 minutes]
-        readonly Func<long, string> MyExpensiveFunction2b = TypicalDatabaseStaticInvocation;
+        // Example 2b [expiration policy: keep items alive for 1 secons]
+        //readonly Func<long, string> myExpensiveFunction2b = TypicalDatabaseStaticInvocation;
 
         string ExpensiveFunction2b(long someId)
         {
-            return MyExpensiveFunction2b.CacheFor(1).Seconds.GetMemoizer().InvokeWith(someId);
+            return myExpensiveFunction.CacheFor(1).Seconds.GetMemoizer().InvokeWith(someId);
+            // Or
+            //return MyExpensiveFunction2b.Memoize().KeepElementsCachedFor(1).Seconds.GetMemoizer().InvokeWith(someId);
         }
 
-
-
-        #region Not so concurrent environments
-
-        readonly Func<long, string> MyExpensiveFunction1_NotSoThreadSafeButCompact = TypicalDatabaseStaticInvocation;
-
-        // [default caching policy]
-        [Test]
-        public void NotSoThreadSafe_ButCompact()
-        {
-            long startTime = DateTime.Now.Ticks;
-
-            //string retVal = ((Func<long, string>)TypicalDatabaseStaticInvocation).Cache().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(42L); // Fails
-            string retVal = MyExpensiveFunction1_NotSoThreadSafeButCompact.CachedInvoke(42L); // OK
-            //string retVal = ExpensiveFunction1(42L); // OK
-
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
-            long durationInTicks = DateTime.Now.Ticks - startTime;
-            long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
-            Console.WriteLine("Example 1: first on-the-spot-memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)");
-
-            startTime = DateTime.Now.Ticks;
-
-            //retVal = ((Func<long, string>)TypicalDatabaseStaticInvocation).Cache().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(42L); // Fails
-            retVal = MyExpensiveFunction1_NotSoThreadSafeButCompact.CachedInvoke(42L); // OK
-            //retVal = ExpensiveFunction1(42L); // OK
-
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
-            Console.WriteLine("Example 1: second on-the-spot-memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take < 10 ms)");
-        }
-
-
-        // TODO: putting the casted expression inside a method does not help either...
-        [Test]
-        public void FuncCastedStaticMethodMemoizerDoesNotGetMemoized()
-        {
-            long startTime = DateTime.Now.Ticks;
-
-            string retVal = ((Func<long, string>)TypicalDatabaseStaticInvocation).Cache().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(42L);
-
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
-            long durationInTicks = DateTime.Now.Ticks - startTime;
-            long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
-            Console.WriteLine("FuncCastedStaticMethodMemoizerDoesNotGetMemoized: first on-the-spot-memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)");
-
-            startTime = DateTime.Now.Ticks;
-
-            retVal = ((Func<long, string>)TypicalDatabaseStaticInvocation).Cache().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(42L); // Fails
-
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            // NB!
-            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
-
-            Console.WriteLine("FuncCastedStaticMethodMemoizerDoesNotGetMemoized: secondfirst on-the-spot-memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)");
-            Console.WriteLine("Example 1: second on-the-spot-memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take < 10 ms)");
-        }
-        #endregion
-
-        #region Concurrent environments
-
-        readonly IMemoizer<long, string> MyExpensiveMemoizedFunction = ((Func<long, string>)TypicalDatabaseStaticInvocation).CreateMemoizer();
-
-        public void ThreadSafe()
-        {
-            long startTime = DateTime.Now.Ticks;
-            string retVal = MyExpensiveMemoizedFunction.InvokeWith(42L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
-            long durationInTicks = DateTime.Now.Ticks - startTime;
-            long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
-            Console.WriteLine("Example 1: first on-the-spot-memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)");
-
-            startTime = DateTime.Now.Ticks;
-            retVal = MyExpensiveMemoizedFunction.InvokeWith(42L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
-            Console.WriteLine("Example 1: second on-the-spot-memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take < 10 ms)");
-        }
-        #endregion
 
         [Test]
         public void RunExample1()
@@ -261,7 +183,7 @@ namespace Memoizer.NET.Test
             Assert.That(durationInMilliseconds, Is.LessThan(10));
             Console.WriteLine("Example 2b: second memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take < 10 ms)");
 
-            Thread.Sleep(1000);
+            Thread.Sleep(1000); // Memoized value expires
 
             startTime = DateTime.Now.Ticks;
             retVal = ExpensiveFunction2b(42L);
@@ -272,127 +194,189 @@ namespace Memoizer.NET.Test
             Console.WriteLine("Example 2b: third memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)");
         }
 
-        #region API
-        //[Test]
-        //public void MultipleMemoizedFunc()
-        //{
-        //    Func<long, string> MyMemoizerAbusedFunction = MyExpensiveFunction1.MemoizedFunc().MemoizedFunc().MemoizedFunc();
 
-        //    //Assert.That(LatencyInstrumentedRun(MyMemoizerAbusedFunction, DATABASE_RESPONSE_LATENCY_IN_MILLIS, "First memoized^3 method"), Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS * TimeSpan.TicksPerMillisecond));
+        //#region Not so concurrent environments
+
+        //readonly Func<long, string> MyExpensiveFunction1_NotSoThreadSafeButCompact = TypicalDatabaseStaticInvocation;
+
+        //// [default caching policy]
+        //[Test]
+        //public void NotSoThreadSafe_ButCompact()
+        //{
         //    long startTime = DateTime.Now.Ticks;
-        //    string retVal = MyMemoizerAbusedFunction(42L);
+
+        //    string retVal = MyExpensiveFunction1_NotSoThreadSafeButCompact.Memoize().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(42L); // Fails
+        //    //string retVal = .CachedInvoke(42L); // OK
+        //    //string retVal = ExpensiveFunction1(42L); // OK
+
         //    Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
         //    long durationInTicks = DateTime.Now.Ticks - startTime;
         //    long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
         //    Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
-        //    Console.WriteLine("First memoized^3 method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)");
+        //    Console.WriteLine("Example 1: first on-the-spot-memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)");
 
-        //    //Assert.That(LatencyInstrumentedRun(MyMemoizerAbusedFunction, DATABASE_RESPONSE_LATENCY_IN_MILLIS, "Second memoized^3 method"), Is.LessThan(10*TimeSpan.TicksPerMillisecond));
         //    startTime = DateTime.Now.Ticks;
-        //    retVal = MyMemoizerAbusedFunction(42L);
+
+        //    retVal = MyExpensiveFunction1_NotSoThreadSafeButCompact.Memoize().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(42L); // Fails
+        //    //retVal = MyExpensiveFunction1_NotSoThreadSafeButCompact.CachedInvoke(42L); // OK
+        //    //retVal = ExpensiveFunction1(42L); // OK
+
         //    Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
         //    durationInTicks = DateTime.Now.Ticks - startTime;
         //    durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
         //    Assert.That(durationInMilliseconds, Is.LessThan(10));
-        //    Console.WriteLine("Second memoized^3 method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take < 10 ms)");
+        //    Console.WriteLine("Example 1: second on-the-spot-memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take < 10 ms)");
         //}
 
 
+        // TODO: putting the casted expression inside a method does not help...
         [Test]
-        public void MultipleCacheItemPolicies_LatestAddedOverridesPrevouslyAddedOnes_NotThreadSafeVersion()
+        public void FuncCastedStaticMethodMemoizerDoesNotGetCached()
+        {
+            long startTime = DateTime.Now.Ticks;
+
+            string retVal = ((Func<long, string>)TypicalDatabaseStaticInvocation).Memoize().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(42L);
+
+            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
+            long durationInTicks = DateTime.Now.Ticks - startTime;
+            long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
+            Console.WriteLine("FuncCastedStaticMethodMemoizerDoesNotGetMemoized: first on-the-spot-memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)");
+
+            startTime = DateTime.Now.Ticks;
+
+            retVal = ((Func<long, string>)TypicalDatabaseStaticInvocation).Memoize().InstrumentWith(Console.WriteLine).GetMemoizer().InvokeWith(42L); // Fails
+
+            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            // NB!
+            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
+
+            Console.WriteLine("FuncCastedStaticMethodMemoizerDoesNotGetMemoized: secondfirst on-the-spot-memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)");
+            Console.WriteLine("Example 1: second on-the-spot-memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take < 10 ms)");
+        }
+        //#endregion
+
+        //#region Concurrent environments
+
+        //readonly IMemoizer<long, string> MyExpensiveMemoizedFunction = ((Func<long, string>)TypicalDatabaseStaticInvocation).CreateMemoizer();
+
+        //public void ThreadSafe()
+        //{
+        //    long startTime = DateTime.Now.Ticks;
+        //    string retVal = MyExpensiveMemoizedFunction.InvokeWith(42L);
+        //    Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
+        //    long durationInTicks = DateTime.Now.Ticks - startTime;
+        //    long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+        //    Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
+        //    Console.WriteLine("Example 1: first on-the-spot-memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)");
+
+        //    startTime = DateTime.Now.Ticks;
+        //    retVal = MyExpensiveMemoizedFunction.InvokeWith(42L);
+        //    Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
+        //    durationInTicks = DateTime.Now.Ticks - startTime;
+        //    durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+        //    Assert.That(durationInMilliseconds, Is.LessThan(10));
+        //    Console.WriteLine("Example 1: second on-the-spot-memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take < 10 ms)");
+        //}
+        //#endregion
+
+
+        // Strange timing issues with this approach... don't know exactly why
+        //long LatencyInstrumentedRun(MemoizerBuilder<long, string> memoizerBuilder, long latencyInMilliseconds = 0, string heading = "", string ending = "")
+        //{
+        //    long startTime = DateTime.Now.Ticks;
+        //    string retVal = memoizerBuilder.GetMemoizer().InvokeWith(4224L);
+        //    long durationInTicks = DateTime.Now.Ticks - startTime;
+        //    long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+        //    Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 4224L));
+        //    Console.WriteLine(heading + " invocation with latency " + latencyInMilliseconds + " ms took " + durationInMilliseconds + " ms | " + durationInTicks + " ticks " + ending);
+        //    return durationInMilliseconds;
+        //}
+
+
+        // TODO: rename...
+        [Test]
+        public void MultipleCacheItemPolicies_LatestAddedOverridesPrevouslyAddedOnes___()
         {
             MemoizerBuilder<long, string> myMessyMemoizerBuilder =
-                //((Func<long, string>)TypicalDatabaseStaticInvocation).Cache()
-                TypicalDatabaseInvocation2c.Cache()
-                                           .CachePolicy(default(CacheItemPolicy))
-                                           .InstrumentWith(Console.WriteLine);
-            //IInvocable<long, string> MyMemoizerAbusedInvocable = MyMemoizerAbusedFunction.GetInvocable();
-            myMessyMemoizerBuilder = myMessyMemoizerBuilder.CachePolicy(default(CacheItemPolicy))
-                                                           .KeepElementsCachedFor(0).Milliseconds
-                                                           .KeepElementsCachedFor(12).Milliseconds
-                                                           .KeepElementsCachedFor(120).Milliseconds;
-            Assert.That(LatencyInstrumentedRun(myMessyMemoizerBuilder, DATABASE_RESPONSE_LATENCY_IN_MILLIS, "First method invocation", "(should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)"),
-                Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS * TimeSpan.TicksPerMillisecond));
-            // TODO: ajaj - this is not thread-safe!!
-            Assert.That(LatencyInstrumentedRun(myMessyMemoizerBuilder, DATABASE_RESPONSE_LATENCY_IN_MILLIS, "Second method invocation", "(cached, should take < 5 ms)"),
-                Is.LessThan(5)); // ms
-            Thread.Sleep(30);
-            Assert.That(LatencyInstrumentedRun(myMessyMemoizerBuilder, DATABASE_RESPONSE_LATENCY_IN_MILLIS, "Third method invocation", "(cached, should take < 5 ms)"),
-                Is.LessThan(5)); // ms
-        }
+                typicalDatabaseInvocation_InlinedFunc2.CacheFor(12).Hours
+                                                      .InstrumentWith(Console.WriteLine);
 
-        long LatencyInstrumentedRun(MemoizerBuilder<long, string> memoizerBuilder, long latencyInMilliseconds, string heading, string ending)
-        {
-            long startTime = DateTime.Now.Ticks;
-            string retVal = memoizerBuilder.GetMemoizer().InvokeWith(4224L);
-            long durationInTicks = DateTime.Now.Ticks - startTime;
-            long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 4224L));
-            //Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
-            Console.WriteLine(heading + " invocation with latency " + latencyInMilliseconds + " ms took " + durationInMilliseconds + " ms" + " " + ending);
-            return durationInTicks;
-        }
+            IMemoizer<long, string> myMemoizedFunction = myMessyMemoizerBuilder.GetMemoizer();
 
-        //long LatencyInstrumentedRun(Func<long, string> func, long latencyInMilliseconds, string heading)
-        //{
-        //    long startTime = DateTime.Now.Ticks;
-        //    string retVal = func(4224L);
-        //    Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 4224L));
-        //    long durationInTicks = DateTime.Now.Ticks - startTime;
-        //    long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-        //    //Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
-        //    Console.WriteLine(heading + " invocation with latency " + latencyInMilliseconds + " ms took " + durationInMilliseconds + " ms");// (should take > " + latencyInMilliseconds + " ms)");
-        //    return durationInTicks;
-        //}
-
-
-        [Test]
-        public void MultipleCacheItemPolicies_LatestAddedOverridesPrevouslyAddedOnes_ThreadSafeVersion()
-        {
-            IMemoizer<long, string> myMessyMemoizerBuilder1 =
-                ((Func<long, string>)TypicalDatabaseStaticInvocation).Cache()
-                                    .CachePolicy(default(CacheItemPolicy))
-                                    .InstrumentWith(Console.WriteLine)
-                                    .CreateMemoizer(); // unique memoizer
-            IMemoizer<long, string> myMessyMemoizerBuilder2 = ((Func<long, string>)TypicalDatabaseStaticInvocation).Cache()
-                                                                                  .CachePolicy(default(CacheItemPolicy))
-                                                                                  .KeepElementsCachedFor(0).Milliseconds
-                                                                                  .KeepElementsCachedFor(12).Milliseconds
-                                                                                  .KeepElementsCachedFor(120).Milliseconds
-                                                                                  .GetMemoizer(); // cached and shared memoizer
-            // TODO: ...
             //Assert.That(LatencyInstrumentedRun(myMessyMemoizerBuilder, DATABASE_RESPONSE_LATENCY_IN_MILLIS, "First method invocation", "(should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)"),
-            //    Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS * TimeSpan.TicksPerMillisecond));
-            //Assert.That(LatencyInstrumentedRun(myMessyMemoizerBuilder, DATABASE_RESPONSE_LATENCY_IN_MILLIS, "Second method invocation", "(cached, should take < 5 ms)"),
-            //    Is.LessThan(5)); // ms
-            //Thread.Sleep(30);
-            //Assert.That(LatencyInstrumentedRun(myMessyMemoizerBuilder, DATABASE_RESPONSE_LATENCY_IN_MILLIS, "Third method invocation", "(cached, should take < 5 ms)"),
-            //    Is.LessThan(5)); // ms
-        }
-
-        long LatencyInstrumentedRun(IMemoizer<long, string> memoizerBuilder, long latencyInMilliseconds, string heading, string ending)
-        {
+            //    Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
             long startTime = DateTime.Now.Ticks;
-            string retVal = memoizerBuilder.InvokeWith(4224L);
+            string retVal = myMemoizedFunction.InvokeWith(4224L);
             long durationInTicks = DateTime.Now.Ticks - startTime;
             long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
             Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 4224L));
-            //Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
-            Console.WriteLine(heading + " invocation with latency " + latencyInMilliseconds + " ms took " + durationInMilliseconds + " ms" + " " + ending);
-            return durationInTicks;
+            Console.WriteLine("4224 invocation with latency " + durationInMilliseconds + " ms took " + durationInMilliseconds + " ms | " + durationInTicks + " ticks " + "(should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)");
+            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
+
+            //Assert.That(LatencyInstrumentedRun(myMessyMemoizerBuilder, DATABASE_RESPONSE_LATENCY_IN_MILLIS, "Second method invocation", "(cached, should take < 5 ms)"),
+            //    Is.LessThan(20)); // ms (20 ms just for LatencyInstrumentedRun method to finish...)
+            startTime = DateTime.Now.Ticks;
+            retVal = myMemoizedFunction.InvokeWith(4224L);
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 4224L));
+            Console.WriteLine("4224 invocation with latency " + durationInMilliseconds + " ms took " + durationInMilliseconds + " ms | " + durationInTicks + " ticks " + "(cached, should take < 5 ms)");
+            Assert.That(durationInTicks, Is.LessThan(50000)); // ticks
+            Assert.That(durationInMilliseconds, Is.LessThan(5)); // ms
+
+            myMessyMemoizerBuilder = myMessyMemoizerBuilder.KeepElementsCachedFor(0).Milliseconds
+                                                           .InstrumentWith(Console.WriteLine)
+                                                           .KeepElementsCachedFor(120).Milliseconds;
+
+            IMemoizer<long, string> myMemoizedFunction2 = myMessyMemoizerBuilder.GetMemoizer();
+
+            //Assert.That(LatencyInstrumentedRun(myMessyMemoizerBuilder, DATABASE_RESPONSE_LATENCY_IN_MILLIS, "Second method invocation", "(cached, should take < 5 ms)"),
+            //    Is.LessThan(20)); // ms (20 ms just for LatencyInstrumentedRun method to finish...)
+            startTime = DateTime.Now.Ticks;
+            retVal = myMemoizedFunction2.InvokeWith(123456L);
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 123456L));
+            Console.WriteLine("123456 invocation with latency " + durationInMilliseconds + " ms took " + durationInMilliseconds + " ms | " + durationInTicks + " ticks " + "(should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)");
+            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
+
+            startTime = DateTime.Now.Ticks;
+            retVal = myMemoizedFunction2.InvokeWith(123456);
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 123456));
+            Console.WriteLine("123456 invocation with latency " + durationInMilliseconds + " ms took " + durationInMilliseconds + " ms | " + durationInTicks + " ticks " + "(cached, should take < 5 ms)");
+            Assert.That(durationInMilliseconds, Is.LessThan(5)); // ms
+
+            Thread.Sleep(300);
+
+            //Assert.That(LatencyInstrumentedRun(myMessyMemoizerBuilder, DATABASE_RESPONSE_LATENCY_IN_MILLIS, "Third method invocation", "(cached, should take < 5 ms)"),
+            //    Is.LessThan(20)); // ms (20 ms just for LatencyInstrumentedRun method to finish...)
+            // Previous memoizer still intact
+            startTime = DateTime.Now.Ticks;
+            retVal = myMemoizedFunction.InvokeWith(4224L);
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 4224L));
+            Console.WriteLine("4224 invocation with latency " + durationInMilliseconds + " ms took " + durationInMilliseconds + " ms | " + durationInTicks + " ticks " + "(cached, should take < 5 ms)");
+            Assert.That(durationInMilliseconds, Is.LessThan(5)); // ms
+
+            startTime = DateTime.Now.Ticks;
+            retVal = myMemoizedFunction2.InvokeWith(123456L);
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 123456L));
+            Console.WriteLine("4224 invocation with latency " + durationInMilliseconds + " ms took " + durationInMilliseconds + " ms | " + durationInTicks + " ticks " + "(should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)");
+            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
         }
 
-        //long LatencyInstrumentedRun(Func<long, string> func, long latencyInMilliseconds, string heading)
-        //{
-        //    long startTime = DateTime.Now.Ticks;
-        //    string retVal = func(4224L);
-        //    Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 4224L));
-        //    long durationInTicks = DateTime.Now.Ticks - startTime;
-        //    long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-        //    //Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
-        //    Console.WriteLine(heading + " invocation with latency " + latencyInMilliseconds + " ms took " + durationInMilliseconds + " ms");// (should take > " + latencyInMilliseconds + " ms)");
-        //    return durationInTicks;
-        //}
-        #endregion
+
+        // TODO: concurrent use of different and equal memoizer builders with the same func
+
+
+
     }
 }
