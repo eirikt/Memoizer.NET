@@ -18,7 +18,6 @@ using System.Threading;
 
 namespace Memoizer.NET
 {
-
     /// <remarks>
     /// A class for synchronized execution of a number of worker/task threads.
     /// All participating worker/task threads must be a <code>AbstractTwoPhaseExecutorThread</code>-derived instance. 
@@ -199,8 +198,7 @@ namespace Memoizer.NET
     {
         static int TASK_COUNTER;
 
-        public TrivialTask(Barrier barrier)
-            : base(barrier, true)
+        public TrivialTask(Barrier barrier) : base(barrier, true)
         {
             TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
             ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);
