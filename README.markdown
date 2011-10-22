@@ -75,8 +75,6 @@ A class for synchronized execution of an arbitrary number of worker/task threads
 ### Usage
 See the `Memoizer.NET.Test.MemoizerTests` class for usage examples. In v0.6 a mini DSL/builder for easy `Memoizer.Net.TwoPhaseExecutor` usage will be included. Right now the API is rather cumbersome/sucks...
 
----  
-
 ## Building the project *
     %DOTNET4_FRAMEWORK_HOME%\MSBuild Memoizer.NET.csproj /p:Configuration=Release
 
@@ -96,8 +94,6 @@ See the `Memoizer.NET.Test.MemoizerTests` class for usage examples. In v0.6 a mi
 
 #### 3) A command-line window with administrator rights:
     WinKey -> 'cmd' -> CTRL+SHIFT+ENTER
-
----
 
 ## HELP/TODO
 
