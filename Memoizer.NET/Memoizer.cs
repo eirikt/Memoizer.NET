@@ -165,7 +165,6 @@ namespace Memoizer.NET
                     taskCacheItem = newTaskCacheItem;
                     // The 'Start' method is idempotent
                     ((Task<TResult>)taskCacheItem.Value).Start();
-                    //((Task<TResult>)cacheItem.Value).Start();
                     Interlocked.Increment(ref this.numberOfTimesNoCacheInvoked);
                     ConditionalLogging("(Possibly expensive) async caching function execution #" + this.numberOfTimesNoCacheInvoked);
                 }
