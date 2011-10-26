@@ -538,7 +538,7 @@ namespace Memoizer.NET.Test
             Assert.That(numberOfMemoizerElementsCleared, Is.LessThanOrEqualTo(numberOfMemoizerNoCachedExecutions));
 
             //int totalExpectedLatencyInMillis = DATABASE_RESPONSE_LATENCY_IN_MILLIS + (memoizer.NumberOfElementsCleared * DATABASE_RESPONSE_LATENCY_IN_MILLIS);
-            int minimumExpectedLatencyInMillis = DATABASE_RESPONSE_LATENCY_IN_MILLIS - 10; // Due to some CLT-magic from time to time...
+            int minimumExpectedLatencyInMillis = DATABASE_RESPONSE_LATENCY_IN_MILLIS - 20; // Due to some CLR-magic from time to time...
             //int maximumExpectedLatencyInMillis = (numberOfMemoizerNoCachedExecutions * DATABASE_RESPONSE_LATENCY_IN_MILLIS) + (DATABASE_RESPONSE_LATENCY_IN_MILLIS / 2);
             int maximumExpectedLatencyInMillis = DATABASE_RESPONSE_LATENCY_IN_MILLIS + ((numberOfMemoizerNoCachedExecutions * DATABASE_RESPONSE_LATENCY_IN_MILLIS) * threadContentionFactor);
 
