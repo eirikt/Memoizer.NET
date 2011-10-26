@@ -558,53 +558,125 @@ namespace Memoizer.NET.Test
         }
 
 
-        static public readonly Func<long, long> FIBONACCI = (arg => arg <= 1 ? arg : FIBONACCI(arg - 1) + FIBONACCI(arg - 2));
+        static int FIBONACCI_INVOCATIONS;
 
-        //Memoizer<long, long> MEMOIZED_FIBONACCI = new Memoizer<long, long>("fibonacci", FIBONACCI).InstrumentUsing(Console.WriteLine);
-        //Memoizer<long, long> MEMOIZED_FIBONACCI_INSTRUMENTED = new Memoizer<long, long>("fibonacci", (arg => arg < 2 ? arg : FIBONACCI(arg - 1) + FIBONACCI(arg - 2)));
-        //MEMOIZED_FIBONACCI_INSTRUMENTED.InstrumentWith(Console.WriteLine);
-        //readonly Func<long, long> MEMOIZED_FIBONACCI = FIBONACCI.MemoizedFunc();
-        readonly IMemoizer<long, long> KINDOF_MEMOIZED_FIBONACCI = FIBONACCI.GetMemoizer();
+
+        static readonly Func<long, long> fibonacci = (arg =>
+        {
+            ++FIBONACCI_INVOCATIONS;
+            if (arg < 2)
+                return arg;
+
+            return fibonacci(arg - 1) + fibonacci(arg - 2);
+        });
+        static readonly Func<long, long> FIBONACCI2 = (arg => arg < 2 ? arg : fibonacci(arg - 1) + fibonacci(arg - 2));
+
+
+        static readonly Func<long, long> memoizedFibonacci =
+            (arg =>
+                {
+                    ++FIBONACCI_INVOCATIONS;
+                    if (arg < 2) return arg;
+                    return memoizedFibonacci.CachedInvoke(arg - 1) + memoizedFibonacci.CachedInvoke(arg - 2);
+                });
+        static readonly Func<long, long> MEMOIZED_FIBONACCI2 = (arg => arg < 2 ? arg : memoizedFibonacci.CachedInvoke(arg - 1) + memoizedFibonacci.CachedInvoke(arg - 2));
+
+
+        [Test]
+        public void FibonacciFunctionGetsCached()
+        {
+            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(fibonacci.Memoize()), Is.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(fibonacci.Memoize())));
+            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(memoizedFibonacci.Memoize()), Is.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(memoizedFibonacci.Memoize())));
+            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(fibonacci.Memoize()), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(memoizedFibonacci.Memoize())));
+            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(memoizedFibonacci.Memoize()), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(fibonacci.Memoize())));
+        }
+
 
         [Test]
         public void FibonacciNumbers(
-            [Values(1, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40)] int numberOfFibonacciArguments)
-        //[Values(6)] int numberOfFibonacciArguments)
+            [Values(38)] int numberOfFibonacciArguments)
         {
+            FIBONACCI_INVOCATIONS = 0;
+            Console.Write("Fibonacci(" + numberOfFibonacciArguments + ") = ");
             long startTime = DateTime.Now.Ticks;
-            Console.WriteLine("Fibonacci(" + numberOfFibonacciArguments + ") =");
-            for (int i = 0; i < numberOfFibonacciArguments; ++i) { Console.Write(FIBONACCI(i) + " "); }
-            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
+            Console.Write(fibonacci(numberOfFibonacciArguments));
+            long durationInTicks = DateTime.Now.Ticks - startTime;
+            long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
             Console.WriteLine();
-            Console.WriteLine("Took " + durationInMilliseconds + " ms");
+            Console.WriteLine("Fibonacci function invoked " + FIBONACCI_INVOCATIONS + " times. Took " + durationInTicks + " ticks | " + durationInMilliseconds + " ms");
+
+            Console.WriteLine();
+            FIBONACCI_INVOCATIONS = 0;
+            Console.Write("Fibonacci(" + numberOfFibonacciArguments + ") = ");
+            startTime = DateTime.Now.Ticks;
+            Console.Write(memoizedFibonacci(numberOfFibonacciArguments));
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Console.WriteLine();
+            Console.WriteLine("Fibonacci function invoked " + FIBONACCI_INVOCATIONS + " times. Took " + durationInTicks + " ticks | " + durationInMilliseconds + " ms");
         }
 
-        //// TODO: Memoization of recursive functions not yet supported
-        //[Test]
-        //public void MemoizedFibonacciNumbers_Nope(
-        //    [Values(1, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40)] int numberOfFibonacciArguments)
-        ////[Values(6)] int numberOfFibonacciArguments)
-        //{
-        //    long startTime = DateTime.Now.Ticks;
-        //    Console.WriteLine("(Memoized [Func.Hash=" + MEMOIZED_FIBONACCI.GetHashCode() + "]) Fibonacci(" + numberOfFibonacciArguments + ") =");
-        //    for (int i = 0; i < numberOfFibonacciArguments; ++i) { Console.Write(MEMOIZED_FIBONACCI(i) + " "); }
-        //    long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
-        //    Console.WriteLine();
-        //    Console.WriteLine("Took " + durationInMilliseconds + " ms");
-        //}
 
-        // TODO: Memoization of recursive functions not yet supported
         [Test]
-        public void MemoizedFibonacciNumbers_KindOf(
-            [Values(1, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40)] int numberOfFibonacciArguments)
-        //[Values(6)] int numberOfFibonacciArguments)
+        public void FibonacciSequence_NonMemoized(
+        [Values(-1, 0, 1, 2, 3, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 33, 34, 35, 36, 37, 38)] int numberOfFibonacciArguments)
+        //[Values(-1, 0, 1, 2, 3, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 39, 40, 41, 42)] int numberOfFibonacciArguments)
         {
+            FIBONACCI_INVOCATIONS = 0;
+            Console.WriteLine("Fibonacci(" + numberOfFibonacciArguments + ") = ");
             long startTime = DateTime.Now.Ticks;
-            Console.WriteLine("(Memoized [IInvocable.Hash=" + KINDOF_MEMOIZED_FIBONACCI.GetHashCode() + "]) Fibonacci(" + numberOfFibonacciArguments + ") =");
-            for (int i = 0; i < numberOfFibonacciArguments; ++i) { Console.Write(KINDOF_MEMOIZED_FIBONACCI.InvokeWith(i) + " "); }
-            long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
+            for (int i = 0; i <= numberOfFibonacciArguments; ++i)
+                Console.Write(fibonacci(i) + " ");
+            long durationInTicks = DateTime.Now.Ticks - startTime;
+            long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
             Console.WriteLine();
-            Console.WriteLine("Took " + durationInMilliseconds + " ms");
+            Console.WriteLine("Fibonacci function invoked " + String.Format("{0:0,0}", FIBONACCI_INVOCATIONS) + " times. Took " + String.Format("{0:0,0}", durationInTicks) + " ticks | " + durationInMilliseconds + " ms");
+            if (numberOfFibonacciArguments > 30)
+            {
+                Assert.That(durationInMilliseconds, Is.GreaterThan(20));
+            }
+        }
+
+
+        [Test]
+        public void FibonacciSequence_StillNotMemoized(
+        [Values(-1, 0, 1, 2, 3, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 33, 34, 35, 36, 37, 38)] int numberOfFibonacciArguments)
+        //[Values(-1, 0, 1, 2, 3, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 39, 40, 41, 42)] int numberOfFibonacciArguments)
+        {
+            FIBONACCI_INVOCATIONS = 0;
+            Console.WriteLine("Fibonacci(" + numberOfFibonacciArguments + ") = ");
+            long startTime = DateTime.Now.Ticks;
+            for (int i = 0; i <= numberOfFibonacciArguments; ++i)
+                Console.Write(fibonacci.CachedInvoke<long,long>(i) + " ");
+            long durationInTicks = DateTime.Now.Ticks - startTime;
+            long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Console.WriteLine();
+            Console.WriteLine("Fibonacci function invoked " + String.Format("{0:0,0}", FIBONACCI_INVOCATIONS) + " times. Took " + String.Format("{0:0,0}", durationInTicks) + " ticks | " + durationInMilliseconds + " ms");
+            if (numberOfFibonacciArguments > 30)
+            {
+                Assert.That(durationInMilliseconds, Is.GreaterThan(20));
+            }
+        }
+
+
+        [Test]
+        public void FibonacciSequence_Memoized(
+        //[Values(-1, 0, 1, 2, 3, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 33, 34, 35, 36, 37, 38)] int numberOfFibonacciArguments)
+        [Values(-1, 0, 1, 2, 3, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 39, 40, 41, 42)] int numberOfFibonacciArguments)
+        {
+            FIBONACCI_INVOCATIONS = 0;
+            Console.WriteLine("Fibonacci(" + numberOfFibonacciArguments + ") = ");
+            long startTime = DateTime.Now.Ticks;
+            for (int i = 0; i <= numberOfFibonacciArguments; ++i)
+                Console.Write(memoizedFibonacci(i) + " ");
+            long durationInTicks = DateTime.Now.Ticks - startTime;
+            long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Console.WriteLine();
+            Console.WriteLine("Fibonacci function invoked " + String.Format("{0:0,0}", FIBONACCI_INVOCATIONS) + " times. Took " + durationInTicks + " ticks | " + durationInMilliseconds + " ms");
+            if (numberOfFibonacciArguments > 30)
+            {
+                Assert.That(durationInMilliseconds, Is.LessThan(20));
+            }
         }
         #endregion
 

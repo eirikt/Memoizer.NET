@@ -251,7 +251,7 @@ namespace Memoizer.NET
             new Func<MemoizerFactory<TParam1, TResult>, IMemoizer<TParam1, TResult>>(
                 delegate(MemoizerFactory<TParam1, TResult> memoizerFactory)
                 {
-                    Console.WriteLine("Creating Memoizer<TParam1, TResult> from MemoizerFactory<TParam1, TResult> [hash=" + MemoizerHelper.CreateMemoizerFactoryHash(memoizerFactory) + "]...");
+                    //Console.WriteLine("Creating Memoizer<TParam1, TResult> from MemoizerFactory<TParam1, TResult> [hash=" + MemoizerHelper.CreateMemoizerFactoryHash(memoizerFactory) + "]...");
                     return new Memoizer<TParam1, TResult>(memoizerFactory);
                 });
 
@@ -260,7 +260,7 @@ namespace Memoizer.NET
             new Func<IMemoizer<MemoizerFactory<TParam1, TResult>, IMemoizer<TParam1, TResult>>>(
                 delegate()
                 {
-                    Console.WriteLine("Creating Memoizer for Memoizer items with key MemoizerFactory<TParam1, TResult>...");
+                    //Console.WriteLine("Creating Memoizer for Memoizer items with key MemoizerFactory<TParam1, TResult>...");
                     return new Memoizer<MemoizerFactory<TParam1, TResult>, IMemoizer<TParam1, TResult>>(CREATE_MEMOIZER_FROM_FACTORY);
                 });
 
