@@ -15,6 +15,7 @@
  */
 
 using System;
+using System.Collections.Concurrent;
 using System.Threading;
 using NUnit.Framework;
 
@@ -22,10 +23,32 @@ using NUnit.Framework;
 namespace Memoizer.NET.Test
 {
 
+    #region ConcurrentDictionaryMemoizer
+    //[Obsolete("Just a demo - use Memoizer class - its much cooler")]
+    public class ConcurrentDictionaryMemoizer<TResult>
+    {
+        readonly ConcurrentDictionary<object, TResult> cache = new ConcurrentDictionary<object, TResult>();
+
+        public void Clear() { this.cache.Clear(); }
+
+        public TResult Invoke<TParam1, TParam2>(Func<TParam1, TParam2, TResult> memoizedMethod, TParam1 arg1, TParam2 arg2)
+        {
+            string key = MemoizerHelper.CreateParameterHash(arg1, arg2);
+            TResult retVal;
+            if (this.cache.TryGetValue(key, out retVal))
+                return retVal;
+
+            retVal = memoizedMethod.Invoke(arg1, arg2);
+            this.cache.TryAdd(key, retVal);
+            return retVal;
+        }
+    }
+    #endregion
+
+
     [TestFixture]
     class ConcurrentDictionaryMemoizerTests
     {
-
         //[Ignore("This memoizer implementation is not the main focus here...")]
         [Test]
         public void SingleThreadedMemoizedInvocation_ConcurrentDictionaryMemoizer()

@@ -585,10 +585,14 @@ namespace Memoizer.NET.Test
         [Test]
         public void FibonacciFunctionGetsCached()
         {
-            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(fibonacci.Memoize()), Is.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(fibonacci.Memoize())));
-            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(memoizedFibonacci.Memoize()), Is.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(memoizedFibonacci.Memoize())));
-            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(fibonacci.Memoize()), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(memoizedFibonacci.Memoize())));
-            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(memoizedFibonacci.Memoize()), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(fibonacci.Memoize())));
+            //Assert.That(MemoizerHelper.CreateMemoizerHash(fibonacci.Memoize()), Is.EqualTo(MemoizerHelper.CreateMemoizerHash(fibonacci.Memoize())));
+            //Assert.That(MemoizerHelper.CreateMemoizerHash(memoizedFibonacci.Memoize()), Is.EqualTo(MemoizerHelper.CreateMemoizerHash(memoizedFibonacci.Memoize())));
+            //Assert.That(MemoizerHelper.CreateMemoizerHash(fibonacci.Memoize()), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerHash(memoizedFibonacci.Memoize())));
+            //Assert.That(MemoizerHelper.CreateMemoizerHash(memoizedFibonacci.Memoize()), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerHash(fibonacci.Memoize())));
+            Assert.That(fibonacci.Memoize().MemoizerConfiguration, Is.EqualTo(fibonacci.Memoize().MemoizerConfiguration));
+            Assert.That(memoizedFibonacci.Memoize().MemoizerConfiguration, Is.EqualTo(memoizedFibonacci.Memoize().MemoizerConfiguration));
+            Assert.That(fibonacci.Memoize().MemoizerConfiguration, Is.Not.EqualTo(memoizedFibonacci.Memoize().MemoizerConfiguration));
+            Assert.That(memoizedFibonacci.Memoize().MemoizerConfiguration, Is.Not.EqualTo(fibonacci.Memoize().MemoizerConfiguration));
         }
 
 

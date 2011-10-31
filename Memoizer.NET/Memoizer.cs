@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Caching;
 using System.Threading;
@@ -51,19 +49,20 @@ namespace Memoizer.NET
         int NumberOfTimesCleared { get; }
         int NumberOfElementsCleared { get; }
     }
-    public interface IMemoizer<in TParam1, out TResult> : IThreadSafe, IDisposable, IClearable, IManageableMemoizer
+    public interface IMemoizer<in TParam1, out TResult> : IThreadSafe, /*IDisposable,*/ IClearable, IManageableMemoizer
     {
         TResult InvokeWith(TParam1 param);
+        void Remove(TParam1 param);
     }
-    public interface IMemoizer<in TParam1, in TParam2, out TResult> : IThreadSafe, IDisposable, IClearable, IManageableMemoizer
+    public interface IMemoizer<in TParam1, in TParam2, out TResult> : IThreadSafe, /*IDisposable,*/ IClearable, IManageableMemoizer
     {
         TResult InvokeWith(TParam1 param1, TParam2 param2);
     }
-    public interface IMemoizer<in TParam1, in TParam2, in TParam3, out TResult> : IThreadSafe, IDisposable, IClearable, IManageableMemoizer
+    public interface IMemoizer<in TParam1, in TParam2, in TParam3, out TResult> : IThreadSafe, /*IDisposable,*/ IClearable, IManageableMemoizer
     {
         TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3);
     }
-    public interface IMemoizer<in TParam1, in TParam2, in TParam3, in TParam4, out TResult> : IThreadSafe, IDisposable, IClearable, IManageableMemoizer
+    public interface IMemoizer<in TParam1, in TParam2, in TParam3, in TParam4, out TResult> : IThreadSafe, /*IDisposable,*/ IClearable, IManageableMemoizer
     {
         TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3in, TParam4 param4);
     }
@@ -104,7 +103,7 @@ namespace Memoizer.NET
         public int NumberOfTimesCleared { get { return this.numberOfTimesCleared; } }
         public int NumberOfElementsCleared { get { return this.numberOfElementsCleared; } }
 
-        public void Dispose() { this.cache.Dispose(); }
+        //public void Dispose() { this.cache.Dispose(); }
 
         /// <summary>
         /// Lock object for removal of element and incrementing total element removal index.
@@ -195,19 +194,28 @@ namespace Memoizer.NET
     {
         readonly Func<TParam1, TResult> functionToBeMemoized;
 
-        internal Memoizer(MemoizerFactory<TParam1, TResult> memoizerFactory)
-            : this(memoizerFactory.Function)
+        //internal Memoizer(MemoizerFactory<TParam1, TResult> memoizerFactory)
+        //    : this(memoizerFactory.Function)
+        //{
+        //    //this.functionToBeMemoized = memoizerFactory.Function;
+        //    //this.cache = new MemoryCache(MemoizerHelper.CreateFunctionHash(this.functionToBeMemoized));
+        //    this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerFactory.ExpirationType, memoizerFactory.ExpirationValue, memoizerFactory.ExpirationTimeUnit);
+        //    this.loggingMethod = memoizerFactory.LoggerAction;
+        //}
+
+        internal Memoizer(MemoizerConfiguration memoizerConfig)
         {
-            //this.functionToBeMemoized = memoizerFactory.Function;
-            //this.cache = new MemoryCache(MemoizerHelper.CreateFunctionHash(this.functionToBeMemoized));
-            this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerFactory.ExpirationType, memoizerFactory.ExpirationValue, memoizerFactory.ExpirationTimeUnit);
-            this.loggingMethod = memoizerFactory.LoggerAction;
+            this.cache = new MemoryCache(memoizerConfig.GetHashCode().ToString());
+            this.functionToBeMemoized = (Func<TParam1, TResult>)memoizerConfig.Function;
+            this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerConfig.ExpirationType, memoizerConfig.ExpirationValue, memoizerConfig.ExpirationTimeUnit);
+            this.loggingMethod = memoizerConfig.LoggerAction;
         }
 
+        // Only for verbose lazy-loaded memoizer^2
         internal Memoizer(Func<TParam1, TResult> functionToBeMemoized)
         {
             this.functionToBeMemoized = functionToBeMemoized;
-            this.cache = new MemoryCache(MemoizerHelper.CreateFunctionHash(this.functionToBeMemoized));
+            this.cache = new MemoryCache(MemoizerHelper.CreateFunctionHash(this.functionToBeMemoized).ToString());
         }
 
         //internal Memoizer(Func<TParam1, TResult> functionToBeMemoized, CacheItemPolicy cacheItemPolicy)
@@ -228,22 +236,34 @@ namespace Memoizer.NET
         {
             return Invoke(param);
         }
+
+        public void Remove(TParam1 param)
+        {
+            throw new NotImplementedException();
+        }
     }
 
 
     internal class Memoizer<TParam1, TParam2, TResult> : AbstractMemoizer<TResult>, IMemoizer<TParam1, TParam2, TResult>
     {
         readonly Func<TParam1, TParam2, TResult> functionToBeMemoized;
-        internal Memoizer(MemoizerFactory<TParam1, TParam2, TResult> memoizerFactory)
-            : this(memoizerFactory.Function)
+        //internal Memoizer(MemoizerFactory<TParam1, TParam2, TResult> memoizerFactory)
+        //    : this(memoizerFactory.Function)
+        //{
+        //    this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerFactory.ExpirationType, memoizerFactory.ExpirationValue, memoizerFactory.ExpirationTimeUnit);
+        //    this.loggingMethod = memoizerFactory.LoggerAction;
+        //}
+        //internal Memoizer(Func<TParam1, TParam2, TResult> functionToBeMemoized)
+        //{
+        //    this.functionToBeMemoized = functionToBeMemoized;
+        //    this.cache = new MemoryCache(MemoizerHelper.CreateFunctionHash(this.functionToBeMemoized));
+        //}
+        internal Memoizer(MemoizerConfiguration memoizerConfig)
         {
-            this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerFactory.ExpirationType, memoizerFactory.ExpirationValue, memoizerFactory.ExpirationTimeUnit);
-            this.loggingMethod = memoizerFactory.LoggerAction;
-        }
-        internal Memoizer(Func<TParam1, TParam2, TResult> functionToBeMemoized)
-        {
-            this.functionToBeMemoized = functionToBeMemoized;
-            this.cache = new MemoryCache(MemoizerHelper.CreateFunctionHash(this.functionToBeMemoized));
+            this.cache = new MemoryCache(memoizerConfig.GetHashCode().ToString());
+            this.functionToBeMemoized = (Func<TParam1, TParam2, TResult>)memoizerConfig.Function;
+            this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerConfig.ExpirationType, memoizerConfig.ExpirationValue, memoizerConfig.ExpirationTimeUnit);
+            this.loggingMethod = memoizerConfig.LoggerAction;
         }
         protected override Func<TResult> GetFunctionClosure(params object[] args) { return () => this.functionToBeMemoized((TParam1)args[0], (TParam2)args[1]); }
         public TResult InvokeWith(TParam1 param1, TParam2 param2) { return Invoke(param1, param2); }
@@ -253,16 +273,23 @@ namespace Memoizer.NET
     internal class Memoizer<TParam1, TParam2, TParam3, TResult> : AbstractMemoizer<TResult>, IMemoizer<TParam1, TParam2, TParam3, TResult>
     {
         readonly Func<TParam1, TParam2, TParam3, TResult> functionToBeMemoized;
-        internal Memoizer(MemoizerFactory<TParam1, TParam2, TParam3, TResult> memoizerFactory)
-            : this(memoizerFactory.Function)
+        //internal Memoizer(MemoizerFactory<TParam1, TParam2, TParam3, TResult> memoizerFactory)
+        //    : this(memoizerFactory.Function)
+        //{
+        //    this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerFactory.ExpirationType, memoizerFactory.ExpirationValue, memoizerFactory.ExpirationTimeUnit);
+        //    this.loggingMethod = memoizerFactory.LoggerAction;
+        //}
+        //internal Memoizer(Func<TParam1, TParam2, TParam3, TResult> functionToBeMemoized)
+        //{
+        //    this.functionToBeMemoized = functionToBeMemoized;
+        //    this.cache = new MemoryCache(MemoizerHelper.CreateFunctionHash(this.functionToBeMemoized));
+        //}
+        internal Memoizer(MemoizerConfiguration memoizerConfig)
         {
-            this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerFactory.ExpirationType, memoizerFactory.ExpirationValue, memoizerFactory.ExpirationTimeUnit);
-            this.loggingMethod = memoizerFactory.LoggerAction;
-        }
-        internal Memoizer(Func<TParam1, TParam2, TParam3, TResult> functionToBeMemoized)
-        {
-            this.functionToBeMemoized = functionToBeMemoized;
-            this.cache = new MemoryCache(MemoizerHelper.CreateFunctionHash(this.functionToBeMemoized));
+            this.cache = new MemoryCache(memoizerConfig.GetHashCode().ToString());
+            this.functionToBeMemoized = (Func<TParam1, TParam2, TParam3, TResult>)memoizerConfig.Function;
+            this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerConfig.ExpirationType, memoizerConfig.ExpirationValue, memoizerConfig.ExpirationTimeUnit);
+            this.loggingMethod = memoizerConfig.LoggerAction;
         }
         protected override Func<TResult> GetFunctionClosure(params object[] args) { return () => this.functionToBeMemoized((TParam1)args[0], (TParam2)args[1], (TParam3)args[2]); }
         public TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3) { return Invoke(param1, param2, param3); }
@@ -272,107 +299,26 @@ namespace Memoizer.NET
     internal class Memoizer<TParam1, TParam2, TParam3, TParam4, TResult> : AbstractMemoizer<TResult>, IMemoizer<TParam1, TParam2, TParam3, TParam4, TResult>
     {
         readonly Func<TParam1, TParam2, TParam3, TParam4, TResult> functionToBeMemoized;
-        internal Memoizer(MemoizerFactory<TParam1, TParam2, TParam3, TParam4, TResult> memoizerFactory)
-            : this(memoizerFactory.Function)
+        //internal Memoizer(MemoizerFactory<TParam1, TParam2, TParam3, TParam4, TResult> memoizerFactory)
+        //    : this(memoizerFactory.Function)
+        //{
+        //    this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerFactory.ExpirationType, memoizerFactory.ExpirationValue, memoizerFactory.ExpirationTimeUnit);
+        //    this.loggingMethod = memoizerFactory.LoggerAction;
+        //}
+        //internal Memoizer(Func<TParam1, TParam2, TParam3, TParam4, TResult> functionToBeMemoized)
+        //{
+        //    this.functionToBeMemoized = functionToBeMemoized;
+        //    this.cache = new MemoryCache(MemoizerHelper.CreateFunctionHash(this.functionToBeMemoized));
+        //}
+        internal Memoizer(MemoizerConfiguration memoizerConfig)
         {
-            this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerFactory.ExpirationType, memoizerFactory.ExpirationValue, memoizerFactory.ExpirationTimeUnit);
-            this.loggingMethod = memoizerFactory.LoggerAction;
-        }
-        internal Memoizer(Func<TParam1, TParam2, TParam3, TParam4, TResult> functionToBeMemoized)
-        {
-            this.functionToBeMemoized = functionToBeMemoized;
-            this.cache = new MemoryCache(MemoizerHelper.CreateFunctionHash(this.functionToBeMemoized));
+            this.cache = new MemoryCache(memoizerConfig.GetHashCode().ToString());
+            this.functionToBeMemoized = (Func<TParam1, TParam2, TParam3, TParam4, TResult>)memoizerConfig.Function;
+            this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerConfig.ExpirationType, memoizerConfig.ExpirationValue, memoizerConfig.ExpirationTimeUnit);
+            this.loggingMethod = memoizerConfig.LoggerAction;
         }
         protected override Func<TResult> GetFunctionClosure(params object[] args) { return () => this.functionToBeMemoized((TParam1)args[0], (TParam2)args[1], (TParam3)args[2], (TParam4)args[3]); }
         public TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3, TParam4 param4) { return Invoke(param1, param2, param3, param4); }
-    }
-    #endregion
-
-    #region MemoryCacheMemoizer
-    [Obsolete("Just a demo - use Memoizer class - its much cooler")]
-    public class MemoryCacheMemoizer<TResult> : IDisposable
-    {
-        const CacheItemPolicy NO_CACHE_POLICY = null;
-
-        string name;
-        MemoryCache cache;
-
-        public MemoryCacheMemoizer(Type sourceClass, string nameOfMethodToBeMemoized)
-        {
-            this.name = MemoizerHelper.CreateParameterHash(sourceClass, nameOfMethodToBeMemoized);
-            this.cache = new MemoryCache(this.name);
-        }
-
-        public void Dispose() { this.cache.Dispose(); }
-
-        public void Clear()
-        {
-            Dispose();
-            this.cache = new MemoryCache(name);
-        }
-
-        public TResult Invoke<TParam1, TParam2>(Func<TParam1, TParam2, TResult> memoizedMethod, TParam1 arg1, TParam2 arg2)
-        {
-            string key = MemoizerHelper.CreateParameterHash(arg1, arg2);
-            TResult retVal = (TResult)this.cache.Get(key);
-            if (retVal != null)
-                return retVal;
-
-            retVal = memoizedMethod.Invoke(arg1, arg2);
-            this.cache.Add(key, retVal, NO_CACHE_POLICY);
-            return retVal;
-        }
-    }
-    #endregion
-
-    #region ConcurrentDictionaryMemoizer
-    [Obsolete("Just a demo - use Memoizer class - its much cooler")]
-    public class ConcurrentDictionaryMemoizer<TResult>
-    {
-        readonly ConcurrentDictionary<object, TResult> cache = new ConcurrentDictionary<object, TResult>();
-
-        public void Clear() { this.cache.Clear(); }
-
-        public TResult Invoke<TParam1, TParam2>(Func<TParam1, TParam2, TResult> memoizedMethod, TParam1 arg1, TParam2 arg2)
-        {
-            string key = MemoizerHelper.CreateParameterHash(arg1, arg2);
-            TResult retVal;
-            if (this.cache.TryGetValue(key, out retVal))
-                return retVal;
-
-            retVal = memoizedMethod.Invoke(arg1, arg2);
-            this.cache.TryAdd(key, retVal);
-            return retVal;
-        }
-    }
-    #endregion
-
-    #region DictionaryMemoizer
-    [Obsolete("Just a demo - use Memoizer class - its much cooler")]
-    public class DictionaryMemoizer<TResult>
-    {
-        static readonly object @lock = new object();
-
-        // Not thread-safe - all kinds of write access must be serialized
-        readonly IDictionary<string, object> cache = new Dictionary<string, object>();
-
-        public void Clear() { this.cache.Clear(); }
-
-        public TResult Invoke<TParam1, TParam2>(Func<TParam1, TParam2, TResult> memoizedMethod, TParam1 arg1, TParam2 arg2)
-        {
-            string key = MemoizerHelper.CreateParameterHash(arg1, arg2);
-            if (this.cache.ContainsKey(key))
-                return (TResult)cache[key];
-
-            lock (@lock)
-            {
-                if (this.cache.ContainsKey(key))
-                    return (TResult)cache[key];
-                TResult retVal = memoizedMethod.Invoke(arg1, arg2);
-                this.cache.Add(key, retVal);
-                return retVal;
-            }
-        }
     }
     #endregion
 }

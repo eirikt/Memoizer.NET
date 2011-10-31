@@ -15,6 +15,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using NUnit.Framework;
 
@@ -22,10 +23,39 @@ using NUnit.Framework;
 namespace Memoizer.NET.Test
 {
 
+    #region DictionaryMemoizer
+    //[Obsolete("Just a demo - use Memoizer class - its much cooler")]
+    public class DictionaryMemoizer<TResult>
+    {
+        static readonly object @lock = new object();
+
+        // Not thread-safe - all kinds of write access must be serialized
+        readonly IDictionary<string, object> cache = new Dictionary<string, object>();
+
+        public void Clear() { this.cache.Clear(); }
+
+        public TResult Invoke<TParam1, TParam2>(Func<TParam1, TParam2, TResult> memoizedMethod, TParam1 arg1, TParam2 arg2)
+        {
+            string key = MemoizerHelper.CreateParameterHash(arg1, arg2);
+            if (this.cache.ContainsKey(key))
+                return (TResult)cache[key];
+
+            lock (@lock)
+            {
+                if (this.cache.ContainsKey(key))
+                    return (TResult)cache[key];
+                TResult retVal = memoizedMethod.Invoke(arg1, arg2);
+                this.cache.Add(key, retVal);
+                return retVal;
+            }
+        }
+    }
+    #endregion
+
+
     [TestFixture]
     class DictionaryMemoizerTests
     {
-
         /// <summary>
         /// Sequential invocations of the memoizer
         /// </summary>

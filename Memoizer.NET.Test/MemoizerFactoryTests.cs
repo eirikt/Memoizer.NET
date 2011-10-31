@@ -216,12 +216,19 @@ namespace Memoizer.NET.Test
             MemoizerFactory<long, long> memoizerFactory4 = FIBONACCI.Memoize().KeepItemsCachedFor(13).Seconds.InstrumentWith(Console.WriteLine);
             MemoizerFactory<long, long> memoizerFactory5 = slow500Square_MemoizerFactory.KeepItemsCachedFor(13).Minutes.InstrumentWith(Console.WriteLine);
 
-            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(memoizerFactory1), Is.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(memoizerFactory1)));
-            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(memoizerFactory1), Is.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(memoizerFactory2)));
+            //Assert.That(MemoizerHelper.CreateMemoizerHash(memoizerFactory1), Is.EqualTo(MemoizerHelper.CreateMemoizerHash(memoizerFactory1)));
+            //Assert.That(MemoizerHelper.CreateMemoizerHash(memoizerFactory1), Is.EqualTo(MemoizerHelper.CreateMemoizerHash(memoizerFactory2)));
+            //// Logger action property not included in MemoizerFactory equality ...yet
+            //Assert.That(MemoizerHelper.CreateMemoizerHash(memoizerFactory1), Is.EqualTo(MemoizerHelper.CreateMemoizerHash(memoizerFactory3)));
+            //Assert.That(MemoizerHelper.CreateMemoizerHash(memoizerFactory1), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerHash(memoizerFactory4)));
+            //Assert.That(MemoizerHelper.CreateMemoizerHash(memoizerFactory1), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerHash(memoizerFactory5)));
+
+            Assert.That(memoizerFactory1.MemoizerConfiguration, Is.EqualTo(memoizerFactory1.MemoizerConfiguration));
+            Assert.That(memoizerFactory1.MemoizerConfiguration, Is.EqualTo(memoizerFactory2.MemoizerConfiguration));
             // Logger action property not included in MemoizerFactory equality ...yet
-            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(memoizerFactory1), Is.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(memoizerFactory3)));
-            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(memoizerFactory1), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(memoizerFactory4)));
-            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(memoizerFactory1), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(memoizerFactory5)));
+            Assert.That(memoizerFactory1.MemoizerConfiguration, Is.EqualTo(memoizerFactory3.MemoizerConfiguration));
+            Assert.That(memoizerFactory1.MemoizerConfiguration, Is.Not.EqualTo(memoizerFactory4.MemoizerConfiguration));
+            Assert.That(memoizerFactory1.MemoizerConfiguration, Is.Not.EqualTo(memoizerFactory5.MemoizerConfiguration));
         }
 
 
@@ -240,18 +247,31 @@ namespace Memoizer.NET.Test
             MemoizerFactory<long, long> slow500Square_MemoizerFactory = new Func<long, long>(Slow500Square).Memoize();
             MemoizerFactory<long, long> slow1000PowerOfThree_MemoizerFactory = slow1000PowerOfThree.Memoize();
 
-            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(FIBONACCI_MEMOIZER_FACTORY), Is.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(FIBONACCI_MEMOIZER_FACTORY)));
-            // NB! Separate MemoizerFactory instances are not equal due to Func reference equality demand
-            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(FIBONACCI_MEMOIZER_FACTORY), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(FIBONACCI2_MEMOIZER_FACTORY)));
-            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(FIBONACCI_MEMOIZER_FACTORY), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(FIBONACCI3_MEMOIZER_FACTORY)));
-            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(FIBONACCI_MEMOIZER_FACTORY), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(FIBONACCI4_MEMOIZER_FACTORY)));
-            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(FIBONACCI_MEMOIZER_FACTORY), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(slow500Square_MemoizerFactory)));
-            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(FIBONACCI_MEMOIZER_FACTORY), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(slow1000PowerOfThree_MemoizerFactory)));
+            //Assert.That(MemoizerHelper.CreateMemoizerHash(FIBONACCI_MEMOIZER_FACTORY), Is.EqualTo(MemoizerHelper.CreateMemoizerHash(FIBONACCI_MEMOIZER_FACTORY)));
+            //// NB! Separate MemoizerFactory instances are not equal due to Func reference equality demand
+            //Assert.That(MemoizerHelper.CreateMemoizerHash(FIBONACCI_MEMOIZER_FACTORY), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerHash(FIBONACCI2_MEMOIZER_FACTORY)));
+            //Assert.That(MemoizerHelper.CreateMemoizerHash(FIBONACCI_MEMOIZER_FACTORY), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerHash(FIBONACCI3_MEMOIZER_FACTORY)));
+            //Assert.That(MemoizerHelper.CreateMemoizerHash(FIBONACCI_MEMOIZER_FACTORY), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerHash(FIBONACCI4_MEMOIZER_FACTORY)));
+            //Assert.That(MemoizerHelper.CreateMemoizerHash(FIBONACCI_MEMOIZER_FACTORY), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerHash(slow500Square_MemoizerFactory)));
+            //Assert.That(MemoizerHelper.CreateMemoizerHash(FIBONACCI_MEMOIZER_FACTORY), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerHash(slow1000PowerOfThree_MemoizerFactory)));
 
-            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(slow500Square_MemoizerFactory), Is.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(slow500Square_MemoizerFactory)));
-            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(slow500Square_MemoizerFactory), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(slow1000PowerOfThree_MemoizerFactory)));
-            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(slow1000PowerOfThree_MemoizerFactory), Is.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(slow1000PowerOfThree_MemoizerFactory)));
-            Assert.That(MemoizerHelper.CreateMemoizerFactoryHash(slow1000PowerOfThree_MemoizerFactory), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerFactoryHash(slow500Square_MemoizerFactory)));
+            //Assert.That(MemoizerHelper.CreateMemoizerHash(slow500Square_MemoizerFactory), Is.EqualTo(MemoizerHelper.CreateMemoizerHash(slow500Square_MemoizerFactory)));
+            //Assert.That(MemoizerHelper.CreateMemoizerHash(slow500Square_MemoizerFactory), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerHash(slow1000PowerOfThree_MemoizerFactory)));
+            //Assert.That(MemoizerHelper.CreateMemoizerHash(slow1000PowerOfThree_MemoizerFactory), Is.EqualTo(MemoizerHelper.CreateMemoizerHash(slow1000PowerOfThree_MemoizerFactory)));
+            //Assert.That(MemoizerHelper.CreateMemoizerHash(slow1000PowerOfThree_MemoizerFactory), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerHash(slow500Square_MemoizerFactory)));
+
+            Assert.That(FIBONACCI_MEMOIZER_FACTORY.MemoizerConfiguration, Is.EqualTo(FIBONACCI_MEMOIZER_FACTORY.MemoizerConfiguration));
+            // NB! Separate MemoizerFactory instances are not equal due to Func reference equality demand
+            Assert.That(FIBONACCI_MEMOIZER_FACTORY.MemoizerConfiguration, Is.Not.EqualTo(FIBONACCI2_MEMOIZER_FACTORY.MemoizerConfiguration));
+            Assert.That(FIBONACCI_MEMOIZER_FACTORY.MemoizerConfiguration, Is.Not.EqualTo(FIBONACCI3_MEMOIZER_FACTORY.MemoizerConfiguration));
+            Assert.That(FIBONACCI_MEMOIZER_FACTORY.MemoizerConfiguration, Is.Not.EqualTo(FIBONACCI4_MEMOIZER_FACTORY.MemoizerConfiguration));
+            Assert.That(FIBONACCI_MEMOIZER_FACTORY.MemoizerConfiguration, Is.Not.EqualTo(slow500Square_MemoizerFactory.MemoizerConfiguration));
+            Assert.That(FIBONACCI_MEMOIZER_FACTORY.MemoizerConfiguration, Is.Not.EqualTo(slow1000PowerOfThree_MemoizerFactory.MemoizerConfiguration));
+
+            Assert.That(slow500Square_MemoizerFactory.MemoizerConfiguration, Is.EqualTo(slow500Square_MemoizerFactory.MemoizerConfiguration));
+            Assert.That(slow500Square_MemoizerFactory.MemoizerConfiguration, Is.Not.EqualTo(slow1000PowerOfThree_MemoizerFactory.MemoizerConfiguration));
+            Assert.That(slow1000PowerOfThree_MemoizerFactory.MemoizerConfiguration, Is.EqualTo(slow1000PowerOfThree_MemoizerFactory.MemoizerConfiguration));
+            Assert.That(slow1000PowerOfThree_MemoizerFactory.MemoizerConfiguration, Is.Not.EqualTo(slow500Square_MemoizerFactory.MemoizerConfiguration));
         }
         #endregion
 

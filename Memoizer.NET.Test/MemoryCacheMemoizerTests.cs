@@ -15,12 +15,52 @@
  */
 
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Runtime.Caching;
 using System.Threading;
 using NUnit.Framework;
 
 #pragma warning disable 618
 namespace Memoizer.NET.Test
 {
+
+    #region MemoryCacheMemoizer
+    [Obsolete("Just a demo - use Memoizer class - its much cooler")]
+    public class MemoryCacheMemoizer<TResult> : IDisposable
+    {
+        const CacheItemPolicy NO_CACHE_POLICY = null;
+
+        string name;
+        MemoryCache cache;
+
+        public MemoryCacheMemoizer(Type sourceClass, string nameOfMethodToBeMemoized)
+        {
+            this.name = MemoizerHelper.CreateParameterHash(sourceClass, nameOfMethodToBeMemoized);
+            this.cache = new MemoryCache(this.name);
+        }
+
+        public void Dispose() { this.cache.Dispose(); }
+
+        public void Clear()
+        {
+            Dispose();
+            this.cache = new MemoryCache(name);
+        }
+
+        public TResult Invoke<TParam1, TParam2>(Func<TParam1, TParam2, TResult> memoizedMethod, TParam1 arg1, TParam2 arg2)
+        {
+            string key = MemoizerHelper.CreateParameterHash(arg1, arg2);
+            TResult retVal = (TResult)this.cache.Get(key);
+            if (retVal != null)
+                return retVal;
+
+            retVal = memoizedMethod.Invoke(arg1, arg2);
+            this.cache.Add(key, retVal, NO_CACHE_POLICY);
+            return retVal;
+        }
+    }
+    #endregion
 
     [TestFixture]
     class MemoryCacheMemoizerTests

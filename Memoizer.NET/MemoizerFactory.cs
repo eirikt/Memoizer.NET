@@ -81,6 +81,25 @@ namespace Memoizer.NET
         }
         #endregion
 
+        #region UnMemoize() [remove all memoizers with this func from memoizer^2]
+        public static MemoizerFactory<TParam1, TResult> UnMemoize<TParam1, TResult>(this Func<TParam1, TResult> functionToBeMemoized)
+        {
+            throw new NotImplementedException();
+        }
+        public static MemoizerFactory<TParam1, TParam2, TResult> UnMemoize<TParam1, TParam2, TResult>(this Func<TParam1, TParam2, TResult> functionToBeMemoized)
+        {
+            throw new NotImplementedException();
+        }
+        public static MemoizerFactory<TParam1, TParam2, TParam3, TResult> UnMemoize<TParam1, TParam2, TParam3, TResult>(this Func<TParam1, TParam2, TParam3, TResult> functionToBeMemoized)
+        {
+            throw new NotImplementedException();
+        }
+        public static MemoizerFactory<TParam1, TParam2, TParam3, TParam4, TResult> UnMemoize<TParam1, TParam2, TParam3, TParam4, TResult>(this Func<TParam1, TParam2, TParam3, TParam4, TResult> functionToBeMemoized)
+        {
+            throw new NotImplementedException();
+        }
+        #endregion
+
         #region CacheFor(int expirationValue)
         public static MemoizerFactory_AwaitingExpirationUnit<TParam1, TResult> CacheFor<TParam1, TResult>(this Func<TParam1, TResult> functionToBeMemoized, int expirationValue)
         {
@@ -116,6 +135,13 @@ namespace Memoizer.NET
         public static TResult CachedInvoke<TParam1, TParam2, TParam3, TParam4, TResult>(this Func<TParam1, TParam2, TParam3, TParam4, TResult> functionToBeMemoized, TParam1 arg1, TParam2 arg2, TParam3 arg3, TParam4 arg4)
         {
             return new MemoizerFactory<TParam1, TParam2, TParam3, TParam4, TResult>(functionToBeMemoized).GetMemoizer().InvokeWith(arg1, arg2, arg3, arg4);
+        }
+        #endregion
+
+        #region RemoveFromCache()
+        public static void RemoveFromCache<TParam1, TResult>(this Func<TParam1, TResult> memoizedFunction, TParam1 arg1ForRemoval)
+        {
+            throw new NotImplementedException();
         }
         #endregion
     }
@@ -176,7 +202,7 @@ namespace Memoizer.NET
     {
         public static object GetProperty(object source, string propertyName)
         {
-            PropertyInfo propertyInfo = source.GetType().GetProperty(propertyName, BindingFlags.NonPublic | BindingFlags.Instance);
+            PropertyInfo propertyInfo = source.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             if (propertyInfo == null) { throw new ArgumentException("Could not find a property with the name '" + propertyName + "' in the class '" + source.GetType().Namespace + "." + source.GetType().Name + "'"); }
             return propertyInfo.GetValue(source, null);
         }
@@ -190,24 +216,24 @@ namespace Memoizer.NET
 
         static readonly ObjectIDGenerator OBJECT_ID_GENERATOR = new ObjectIDGenerator();
 
-        static string GetObjectId(object arg)
+        internal static long GetObjectId(object arg, ref bool firstTime)
         {
-            bool firstTime;
-            return OBJECT_ID_GENERATOR.GetId(arg, out firstTime).ToString();
+            return OBJECT_ID_GENERATOR.GetId(arg, out firstTime);
         }
 
 
-        public static string CreateMemoizerFactoryHash(object memoizerFactory)
-        {
-            var func = ReflectionHelper.GetProperty(memoizerFactory, "Function");
-            var expirationType = ReflectionHelper.GetProperty(memoizerFactory, "ExpirationType");
-            var expirationValue = ReflectionHelper.GetProperty(memoizerFactory, "ExpirationValue");
-            var expirationTimeUnit = ReflectionHelper.GetProperty(memoizerFactory, "ExpirationTimeUnit");
+        //public static string CreateMemoizerHash(object memoizerConfig)
+        //{
+        //    var func = ReflectionHelper.GetProperty(memoizerConfig, "Function");
+        //    var expirationType = ReflectionHelper.GetProperty(memoizerConfig, "ExpirationType");
+        //    var expirationValue = ReflectionHelper.GetProperty(memoizerConfig, "ExpirationValue");
+        //    var expirationTimeUnit = ReflectionHelper.GetProperty(memoizerConfig, "ExpirationTimeUnit");
 
-            string funcId = GetObjectId(func);
+        //    bool firstTime = false;
+        //    string funcId = GetObjectId(func, ref firstTime);
 
-            return CreateParameterHash(funcId, expirationType, expirationValue, expirationTimeUnit);
-        }
+        //    return CreateParameterHash(funcId, expirationType, expirationValue, expirationTimeUnit);
+        //}
 
 
         public static string CreateParameterHash(params object[] args)
@@ -216,11 +242,14 @@ namespace Memoizer.NET
 
             if (args.Length == 1)
             {
-                if (args[0].GetType().Name.StartsWith("MemoizerFactory"))
-                    return CreateMemoizerFactoryHash(args[0]);
+                //if (args[0].GetType().Name.StartsWith("MemoizerConfiguration"))
+                //{
+                //    //return CreateMemoizerHash(args[0]);
+                //    return args[0].GetHashCode().ToString();
+                //}
 
-                //if (args[0].GetType().Name.StartsWith("Func"))
-                //    return GetObjectId(args[0]);
+                ////if (args[0].GetType().Name.StartsWith("Func"))
+                ////    return GetObjectId(args[0]);
 
                 return args[0].GetHashCode().ToString();
             }
@@ -233,9 +262,10 @@ namespace Memoizer.NET
         }
 
 
-        public static string CreateFunctionHash(object func)
+        public static long CreateFunctionHash(object func)
         {
-            return GetObjectId(func);
+            bool firstTime = false;
+            return GetObjectId(func, ref firstTime);
         }
     }
     #endregion
@@ -247,28 +277,28 @@ namespace Memoizer.NET
     {
         #region CLR-wide shared memoizer of memoizers
         // Static delegate for creating a memoizer with TParam1 as key type, and TResult as item type, from a MemoizerFactory instance
-        static readonly Func<MemoizerFactory<TParam1, TResult>, IMemoizer<TParam1, TResult>> CREATE_MEMOIZER_FROM_FACTORY =
-            new Func<MemoizerFactory<TParam1, TResult>, IMemoizer<TParam1, TResult>>(
-                delegate(MemoizerFactory<TParam1, TResult> memoizerFactory)
+        static readonly Func<MemoizerConfiguration, IMemoizer<TParam1, TResult>> CREATE_MEMOIZER_FROM_CONFIG =
+            new Func<MemoizerConfiguration, IMemoizer<TParam1, TResult>>(
+                delegate(MemoizerConfiguration memoizerConfig)
                 {
                     //Console.WriteLine("Creating Memoizer<TParam1, TResult> from MemoizerFactory<TParam1, TResult> [hash=" + MemoizerHelper.CreateMemoizerFactoryHash(memoizerFactory) + "]...");
-                    return new Memoizer<TParam1, TResult>(memoizerFactory);
+                    return new Memoizer<TParam1, TResult>(memoizerConfig);
                 });
 
         // Static delegate for creating a memoizer with MemoizerFactory as key type, and Memoizer as item type, from function CREATE_MEMOIZER_FROM_FACTORY above
-        static readonly Func<IMemoizer<MemoizerFactory<TParam1, TResult>, IMemoizer<TParam1, TResult>>> CREATE_MEMOIZER_MEMOIZER =
-            new Func<IMemoizer<MemoizerFactory<TParam1, TResult>, IMemoizer<TParam1, TResult>>>(
+        static readonly Func<IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TResult>>> CREATE_MEMOIZER_MEMOIZER =
+            new Func<IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TResult>>>(
                 delegate()
                 {
                     //Console.WriteLine("Creating Memoizer for Memoizer items with key MemoizerFactory<TParam1, TResult>...");
-                    return new Memoizer<MemoizerFactory<TParam1, TResult>, IMemoizer<TParam1, TResult>>(CREATE_MEMOIZER_FROM_FACTORY);
+                    return new Memoizer<MemoizerConfiguration, IMemoizer<TParam1, TResult>>(CREATE_MEMOIZER_FROM_CONFIG);
                 });
 
         // Static lazy-loaded memoizer of memoizers, from function above
-        static readonly Lazy<IMemoizer<MemoizerFactory<TParam1, TResult>, IMemoizer<TParam1, TResult>>> LAZY_MEMOIZER_MEMOIZER =
-            new Lazy<IMemoizer<MemoizerFactory<TParam1, TResult>, IMemoizer<TParam1, TResult>>>(
+        internal static readonly Lazy<IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TResult>>> LAZY_MEMOIZER_MEMOIZER =
+            new Lazy<IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TResult>>>(
                 CREATE_MEMOIZER_MEMOIZER,
-                isThreadSafe: typeof(IMemoizer<MemoizerFactory<TParam1, TResult>, IMemoizer<TParam1, TResult>>) is IThreadSafe);
+                isThreadSafe: typeof(IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TResult>>) is IThreadSafe);
         #endregion
 
         readonly Func<TParam1, TResult> function;
@@ -295,6 +325,10 @@ namespace Memoizer.NET
             get { return this.loggerMethod; }
         }
 
+        public MemoizerConfiguration MemoizerConfiguration
+        {
+            get { return new MemoizerConfiguration(this.function, this.ExpirationType, this.ExpirationValue, this.ExpirationTimeUnit, this.loggerMethod); }
+        }
 
         public MemoizerFactory_AwaitingExpirationUnit<TParam1, TResult> KeepItemsCachedFor(int cacheExpirationValue)
         {
@@ -317,7 +351,9 @@ namespace Memoizer.NET
 
         public IMemoizer<TParam1, TResult> GetMemoizer(bool cacheAndShareMemoizerInstance = true)
         {
-            return cacheAndShareMemoizerInstance ? LAZY_MEMOIZER_MEMOIZER.Value.InvokeWith(this) : new Memoizer<TParam1, TResult>(this);
+            return cacheAndShareMemoizerInstance ?
+                LAZY_MEMOIZER_MEMOIZER.Value.InvokeWith(this.MemoizerConfiguration) :
+                new Memoizer<TParam1, TResult>(this.MemoizerConfiguration);
         }
     }
 
@@ -355,11 +391,11 @@ namespace Memoizer.NET
     #region MemoizerFactory<TParam1, TParam2, TResult>
     public class MemoizerFactory<TParam1, TParam2, TResult>
     {
-        static readonly Lazy<IMemoizer<MemoizerFactory<TParam1, TParam2, TResult>, IMemoizer<TParam1, TParam2, TResult>>> LAZY_MEMOIZER_MEMOIZER =
-            new Lazy<IMemoizer<MemoizerFactory<TParam1, TParam2, TResult>, IMemoizer<TParam1, TParam2, TResult>>>(
-                () => new Memoizer<MemoizerFactory<TParam1, TParam2, TResult>, Memoizer<TParam1, TParam2, TResult>>(
-                    memoizerFactory => new Memoizer<TParam1, TParam2, TResult>(memoizerFactory)),
-                isThreadSafe: typeof(IMemoizer<MemoizerFactory<TParam1, TParam2, TResult>, IMemoizer<TParam1, TParam2, TResult>>) is IThreadSafe);
+        static readonly Lazy<IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TParam2, TResult>>> LAZY_MEMOIZER_MEMOIZER =
+            new Lazy<IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TParam2, TResult>>>(
+                () => new Memoizer<MemoizerConfiguration, Memoizer<TParam1, TParam2, TResult>>(
+                    memoizerConfig => new Memoizer<TParam1, TParam2, TResult>(memoizerConfig)),
+                isThreadSafe: typeof(IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TParam2, TResult>>) is IThreadSafe);
 
         readonly Func<TParam1, TParam2, TResult> function;
         internal Func<TParam1, TParam2, TResult> Function { get { return this.function; } }
@@ -370,6 +406,11 @@ namespace Memoizer.NET
 
         Action<String> loggerMethod;
         internal Action<String> LoggerAction { get { return this.loggerMethod; } }
+
+        public MemoizerConfiguration MemoizerConfiguration
+        {
+            get { return new MemoizerConfiguration(this.function, this.ExpirationType, this.ExpirationValue, this.ExpirationTimeUnit, this.loggerMethod); }
+        }
 
         internal MemoizerFactory(Func<TParam1, TParam2, TResult> functionToBeMemoized)
         {
@@ -391,7 +432,7 @@ namespace Memoizer.NET
 
         public IMemoizer<TParam1, TParam2, TResult> GetMemoizer(bool cacheAndShareMemoizerInstance = true)
         {
-            return cacheAndShareMemoizerInstance ? LAZY_MEMOIZER_MEMOIZER.Value.InvokeWith(this) : new Memoizer<TParam1, TParam2, TResult>(this);
+            return cacheAndShareMemoizerInstance ? LAZY_MEMOIZER_MEMOIZER.Value.InvokeWith(this.MemoizerConfiguration) : new Memoizer<TParam1, TParam2, TResult>(this.MemoizerConfiguration);
         }
     }
 
@@ -429,11 +470,11 @@ namespace Memoizer.NET
     #region MemoizerFactory<TParam1, TParam2, TParam3, TResult>
     public class MemoizerFactory<TParam1, TParam2, TParam3, TResult>
     {
-        static readonly Lazy<IMemoizer<MemoizerFactory<TParam1, TParam2, TParam3, TResult>, IMemoizer<TParam1, TParam2, TParam3, TResult>>> LAZY_MEMOIZER_MEMOIZER =
-            new Lazy<IMemoizer<MemoizerFactory<TParam1, TParam2, TParam3, TResult>, IMemoizer<TParam1, TParam2, TParam3, TResult>>>(
-                () => new Memoizer<MemoizerFactory<TParam1, TParam2, TParam3, TResult>, IMemoizer<TParam1, TParam2, TParam3, TResult>>(
-                    memoizerFactory => new Memoizer<TParam1, TParam2, TParam3, TResult>(memoizerFactory)),
-                isThreadSafe: typeof(IMemoizer<MemoizerFactory<TParam1, TParam2, TParam3, TResult>, IMemoizer<TParam1, TParam2, TParam3, TResult>>) is IThreadSafe);
+        static readonly Lazy<IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TParam2, TParam3, TResult>>> LAZY_MEMOIZER_MEMOIZER =
+            new Lazy<IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TParam2, TParam3, TResult>>>(
+                () => new Memoizer<MemoizerConfiguration, IMemoizer<TParam1, TParam2, TParam3, TResult>>(
+                    memoizerConfig => new Memoizer<TParam1, TParam2, TParam3, TResult>(memoizerConfig)),
+                isThreadSafe: typeof(IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TParam2, TParam3, TResult>>) is IThreadSafe);
 
         readonly Func<TParam1, TParam2, TParam3, TResult> function;
         internal Func<TParam1, TParam2, TParam3, TResult> Function { get { return this.function; } }
@@ -444,6 +485,11 @@ namespace Memoizer.NET
 
         Action<String> loggerMethod;
         internal Action<String> LoggerAction { get { return this.loggerMethod; } }
+
+        MemoizerConfiguration MemoizerConfiguration
+        {
+            get { return new MemoizerConfiguration(this.function, this.ExpirationType, this.ExpirationValue, this.ExpirationTimeUnit, this.loggerMethod); }
+        }
 
         internal MemoizerFactory(Func<TParam1, TParam2, TParam3, TResult> functionToBeMemoized)
         {
@@ -465,7 +511,7 @@ namespace Memoizer.NET
 
         public IMemoizer<TParam1, TParam2, TParam3, TResult> GetMemoizer(bool cacheAndShareMemoizerInstance = true)
         {
-            return cacheAndShareMemoizerInstance ? LAZY_MEMOIZER_MEMOIZER.Value.InvokeWith(this) : new Memoizer<TParam1, TParam2, TParam3, TResult>(this);
+            return cacheAndShareMemoizerInstance ? LAZY_MEMOIZER_MEMOIZER.Value.InvokeWith(this.MemoizerConfiguration) : new Memoizer<TParam1, TParam2, TParam3, TResult>(this.MemoizerConfiguration);
         }
     }
 
@@ -503,11 +549,11 @@ namespace Memoizer.NET
     #region MemoizerFactory<TParam1, TParam2,TParam3, TParam3,TParam4, TResult>
     public class MemoizerFactory<TParam1, TParam2, TParam3, TParam4, TResult>
     {
-        static readonly Lazy<IMemoizer<MemoizerFactory<TParam1, TParam2, TParam3, TParam4, TResult>, IMemoizer<TParam1, TParam2, TParam3, TParam4, TResult>>> LAZY_MEMOIZER_MEMOIZER =
-            new Lazy<IMemoizer<MemoizerFactory<TParam1, TParam2, TParam3, TParam4, TResult>, IMemoizer<TParam1, TParam2, TParam3, TParam4, TResult>>>(
-                () => new Memoizer<MemoizerFactory<TParam1, TParam2, TParam3, TParam4, TResult>, IMemoizer<TParam1, TParam2, TParam3, TParam4, TResult>>(
+        static readonly Lazy<IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TParam2, TParam3, TParam4, TResult>>> LAZY_MEMOIZER_MEMOIZER =
+            new Lazy<IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TParam2, TParam3, TParam4, TResult>>>(
+                () => new Memoizer<MemoizerConfiguration, IMemoizer<TParam1, TParam2, TParam3, TParam4, TResult>>(
                     memoizerFactory => new Memoizer<TParam1, TParam2, TParam3, TParam4, TResult>(memoizerFactory)),
-                isThreadSafe: typeof(IMemoizer<MemoizerFactory<TParam1, TParam2, TParam3, TParam4, TResult>, IMemoizer<TParam1, TParam2, TParam3, TParam4, TResult>>) is IThreadSafe);
+                isThreadSafe: typeof(IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TParam2, TParam3, TParam4, TResult>>) is IThreadSafe);
 
         readonly Func<TParam1, TParam2, TParam3, TParam4, TResult> function;
         internal Func<TParam1, TParam2, TParam3, TParam4, TResult> Function { get { return this.function; } }
@@ -518,6 +564,11 @@ namespace Memoizer.NET
 
         Action<String> loggerMethod;
         internal Action<String> LoggerAction { get { return this.loggerMethod; } }
+
+        MemoizerConfiguration MemoizerConfiguration
+        {
+            get { return new MemoizerConfiguration(this.function, this.ExpirationType, this.ExpirationValue, this.ExpirationTimeUnit, this.loggerMethod); }
+        }
 
         internal MemoizerFactory(Func<TParam1, TParam2, TParam3, TParam4, TResult> functionToBeMemoized)
         {
@@ -539,7 +590,7 @@ namespace Memoizer.NET
 
         public IMemoizer<TParam1, TParam2, TParam3, TParam4, TResult> GetMemoizer(bool cacheAndShareMemoizerInstance = true)
         {
-            return cacheAndShareMemoizerInstance ? LAZY_MEMOIZER_MEMOIZER.Value.InvokeWith(this) : new Memoizer<TParam1, TParam2, TParam3, TParam4, TResult>(this);
+            return cacheAndShareMemoizerInstance ? LAZY_MEMOIZER_MEMOIZER.Value.InvokeWith(this.MemoizerConfiguration) : new Memoizer<TParam1, TParam2, TParam3, TParam4, TResult>(this.MemoizerConfiguration);
         }
     }
 
