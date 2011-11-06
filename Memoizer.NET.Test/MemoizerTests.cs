@@ -82,18 +82,18 @@ namespace Memoizer.NET.Test
 
         internal static string TypicalDatabaseStaticInvocation(string stringArg, long longArg)
         {
-            Console.WriteLine("TypicalDatabaseInvocation invoked...");
+            //Console.WriteLine("TypicalDatabaseInvocation invoked...");
             Thread.Sleep(DATABASE_RESPONSE_LATENCY_IN_MILLIS);
-            Console.WriteLine("TypicalDatabaseInvocation returns...");
+            //Console.WriteLine("TypicalDatabaseInvocation returns...");
             return Concatinate(METHOD_RESPONSE_ELEMENT, stringArg, Convert.ToString(longArg));
         }
 
         internal Func<string, long, string> TypicalDatabaseInvocation1a =
             new Func<string, long, string>(delegate(string stringArg, long longArg)
             {
-                Console.WriteLine("TypicalDatabaseInvocation invoked...");
+                //Console.WriteLine("TypicalDatabaseInvocation invoked...");
                 Thread.Sleep(DATABASE_RESPONSE_LATENCY_IN_MILLIS);
-                Console.WriteLine("TypicalDatabaseInvocation returns...");
+                //Console.WriteLine("TypicalDatabaseInvocation returns...");
                 return Concatinate(METHOD_RESPONSE_ELEMENT, stringArg, Convert.ToString(longArg));
                 // Or:
                 //return TypicalDatabaseStaticInvocation(stringArg, longArg);
@@ -102,9 +102,9 @@ namespace Memoizer.NET.Test
         internal Func<string, long, string> TypicalDatabaseInvocation1b =
            (delegate(string stringArg, long longArg)
            {
-               Console.WriteLine("TypicalDatabaseInvocation invoked...");
+               //Console.WriteLine("TypicalDatabaseInvocation invoked...");
                Thread.Sleep(DATABASE_RESPONSE_LATENCY_IN_MILLIS);
-               Console.WriteLine("TypicalDatabaseInvocation returns...");
+               //Console.WriteLine("TypicalDatabaseInvocation returns...");
                return Concatinate(METHOD_RESPONSE_ELEMENT, stringArg, Convert.ToString(longArg));
                // Or:
                //return TypicalDatabaseStaticInvocation(stringArg, longArg);
@@ -608,6 +608,8 @@ namespace Memoizer.NET.Test
             long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
             Console.WriteLine();
             Console.WriteLine("Fibonacci function invoked " + FIBONACCI_INVOCATIONS + " times. Took " + durationInTicks + " ticks | " + durationInMilliseconds + " ms");
+            Assert.That(FIBONACCI_INVOCATIONS, Is.EqualTo(126491971));
+            Assert.That(durationInMilliseconds, Is.GreaterThan(1000));
 
             Console.WriteLine();
             FIBONACCI_INVOCATIONS = 0;
@@ -616,15 +618,17 @@ namespace Memoizer.NET.Test
             Console.Write(memoizedFibonacci(numberOfFibonacciArguments));
             durationInTicks = DateTime.Now.Ticks - startTime;
             durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(FIBONACCI_INVOCATIONS, Is.EqualTo(39));
+            Assert.That(durationInMilliseconds, Is.LessThan(20));
             Console.WriteLine();
             Console.WriteLine("Fibonacci function invoked " + FIBONACCI_INVOCATIONS + " times. Took " + durationInTicks + " ticks | " + durationInMilliseconds + " ms");
         }
 
 
         [Test]
+        [Ignore("Demo - activate on demand...")]
         public void FibonacciSequence_NonMemoized(
-        [Values(-1, 0, 1, 2, 3, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 33, 34, 35, 36, 37, 38)] int numberOfFibonacciArguments)
-        //[Values(-1, 0, 1, 2, 3, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 39, 40, 41, 42)] int numberOfFibonacciArguments)
+        [Values(-1, 0, 1, 2, 3, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 39, 40, 41, 42)] int numberOfFibonacciArguments)
         {
             FIBONACCI_INVOCATIONS = 0;
             Console.WriteLine("Fibonacci(" + numberOfFibonacciArguments + ") = ");
@@ -643,9 +647,9 @@ namespace Memoizer.NET.Test
 
 
         [Test]
+        [Ignore("Demo - activate on demand...")]
         public void FibonacciSequence_StillNotMemoized(
-        [Values(-1, 0, 1, 2, 3, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 33, 34, 35, 36, 37, 38)] int numberOfFibonacciArguments)
-        //[Values(-1, 0, 1, 2, 3, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 39, 40, 41, 42)] int numberOfFibonacciArguments)
+        [Values(-1, 0, 1, 2, 3, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 39, 40, 41, 42)] int numberOfFibonacciArguments)
         {
             FIBONACCI_INVOCATIONS = 0;
             Console.WriteLine("Fibonacci(" + numberOfFibonacciArguments + ") = ");
@@ -664,8 +668,8 @@ namespace Memoizer.NET.Test
 
 
         [Test]
+        [Ignore("Demo - activate on demand...")]
         public void FibonacciSequence_Memoized(
-        //[Values(-1, 0, 1, 2, 3, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 33, 34, 35, 36, 37, 38)] int numberOfFibonacciArguments)
         [Values(-1, 0, 1, 2, 3, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 39, 40, 41, 42)] int numberOfFibonacciArguments)
         {
             FIBONACCI_INVOCATIONS = 0;

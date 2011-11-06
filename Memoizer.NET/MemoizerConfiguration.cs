@@ -15,7 +15,6 @@
  */
 using System;
 
-
 namespace Memoizer.NET
 {
 
@@ -31,6 +30,8 @@ namespace Memoizer.NET
                                      Action<string> loggerMethod)
         {
             Function = function;
+            bool firstTime = false;
+            this.FunctionId = (Int32)MemoizerHelper.GetObjectId(Function, ref firstTime);
             ExpirationType = expirationType;
             ExpirationValue = expirationValue;
             ExpirationTimeUnit = expirationTimeUnit;
@@ -38,23 +39,30 @@ namespace Memoizer.NET
         }
 
         public object Function { get; private set; }
+        public int FunctionId { get; private set; }
         public ExpirationType ExpirationType { get; private set; }
         public int ExpirationValue { get; private set; }
         public TimeUnit ExpirationTimeUnit { get; private set; }
         public Action<string> LoggerAction { get; private set; }
 
+        /// <summary>
+        /// MemoizerConfiguration hash code format: 5 digits with function ID + 5 digits hash of the rest.
+        /// 2^31 == 2 147 483 648 == 21474 83648 => max 21474 different Funcs, and 99999 different expiration configurations...
+        /// This has clearly limitations, but I guess it's OK for proof-of-concept.
+        /// </summary>
         public override int GetHashCode()
         {
-            bool firstTime = false;
-            int funcId = (Int32)MemoizerHelper.GetObjectId(Function, ref firstTime);
+            if (FunctionId > 21474) { throw new InvalidOperationException("Memoizer.NET supports only 21474 different Func references..."); }
+            string funcId = FunctionId.ToString();
+            //string funcId = FunctionId.ToString().PadLeft(5, '0');
 
-            int retVal = 0;
-            retVal = retVal * MemoizerHelper.PRIMES[7] + funcId;
-            retVal = retVal * MemoizerHelper.PRIMES[6] + ExpirationType.GetHashCode();
-            retVal = retVal * MemoizerHelper.PRIMES[5] + ExpirationValue.GetHashCode();
-            retVal = retVal * MemoizerHelper.PRIMES[4] + ExpirationTimeUnit.GetHashCode();
+            int expirationConfigHash = MemoizerHelper.PRIMES[6] + ExpirationType.GetHashCode();
+            expirationConfigHash = expirationConfigHash * MemoizerHelper.PRIMES[5] + ExpirationValue.GetHashCode();
+            expirationConfigHash = expirationConfigHash * MemoizerHelper.PRIMES[4] + ExpirationTimeUnit.GetHashCode();
 
-            return retVal;
+            expirationConfigHash = expirationConfigHash % 99999;
+
+            return Convert.ToInt32(funcId + expirationConfigHash);
         }
 
         public override bool Equals(object otherObject)

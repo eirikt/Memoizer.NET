@@ -49,20 +49,20 @@ namespace Memoizer.NET
         int NumberOfTimesCleared { get; }
         int NumberOfElementsCleared { get; }
     }
-    public interface IMemoizer<in TParam1, out TResult> : IThreadSafe, /*IDisposable,*/ IClearable, IManageableMemoizer
+    public interface IMemoizer<in TParam1, out TResult> : IThreadSafe, IDisposable, IClearable, IManageableMemoizer
     {
         TResult InvokeWith(TParam1 param);
         void Remove(TParam1 param);
     }
-    public interface IMemoizer<in TParam1, in TParam2, out TResult> : IThreadSafe, /*IDisposable,*/ IClearable, IManageableMemoizer
+    public interface IMemoizer<in TParam1, in TParam2, out TResult> : IThreadSafe, IDisposable, IClearable, IManageableMemoizer
     {
         TResult InvokeWith(TParam1 param1, TParam2 param2);
     }
-    public interface IMemoizer<in TParam1, in TParam2, in TParam3, out TResult> : IThreadSafe, /*IDisposable,*/ IClearable, IManageableMemoizer
+    public interface IMemoizer<in TParam1, in TParam2, in TParam3, out TResult> : IThreadSafe, IDisposable, IClearable, IManageableMemoizer
     {
         TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3);
     }
-    public interface IMemoizer<in TParam1, in TParam2, in TParam3, in TParam4, out TResult> : IThreadSafe, /*IDisposable,*/ IClearable, IManageableMemoizer
+    public interface IMemoizer<in TParam1, in TParam2, in TParam3, in TParam4, out TResult> : IThreadSafe, IDisposable, IClearable, IManageableMemoizer
     {
         TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3in, TParam4 param4);
     }
@@ -89,21 +89,29 @@ namespace Memoizer.NET
     /// <author>Eirik Torske</author>
     abstract class AbstractMemoizer<TResult> : IManageableMemoizer
     {
-        protected MemoryCache cache;
+        protected internal MemoryCache cache;
         protected CacheItemPolicy cacheItemPolicy;
         protected Action<string> loggingMethod;
+
+        /// <summary>
+        /// Flag indicating if memoizer is in memoizer^2 registry
+        /// </summary>
+        internal bool IsShared { get; set; }
 
         int numberOfTimesInvoked;
         int numberOfTimesNoCacheInvoked;
         int numberOfTimesCleared;
         int numberOfElementsCleared;
 
+
         public int NumberOfTimesInvoked { get { return this.numberOfTimesInvoked; } }
         public int NumberOfTimesNoCacheInvoked { get { return this.numberOfTimesNoCacheInvoked; } }
         public int NumberOfTimesCleared { get { return this.numberOfTimesCleared; } }
         public int NumberOfElementsCleared { get { return this.numberOfElementsCleared; } }
 
-        //public void Dispose() { this.cache.Dispose(); }
+
+        public void Dispose() { this.cache.Dispose(); }
+
 
         /// <summary>
         /// Lock object for removal of element and incrementing total element removal index.
@@ -126,16 +134,19 @@ namespace Memoizer.NET
             }
         }
 
+        
         protected void ConditionalLogging(string logMessage)
         {
             if (this.loggingMethod != null) { this.loggingMethod(this.GetType().Namespace + "." + this.GetType().Name + " [" + this.GetHashCode() + "] : " + logMessage); }
         }
 
+        
         /// <summary>
         /// Gets the delegate of the function to be memoized, closed under given arguments.
         /// </summary>
         protected abstract Func<TResult> GetFunctionClosure(params object[] args);
 
+        
         /// <summary>
         /// Invokes the method delegate - consulting the cache on the way.
         /// </summary>
@@ -143,6 +154,7 @@ namespace Memoizer.NET
         {
             long startTime = DateTime.Now.Ticks;
             string key = MemoizerHelper.CreateParameterHash(args);
+            //string key = MemoizerHelper.CreateParameterHash(IsShared, args);
             CacheItem taskCacheItem = this.cache.GetCacheItem(key);
             if (taskCacheItem == null)
             {
@@ -203,12 +215,13 @@ namespace Memoizer.NET
         //    this.loggingMethod = memoizerFactory.LoggerAction;
         //}
 
-        internal Memoizer(MemoizerConfiguration memoizerConfig)
+        internal Memoizer(MemoizerConfiguration memoizerConfig, bool shared = true)
         {
             this.cache = new MemoryCache(memoizerConfig.GetHashCode().ToString());
             this.functionToBeMemoized = (Func<TParam1, TResult>)memoizerConfig.Function;
             this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerConfig.ExpirationType, memoizerConfig.ExpirationValue, memoizerConfig.ExpirationTimeUnit);
             this.loggingMethod = memoizerConfig.LoggerAction;
+            this.IsShared = shared;
         }
 
         // Only for verbose lazy-loaded memoizer^2

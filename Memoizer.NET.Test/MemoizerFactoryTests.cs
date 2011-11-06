@@ -182,27 +182,27 @@ namespace Memoizer.NET.Test
         }
 
 
-        static Func<long, long> FIBONACCI = (arg => arg <= 1 ? arg : FIBONACCI(arg - 1) + FIBONACCI(arg - 2));
-        static Func<long, long> FIBONACCI2 = FIBONACCI;
-        static Func<long, long> FIBONACCI3 = (arg => arg <= 1 ? arg : FIBONACCI(arg - 1) + FIBONACCI(arg - 2));
-        static Func<long, long> FIBONACCI4 = (arg => arg <= 1 ? arg : FIBONACCI4(arg - 1) + FIBONACCI4(arg - 2));
+        internal static readonly Func<long, long> FIBONACCI = (arg => arg <= 1 ? arg : FIBONACCI(arg - 1) + FIBONACCI(arg - 2));
+        internal static readonly Func<long, long> FIBONACCI2 = FIBONACCI;
+        internal static readonly Func<long, long> FIBONACCI3 = (arg => arg <= 1 ? arg : FIBONACCI(arg - 1) + FIBONACCI(arg - 2));
+        internal static readonly Func<long, long> FIBONACCI4 = (arg => arg <= 1 ? arg : FIBONACCI4(arg - 1) + FIBONACCI4(arg - 2));
 
         //Func<long, long> nonStaticFibonacci= (arg => arg <= 1 ? arg : nonStaticFibonacci(arg - 1) + nonStaticFibonacci(arg - 2)); // Does not compile
 
 
-        static readonly Func<long, long> slow500Square = (arg1 =>
+        internal static readonly Func<long, long> slow500Square = (arg1 =>
         {
             Thread.Sleep(500);
             return arg1 * arg1;
         });
-        static long Slow500Square(long arg)
+        internal static long Slow500Square(long arg)
         {
             Thread.Sleep(500);
             return arg * arg;
         }
 
 
-        readonly Func<long, long> slow1000PowerOfThree = (arg1 => { Thread.Sleep(1000); return arg1 * arg1 * arg1; });
+        internal readonly Func<long, long> slow1000PowerOfThree = (arg1 => { Thread.Sleep(1000); return arg1 * arg1 * arg1; });
 
 
         [Test]
@@ -492,8 +492,9 @@ namespace Memoizer.NET.Test
                                 .KeepItemsCachedFor(120).Milliseconds;
 
             Assert.That(memoizerFactory1, Is.EqualTo(memoizerFactory2));
-            Assert.That(memoizerFactory1, Is.EqualTo(memoizerFactory2));
+            Assert.That(memoizerFactory2, Is.EqualTo(memoizerFactory1));
             Assert.That(memoizerFactory1.GetMemoizer(), Is.SameAs(memoizerFactory2.GetMemoizer()));
+            Assert.That(memoizerFactory2.GetMemoizer(), Is.SameAs(memoizerFactory1.GetMemoizer()));
         }
     }
 }
