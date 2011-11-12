@@ -71,16 +71,10 @@ namespace Memoizer.NET
     #region Memoizer (using a MemoryCache instance and Goetz's algorithm)
     /// <remarks>
     /// This class is an implementation of a method-level/fine-grained cache (a.k.a. <i>memoizer</i>). 
-    /// It is based on an implementation from the book "Java Concurrency in Practice" by Brian Goetz et. al. - 
-    /// ported to C# 4.0 using goodness like method handles/delegates, lambda expressions, and extension methods.
+    /// It is based on an implementation from the book "Java Concurrency in Practice" by Brian Goetz et. al. - ported to C# 4.0
     /// <p/>
     /// A <code>System.Runtime.Caching.MemoryCache</code> instance is used as cache, enabling configuration via the <code>System.Runtime.Caching.CacheItemPolicy</code>. 
     /// Default cache configuration is: items to be held as long as the CLR is alive or the memoizer is disposed/cleared.
-    /// <p/>
-    /// Every <code>Memoizer.Net.Memoizer</code> instance creates its own <code>System.Runtime.Caching.MemoryCache</code> instance. 
-    /// One could re-design this to utilize the ubiquitous default <code>System.Runtime.Caching.MemoryCache</code> instance to make this memoizer even faster. 
-    /// As a middle-way, the <code>Memoizer.Net.Memoizer</code> instance, with its <code>System.Runtime.Caching.MemoryCache</code> member instance, 
-    /// can be lazy-loaded by using the <code>Memoizer.Net.LazyMemoizer</code>.
     /// <p/>
     /// This class is thread-safe.
     /// </remarks>
@@ -140,7 +134,7 @@ namespace Memoizer.NET
             if (this.loggingMethod != null) { this.loggingMethod(this.GetType().Namespace + "." + this.GetType().Name + " [" + this.GetHashCode() + "] : " + logMessage); }
         }
 
-        
+
         /// <summary>
         /// Gets the delegate of the function to be memoized, closed under given arguments.
         /// </summary>
@@ -252,7 +246,7 @@ namespace Memoizer.NET
 
         public void Remove(TParam1 param)
         {
-            throw new NotImplementedException();
+            this.cache.Remove(MemoizerHelper.CreateParameterHash(param));
         }
     }
 

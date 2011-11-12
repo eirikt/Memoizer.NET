@@ -1,5 +1,5 @@
 ## Memoizer.NET
-This project is an implementation of a function-level/fine-grained cache (a.k.a. _memoizer_). It is based on an implementation from the book ["Java Concurrency in Practice"](http://jcip.net "http://jcip.net") by Brian Goetz et. al. - ported to C# 4.0 using goodness like method handles/delegates, lambda expressions, and extension methods.
+This project is an implementation of a function-level/fine-grained cache (a.k.a. _memoizer_). It is based on an implementation from the book ["Java Concurrency in Practice"](http://jcip.net "http://jcip.net") by Brian Goetz et. al. - ported to C# 4.0.
 
 The noble thing about this implementation is that the _values_ are not cached, but rather _asynchronous tasks_ for retrieving those values. These tasks are guaranteed not to be executed more than once in case of concurrent first-time invocations.
 
@@ -60,7 +60,7 @@ When doing multiple operations on a memoizer, it's maybe just as well declaring 
 
 Memoizer.NET does not support memoization of recursive functions out of the box, as it does not do any kind of IL manipulation.
 
-E.g the ubiquitous Fibonacci sequence example will not work just by memoizing the root function. Instead, the recursion points have to be memoized, something like:
+E.g the ubiquitous Fibonacci sequence example will not work just by memoizing the root function. Instead, the recursion points have to be memoized, like this:
 
 	static Func<long, long> fibonacci =
 	(arg =>
@@ -70,7 +70,7 @@ E.g the ubiquitous Fibonacci sequence example will not work just by memoizing th
 		}
 	);
 
-Now, the `fibonacci` function can be invoked as a regular C# function.
+Now, the `fibonacci` function can be invoked as a regular C# function, but order of magnitude faster.
 
 
 ## Memoizer.NET.TwoPhaseExecutor

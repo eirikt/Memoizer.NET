@@ -21,9 +21,9 @@ namespace Memoizer.NET
     /// <remarks>
     /// Immutable class for configuration of memoizers - used for creating memoizer instances.
     /// </remarks>
-    public class MemoizerConfiguration
+    internal class MemoizerConfiguration
     {
-        public MemoizerConfiguration(object function,
+        internal MemoizerConfiguration(object function,
                                      ExpirationType expirationType,
                                      int expirationValue,
                                      TimeUnit expirationTimeUnit,
@@ -38,17 +38,17 @@ namespace Memoizer.NET
             LoggerAction = loggerMethod;
         }
 
-        public object Function { get; private set; }
-        public int FunctionId { get; private set; }
-        public ExpirationType ExpirationType { get; private set; }
-        public int ExpirationValue { get; private set; }
-        public TimeUnit ExpirationTimeUnit { get; private set; }
-        public Action<string> LoggerAction { get; private set; }
+        internal object Function { get; set; }
+        internal int FunctionId { get; set; }
+        internal ExpirationType ExpirationType { get; set; }
+        internal int ExpirationValue { get; set; }
+        internal TimeUnit ExpirationTimeUnit { get; set; }
+        internal Action<string> LoggerAction { get; set; }
 
         /// <summary>
         /// MemoizerConfiguration hash code format: 5 digits with function ID + 5 digits hash of the rest.
         /// 2^31 == 2 147 483 648 == 21474 83648 => max 21474 different Funcs, and 99999 different expiration configurations...
-        /// This has clearly limitations, but I guess it's OK for proof-of-concept.
+        /// This has clearly limitations, but I guess it's OK as a proof-of-concept - it's fixable :-)
         /// </summary>
         public override int GetHashCode()
         {
@@ -57,9 +57,9 @@ namespace Memoizer.NET
             //string funcId = FunctionId.ToString().PadLeft(5, '0');
 
             int expirationConfigHash = MemoizerHelper.PRIMES[6] + ExpirationType.GetHashCode();
-            expirationConfigHash = expirationConfigHash * MemoizerHelper.PRIMES[5] + ExpirationValue.GetHashCode();
-            expirationConfigHash = expirationConfigHash * MemoizerHelper.PRIMES[4] + ExpirationTimeUnit.GetHashCode();
-
+            expirationConfigHash = expirationConfigHash * MemoizerHelper.PRIMES[11] + ExpirationValue.GetHashCode();
+            expirationConfigHash = expirationConfigHash * MemoizerHelper.PRIMES[7] + ExpirationTimeUnit.GetHashCode();
+        
             expirationConfigHash = expirationConfigHash % 99999;
 
             return Convert.ToInt32(funcId + expirationConfigHash);

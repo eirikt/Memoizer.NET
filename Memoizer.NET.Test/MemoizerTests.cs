@@ -553,7 +553,7 @@ namespace Memoizer.NET.Test
                 " (should take [" + minimumExpectedLatencyInMillis + " < " + durationInMilliseconds + " < " + maximumExpectedLatencyInMillis + "] ms) (threadContentionFactor=" + threadContentionFactor + ").");
 
             Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(minimumExpectedLatencyInMillis));
-            Assert.That(durationInMilliseconds, Is.LessThan(maximumExpectedLatencyInMillis));
+            Assert.That(durationInMilliseconds, Is.LessThanOrEqualTo(maximumExpectedLatencyInMillis));
             //}
         }
 
@@ -589,10 +589,12 @@ namespace Memoizer.NET.Test
             //Assert.That(MemoizerHelper.CreateMemoizerHash(memoizedFibonacci.Memoize()), Is.EqualTo(MemoizerHelper.CreateMemoizerHash(memoizedFibonacci.Memoize())));
             //Assert.That(MemoizerHelper.CreateMemoizerHash(fibonacci.Memoize()), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerHash(memoizedFibonacci.Memoize())));
             //Assert.That(MemoizerHelper.CreateMemoizerHash(memoizedFibonacci.Memoize()), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerHash(fibonacci.Memoize())));
-            Assert.That(fibonacci.Memoize().MemoizerConfiguration, Is.EqualTo(fibonacci.Memoize().MemoizerConfiguration));
-            Assert.That(memoizedFibonacci.Memoize().MemoizerConfiguration, Is.EqualTo(memoizedFibonacci.Memoize().MemoizerConfiguration));
-            Assert.That(fibonacci.Memoize().MemoizerConfiguration, Is.Not.EqualTo(memoizedFibonacci.Memoize().MemoizerConfiguration));
-            Assert.That(memoizedFibonacci.Memoize().MemoizerConfiguration, Is.Not.EqualTo(fibonacci.Memoize().MemoizerConfiguration));
+
+            // TODO: use reflection
+            //Assert.That(fibonacci.Memoize().MemoizerConfiguration, Is.EqualTo(fibonacci.Memoize().MemoizerConfiguration));
+            //Assert.That(memoizedFibonacci.Memoize().MemoizerConfiguration, Is.EqualTo(memoizedFibonacci.Memoize().MemoizerConfiguration));
+            //Assert.That(fibonacci.Memoize().MemoizerConfiguration, Is.Not.EqualTo(memoizedFibonacci.Memoize().MemoizerConfiguration));
+            //Assert.That(memoizedFibonacci.Memoize().MemoizerConfiguration, Is.Not.EqualTo(fibonacci.Memoize().MemoizerConfiguration));
         }
 
 
