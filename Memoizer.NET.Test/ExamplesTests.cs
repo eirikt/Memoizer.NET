@@ -404,6 +404,7 @@ namespace Memoizer.NET.Test
 
             // Maybe the memoizer^2 registry instance is already cached, maybe not...
             myMemoizerFactory.GetMemoizer().InvokeWith(1989L);
+            myMemoizerFactory.GetMemoizer().InvokeWith(2089L);
             myMemoizerFactory2.GetMemoizer().InvokeWith(1989L);
             myMemoizerFactory3.GetMemoizer().InvokeWith(1989L);
 
@@ -434,7 +435,15 @@ namespace Memoizer.NET.Test
             durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
             Assert.That(durationInMilliseconds, Is.LessThan(10));
 
-            // But the value is removed from the memoizer^2 registry - so that will be re-cached...
+            // Cached value for different parameter is not affected
+            startTime = DateTime.Now.Ticks;
+            retVal = myMemoizerFactory.GetMemoizer().InvokeWith(2089L);
+            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 2089L));
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(durationInMilliseconds, Is.LessThan(10));
+
+            // Cached value is removed from the memoizer^2 registry - so that will be re-cached...
             startTime = DateTime.Now.Ticks;
             retVal = myMemoizerFactory.GetMemoizer().InvokeWith(1989L);
             Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 1989L));
@@ -524,7 +533,7 @@ namespace Memoizer.NET.Test
 
             //myExpensiveFunctionMemoizer.Remove(42L); // OK
 
-            //myExpensiveFunction.RemoveFromCache(42L); // Not implemented yet
+            myExpensiveFunction.RemoveFromCache(42L); // OK
 
 
             // The IMemoizer instance is still working...

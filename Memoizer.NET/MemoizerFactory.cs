@@ -87,22 +87,22 @@ namespace Memoizer.NET
         #region UnMemoize() [remove all memoizers using this particular Func from memoizer^2 registry]
         public static void UnMemoize<TParam1, TResult>(this Func<TParam1, TResult> functionToUnMemoize)
         {
-            MemoizerFactory<TParam1, TResult>.RemoveMemoizersFromRegistryHavingFunction(functionToUnMemoize);
+            MemoizerFactory<TParam1, TResult>.RemoveRegistryMemoizersHavingFunction(functionToUnMemoize);
         }
         public static void UnMemoize<TParam1, TParam2, TResult>(this Func<TParam1, TParam2, TResult> functionToBeMemoized)
         {
             throw new NotImplementedException();
-            //MemoizerFactory<TParam1, TParam2, TResult>.RemoveFunction(functionToUnMemoize);
+            //MemoizerFactory<TParam1, TParam2, TResult>.RemoveRegistryMemoizersHavingFunction(functionToUnMemoize);
         }
         public static void UnMemoize<TParam1, TParam2, TParam3, TResult>(this Func<TParam1, TParam2, TParam3, TResult> functionToBeMemoized)
         {
             throw new NotImplementedException();
-            //MemoizerFactory<TParam1, TParam2, TParam3, TResult>.RemoveFunction(functionToUnMemoize);
+            //MemoizerFactory<TParam1, TParam2, TParam3, TResult>.RemoveMemoizersFromRegistryHavingFunction(functionToUnMemoize);
         }
         public static void UnMemoize<TParam1, TParam2, TParam3, TParam4, TResult>(this Func<TParam1, TParam2, TParam3, TParam4, TResult> functionToBeMemoized)
         {
             throw new NotImplementedException();
-            //MemoizerFactory<TParam1, TParam2, TParam3, TParam4, TResult>.RemoveFunction(functionToUnMemoize);
+            //MemoizerFactory<TParam1, TParam2, TParam3, TParam4, TResult>.RemoveMemoizersFromRegistryHavingFunction(functionToUnMemoize);
         }
         #endregion
 
@@ -145,9 +145,21 @@ namespace Memoizer.NET
         #endregion
 
         #region RemoveFromCache() [remove this particular cached invocation from all memoizers using this Func from memoizer^2 registry]
-        public static void RemoveFromCache<TParam1, TResult>(this Func<TParam1, TResult> memoizedFunction, TParam1 arg1ForRemoval)
+        public static void RemoveFromCache<TParam1, TResult>(this Func<TParam1, TResult> memoizedFunction, TParam1 arg1)
         {
-            MemoizerFactory<TParam1, TResult>.RemoveMemoizersFromRegistryHavingFunction(memoizedFunction);
+            MemoizerFactory<TParam1, TResult>.RemoveCachedElementsFromRegistryMemoizersHavingFunction(memoizedFunction, arg1);
+        }
+        public static void RemoveFromCache<TParam1, TParam2, TResult>(this Func<TParam1, TParam2, TResult> memoizedFunction, TParam1 arg1ForRemoval, TParam2 arg2ForRemoval)
+        {
+            throw new NotImplementedException();
+        }
+        public static void RemoveFromCache<TParam1, TParam2, TParam3, TResult>(this Func<TParam1, TParam2, TParam3, TResult> memoizedFunction, TParam1 arg1ForRemoval, TParam2 arg2ForRemoval, TParam3 arg3ForRemoval)
+        {
+            throw new NotImplementedException();
+        }
+        public static void RemoveFromCache<TParam1, TParam2, TParam3, TParam4, TResult>(this Func<TParam1, TParam2, TParam3, TParam4, TResult> memoizedFunction, TParam1 arg1ForRemoval, TParam2 arg2ForRemoval, TParam3 arg3ForRemoval, TParam4 arg4ForRemoval)
+        {
+            throw new NotImplementedException();
         }
         #endregion
     }
@@ -215,6 +227,35 @@ namespace Memoizer.NET
     }
     #endregion
 
+    #region MemoizerRegistryHelper
+    public class MemoizerRegistryHelper
+    {
+        /// <summary>
+        /// Coupled with the <code>MemoizerConfiguration.GetHashCode()</code> method.
+        /// </summary>
+        /// <param name="function">The memoized function to look for</param>
+        /// <param name="memoizerRegistry">The memoizer^2 registry instance to look into</param>
+        /// <returns>An enumeration of keys pointing to memoizer instances in the memoizer^2 registry, having the given function</returns>
+        internal static IEnumerable<string> FindMemoizerKeysInRegistryHavingFunction<T>(object function, Memoizer<MemoizerConfiguration, T> memoizerRegistry)
+        {
+            IList<string> memoizerKeyList = new List<string>();
+            foreach (KeyValuePair<string, object> keyValuePair in memoizerRegistry.cache)
+            {
+                string funcIdPartOfMemoizerConfigurationHashCode = keyValuePair.Key.PadLeft(10, '0').Substring(0, 5);
+
+                bool firstTime = false;
+                long funcId_long = MemoizerHelper.GetObjectId(function, ref firstTime);
+                if (funcId_long > 21474) { throw new InvalidOperationException("Memoizer.NET supports only 21474 different Func references..."); }
+                string funcIdPartOfFunctionToLookFor = funcId_long.ToString().PadLeft(5, '0');
+
+                if (funcIdPartOfFunctionToLookFor == funcIdPartOfMemoizerConfigurationHashCode)
+                    memoizerKeyList.Add(keyValuePair.Key);
+            }
+            return memoizerKeyList;
+        }
+    }
+    #endregion
+
     #region MemoizerHelper (mostly reflection-based for the time being...)
     public class MemoizerHelper
     {
@@ -274,44 +315,6 @@ namespace Memoizer.NET
             bool firstTime = false;
             return GetObjectId(func, ref firstTime);
         }
-
-
-        // TODO: common method for Func removal
-        //internal static void RemoveFunction<T>(object functionToUnMemoize, Lazy<T> LAZY_MEMOIZER_MEMOIZER):T is IMemoizer
-        //{
-        //    foreach (KeyValuePair<string, object> keyValuePair in LAZY_MEMOIZER_MEMOIZER.Value.cache)
-        //    {
-        //        lock (keyValuePair.Value)
-        //        {
-        //            string memoizerConfigHashCode2 = keyValuePair.Key.PadLeft(10, '0');
-        //            string memoizerConfigHashCode = memoizerConfigHashCode2.Substring(0, 5);
-
-        //            bool firstTime = false;
-        //            long functionToUnMemoizeHashCode_long = MemoizerHelper.GetObjectId(functionToUnMemoize, ref firstTime);
-        //            if (functionToUnMemoizeHashCode_long > 21474) { throw new InvalidOperationException("Memoizer.NET supports only 21474 different Func references..."); }
-        //            string functionToUnMemoizeHashCode = functionToUnMemoizeHashCode_long.ToString().PadLeft(5, '0');
-
-        //            if (functionToUnMemoizeHashCode == memoizerConfigHashCode)
-        //            {
-        //                // Dispose of the MemoryCache backing object
-        //                PropertyInfo propertyInfo = keyValuePair.Value.GetType().GetProperty("Result");
-        //                if (propertyInfo == null)
-        //                    throw new ArgumentException("Could not find a property with the name 'Result'");
-
-        //                var memoizer = propertyInfo.GetValue(keyValuePair.Value, null);
-
-        //                MethodInfo method = memoizer.GetType().GetMethod("Dispose");//, BindingFlags.Public);
-        //                if (method == null)
-        //                    throw new ArgumentException("Could not find a method with the name 'Dispose'");
-
-        //                method.Invoke(memoizer, null);
-
-        //                // Remove the memoizer from the memoizer^2 registry
-        //                LAZY_MEMOIZER_MEMOIZER.Value.cache.Remove(keyValuePair.Key);
-        //            }
-        //        }
-        //    }
-        //}
     }
     #endregion
 
@@ -394,83 +397,63 @@ namespace Memoizer.NET
         //    return memoizerList;
         //}
 
-        /// <summary>
-        /// Coupled with the <code>MemoizerConfiguration.GetHashCode()</code> method.
-        /// </summary>
-        /// <param name="function">The memoized function to look for</param>
-        /// <returns>An enumeration of keys pointing to memoizer instances in the memoizer^2 registry, having the given function</returns>
-        internal static IEnumerable<string> FindMemoizerKeysInRegistryHavingFunction(Func<TParam1, TResult> function)
-        {
-            IList<string> memoizerKeyList = new List<string>();
-            foreach (KeyValuePair<string, object> keyValuePair in LAZY_MEMOIZER_MEMOIZER.Value.cache)
-            {
-                string memoizerConfigHashCode2 = keyValuePair.Key.PadLeft(10, '0');
-                string memoizerConfigHashCode = memoizerConfigHashCode2.Substring(0, 5);
+        ///// <summary>
+        ///// Coupled with the <code>MemoizerConfiguration.GetHashCode()</code> method.
+        ///// </summary>
+        ///// <param name="function">The memoized function to look for</param>
+        ///// <returns>An enumeration of keys pointing to memoizer instances in the memoizer^2 registry, having the given function</returns>
+        ////internal static IEnumerable<string> FindMemoizerKeysInRegistryHavingFunction(Func<TParam1, TResult> function)
+        //internal static IEnumerable<string> FindMemoizerKeysInRegistryHavingFunction<T>(object function, Memoizer<MemoizerConfiguration, T> memoizerRegistry)
+        //{
+        //    IList<string> memoizerKeyList = new List<string>();
+        //    //foreach (KeyValuePair<string, object> keyValuePair in LAZY_MEMOIZER_MEMOIZER.Value.cache)
+        //    foreach (KeyValuePair<string, object> keyValuePair in memoizerRegistry.cache)
+        //    {
+        //        string memoizerConfigHashCode2 = keyValuePair.Key.PadLeft(10, '0');
+        //        string memoizerConfigHashCode = memoizerConfigHashCode2.Substring(0, 5);
 
-                bool firstTime = false;
-                long functionToRemoveCachedValueFromHashCode_long = MemoizerHelper.GetObjectId(function, ref firstTime);
-                if (functionToRemoveCachedValueFromHashCode_long > 21474) { throw new InvalidOperationException("Memoizer.NET supports only 21474 different Func references..."); }
-                string functionToRemoveCachedValueFromHashCode = functionToRemoveCachedValueFromHashCode_long.ToString().PadLeft(5, '0');
+        //        bool firstTime = false;
+        //        long functionToRemoveCachedValueFromHashCode_long = MemoizerHelper.GetObjectId(function, ref firstTime);
+        //        if (functionToRemoveCachedValueFromHashCode_long > 21474) { throw new InvalidOperationException("Memoizer.NET supports only 21474 different Func references..."); }
+        //        string functionToRemoveCachedValueFromHashCode = functionToRemoveCachedValueFromHashCode_long.ToString().PadLeft(5, '0');
 
-                if (functionToRemoveCachedValueFromHashCode == memoizerConfigHashCode)
-                    memoizerKeyList.Add(keyValuePair.Key);
-            }
-            return memoizerKeyList;
-        }
+        //        if (functionToRemoveCachedValueFromHashCode == memoizerConfigHashCode)
+        //            memoizerKeyList.Add(keyValuePair.Key);
+        //    }
+        //    return memoizerKeyList;
+        //}
 
         /// <summary>
         /// Remove all memoizer instances having the given Func, from the memoizer^2 registry
         /// </summary>
         /// <param name="functionToUnMemoize">The memoized function to remove from the memoizer^2 registry</param>
         /// <returns>Number of memoizer instances removed from memoizer^2 registry</returns>
-        internal static int RemoveMemoizersFromRegistryHavingFunction(Func<TParam1, TResult> functionToUnMemoize)
+        internal static int RemoveRegistryMemoizersHavingFunction(Func<TParam1, TResult> functionToUnMemoize)
         {
             int numberOfMemoizersRemoved = 0;
-            IEnumerable<string> memoizerKeyList = FindMemoizerKeysInRegistryHavingFunction(functionToUnMemoize);
+            IEnumerable<string> memoizerKeyList = MemoizerRegistryHelper.FindMemoizerKeysInRegistryHavingFunction(functionToUnMemoize, LAZY_MEMOIZER_MEMOIZER.Value);
             foreach (var memoizerKey in memoizerKeyList)
             {
                 Task<Memoizer<TParam1, TResult>> cacheValueTask = (Task<Memoizer<TParam1, TResult>>)LAZY_MEMOIZER_MEMOIZER.Value.cache.Get(memoizerKey);
-                IMemoizer<TParam1, TResult> memoizer = cacheValueTask.Result;
+                IDisposable memoizer = cacheValueTask.Result;
                 memoizer.Dispose();
                 LAZY_MEMOIZER_MEMOIZER.Value.cache.Remove(memoizerKey);
                 ++numberOfMemoizersRemoved;
             }
-            //foreach (KeyValuePair<string, object> keyValuePair in LAZY_MEMOIZER_MEMOIZER.Value.cache)
-            //{
-            //    lock (keyValuePair.Value)
-            //    {
-            //        string memoizerConfigHashCode2 = keyValuePair.Key.PadLeft(10, '0');
-            //        string memoizerConfigHashCode = memoizerConfigHashCode2.Substring(0, 5);
-
-            //        bool firstTime = false;
-            //        long functionToUnMemoizeHashCode_long = MemoizerHelper.GetObjectId(functionToUnMemoize, ref firstTime);
-            //        if (functionToUnMemoizeHashCode_long > 21474) { throw new InvalidOperationException("Memoizer.NET supports only 21474 different Func references..."); }
-            //        string functionToUnMemoizeHashCode = functionToUnMemoizeHashCode_long.ToString().PadLeft(5, '0');
-
-            //        if (functionToUnMemoizeHashCode == memoizerConfigHashCode)
-            //        {
-            //            // Dispose of the MemoryCache backing object
-            //            PropertyInfo propertyInfo = keyValuePair.Value.GetType().GetProperty("Result");
-            //            if (propertyInfo == null)
-            //                throw new ArgumentException("Could not find a property with the name 'Result'");
-
-            //            var memoizer = propertyInfo.GetValue(keyValuePair.Value, null);
-
-            //            MethodInfo method = memoizer.GetType().GetMethod("Dispose");//, BindingFlags.Public);
-            //            if (method == null)
-            //                throw new ArgumentException("Could not find a method with the name 'Dispose'");
-
-            //            method.Invoke(memoizer, null);
-
-            //            // Remove the memoizer from the memoizer^2 registry
-            //            LAZY_MEMOIZER_MEMOIZER.Value.cache.Remove(keyValuePair.Key);
-
-            //            ++numberOfMemoizersRemoved;
-            //        }
-            //    }
-            //}
             return numberOfMemoizersRemoved;
         }
+
+        internal static void RemoveCachedElementsFromRegistryMemoizersHavingFunction(Func<TParam1, TResult> memoizedFunction, TParam1 arg1)
+        {
+            IEnumerable<string> memoizerKeyList = MemoizerRegistryHelper.FindMemoizerKeysInRegistryHavingFunction(memoizedFunction, LAZY_MEMOIZER_MEMOIZER.Value);
+            foreach (var memoizerKey in memoizerKeyList)
+            {
+                Task<Memoizer<TParam1, TResult>> cacheValueTask = (Task<Memoizer<TParam1, TResult>>)LAZY_MEMOIZER_MEMOIZER.Value.cache.Get(memoizerKey);
+                IMemoizer<TParam1, TResult> memoizer = cacheValueTask.Result;
+                memoizer.Remove(arg1);
+            }
+        }
+
 
         readonly Func<TParam1, TResult> function;
 
