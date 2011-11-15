@@ -57,14 +57,17 @@ namespace Memoizer.NET
     public interface IMemoizer<in TParam1, in TParam2, out TResult> : IThreadSafe, IDisposable, IClearable, IManageableMemoizer
     {
         TResult InvokeWith(TParam1 param1, TParam2 param2);
+        void Remove(TParam1 param1, TParam2 param2);
     }
     public interface IMemoizer<in TParam1, in TParam2, in TParam3, out TResult> : IThreadSafe, IDisposable, IClearable, IManageableMemoizer
     {
         TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3);
+        void Remove(TParam1 param1, TParam2 param2, TParam3 param3);
     }
     public interface IMemoizer<in TParam1, in TParam2, in TParam3, in TParam4, out TResult> : IThreadSafe, IDisposable, IClearable, IManageableMemoizer
     {
         TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3in, TParam4 param4);
+        void Remove(TParam1 param1, TParam2 param2, TParam3 param3in, TParam4 param4);
     }
     #endregion
 
@@ -128,7 +131,7 @@ namespace Memoizer.NET
             }
         }
 
-        
+
         protected void ConditionalLogging(string logMessage)
         {
             if (this.loggingMethod != null) { this.loggingMethod(this.GetType().Namespace + "." + this.GetType().Name + " [" + this.GetHashCode() + "] : " + logMessage); }
@@ -140,7 +143,7 @@ namespace Memoizer.NET
         /// </summary>
         protected abstract Func<TResult> GetFunctionClosure(params object[] args);
 
-        
+
         /// <summary>
         /// Invokes the method delegate - consulting the cache on the way.
         /// </summary>
@@ -173,14 +176,14 @@ namespace Memoizer.NET
                     Interlocked.Increment(ref this.numberOfTimesNoCacheInvoked);
                     ConditionalLogging("(Possibly expensive) async caching function execution #" + this.numberOfTimesNoCacheInvoked);
                 }
-                else
-                {
-                    //Console.WriteLine("OS thread ID=" + AppDomain.GetCurrentThreadId() + ", " + "Managed thread ID=" + Thread.CurrentThread.GetHashCode() + "/" + Thread.CurrentThread.ManagedThreadId + ": cacheItem.Value == " + cacheItem.Value);
-                }
-            }
-            else
-            {
-                //Console.WriteLine("OS thread ID=" + AppDomain.GetCurrentThreadId() + ", " + "Managed thread ID=" + Thread.CurrentThread.GetHashCode() + "/" + Thread.CurrentThread.ManagedThreadId + ": cacheItem == " + cacheItem);
+                //    else
+                //    {
+                //        Console.WriteLine("OS thread ID=" + AppDomain.GetCurrentThreadId() + ", " + "Managed thread ID=" + Thread.CurrentThread.GetHashCode() + "/" + Thread.CurrentThread.ManagedThreadId + ": cacheItem.Value == " + cacheItem.Value);
+                //    }
+                //}
+                //else
+                //{
+                //    Console.WriteLine("OS thread ID=" + AppDomain.GetCurrentThreadId() + ", " + "Managed thread ID=" + Thread.CurrentThread.GetHashCode() + "/" + Thread.CurrentThread.ManagedThreadId + ": cacheItem == " + cacheItem);
             }
 
             // The 'Result' property blocks until a value is available
@@ -254,17 +257,7 @@ namespace Memoizer.NET
     internal class Memoizer<TParam1, TParam2, TResult> : AbstractMemoizer<TResult>, IMemoizer<TParam1, TParam2, TResult>
     {
         readonly Func<TParam1, TParam2, TResult> functionToBeMemoized;
-        //internal Memoizer(MemoizerFactory<TParam1, TParam2, TResult> memoizerFactory)
-        //    : this(memoizerFactory.Function)
-        //{
-        //    this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerFactory.ExpirationType, memoizerFactory.ExpirationValue, memoizerFactory.ExpirationTimeUnit);
-        //    this.loggingMethod = memoizerFactory.LoggerAction;
-        //}
-        //internal Memoizer(Func<TParam1, TParam2, TResult> functionToBeMemoized)
-        //{
-        //    this.functionToBeMemoized = functionToBeMemoized;
-        //    this.cache = new MemoryCache(MemoizerHelper.CreateFunctionHash(this.functionToBeMemoized));
-        //}
+
         internal Memoizer(MemoizerConfiguration memoizerConfig)
         {
             this.cache = new MemoryCache(memoizerConfig.GetHashCode().ToString());
@@ -272,25 +265,19 @@ namespace Memoizer.NET
             this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerConfig.ExpirationType, memoizerConfig.ExpirationValue, memoizerConfig.ExpirationTimeUnit);
             this.loggingMethod = memoizerConfig.LoggerAction;
         }
+
         protected override Func<TResult> GetFunctionClosure(params object[] args) { return () => this.functionToBeMemoized((TParam1)args[0], (TParam2)args[1]); }
+
         public TResult InvokeWith(TParam1 param1, TParam2 param2) { return Invoke(param1, param2); }
+
+        public void Remove(TParam1 param1, TParam2 param2) { this.cache.Remove(MemoizerHelper.CreateParameterHash(param1, param2)); }
     }
 
 
     internal class Memoizer<TParam1, TParam2, TParam3, TResult> : AbstractMemoizer<TResult>, IMemoizer<TParam1, TParam2, TParam3, TResult>
     {
         readonly Func<TParam1, TParam2, TParam3, TResult> functionToBeMemoized;
-        //internal Memoizer(MemoizerFactory<TParam1, TParam2, TParam3, TResult> memoizerFactory)
-        //    : this(memoizerFactory.Function)
-        //{
-        //    this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerFactory.ExpirationType, memoizerFactory.ExpirationValue, memoizerFactory.ExpirationTimeUnit);
-        //    this.loggingMethod = memoizerFactory.LoggerAction;
-        //}
-        //internal Memoizer(Func<TParam1, TParam2, TParam3, TResult> functionToBeMemoized)
-        //{
-        //    this.functionToBeMemoized = functionToBeMemoized;
-        //    this.cache = new MemoryCache(MemoizerHelper.CreateFunctionHash(this.functionToBeMemoized));
-        //}
+
         internal Memoizer(MemoizerConfiguration memoizerConfig)
         {
             this.cache = new MemoryCache(memoizerConfig.GetHashCode().ToString());
@@ -298,25 +285,19 @@ namespace Memoizer.NET
             this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerConfig.ExpirationType, memoizerConfig.ExpirationValue, memoizerConfig.ExpirationTimeUnit);
             this.loggingMethod = memoizerConfig.LoggerAction;
         }
+
         protected override Func<TResult> GetFunctionClosure(params object[] args) { return () => this.functionToBeMemoized((TParam1)args[0], (TParam2)args[1], (TParam3)args[2]); }
+
         public TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3) { return Invoke(param1, param2, param3); }
+
+        public void Remove(TParam1 param1, TParam2 param2, TParam3 param3) { this.cache.Remove(MemoizerHelper.CreateParameterHash(param1, param2, param3)); }
     }
 
 
     internal class Memoizer<TParam1, TParam2, TParam3, TParam4, TResult> : AbstractMemoizer<TResult>, IMemoizer<TParam1, TParam2, TParam3, TParam4, TResult>
     {
         readonly Func<TParam1, TParam2, TParam3, TParam4, TResult> functionToBeMemoized;
-        //internal Memoizer(MemoizerFactory<TParam1, TParam2, TParam3, TParam4, TResult> memoizerFactory)
-        //    : this(memoizerFactory.Function)
-        //{
-        //    this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerFactory.ExpirationType, memoizerFactory.ExpirationValue, memoizerFactory.ExpirationTimeUnit);
-        //    this.loggingMethod = memoizerFactory.LoggerAction;
-        //}
-        //internal Memoizer(Func<TParam1, TParam2, TParam3, TParam4, TResult> functionToBeMemoized)
-        //{
-        //    this.functionToBeMemoized = functionToBeMemoized;
-        //    this.cache = new MemoryCache(MemoizerHelper.CreateFunctionHash(this.functionToBeMemoized));
-        //}
+
         internal Memoizer(MemoizerConfiguration memoizerConfig)
         {
             this.cache = new MemoryCache(memoizerConfig.GetHashCode().ToString());
@@ -324,8 +305,12 @@ namespace Memoizer.NET
             this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerConfig.ExpirationType, memoizerConfig.ExpirationValue, memoizerConfig.ExpirationTimeUnit);
             this.loggingMethod = memoizerConfig.LoggerAction;
         }
+
         protected override Func<TResult> GetFunctionClosure(params object[] args) { return () => this.functionToBeMemoized((TParam1)args[0], (TParam2)args[1], (TParam3)args[2], (TParam4)args[3]); }
+
         public TResult InvokeWith(TParam1 param1, TParam2 param2, TParam3 param3, TParam4 param4) { return Invoke(param1, param2, param3, param4); }
+
+        public void Remove(TParam1 param1, TParam2 param2, TParam3 param3, TParam4 param4) { this.cache.Remove(MemoizerHelper.CreateParameterHash(param1, param2, param3, param4)); }
     }
     #endregion
 }

@@ -16,6 +16,8 @@
 using System;
 using System.Threading;
 using NUnit.Framework;
+using NUnit.Framework.Constraints;
+
 
 namespace Memoizer.NET.Test
 {
@@ -245,355 +247,158 @@ namespace Memoizer.NET.Test
         }
 
 
+        static void AssertThat<TParam1, TResult>(Func<TParam1, TResult> invocation, TParam1 arg, ComparisonConstraint comparisonConstraint)
+        {
+            long startTime = DateTime.Now.Ticks;
+            TResult retVal = invocation.Invoke(arg);
+            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + arg));
+            long durationInTicks = DateTime.Now.Ticks - startTime;
+            long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(durationInMilliseconds, comparisonConstraint);
+        }
+
         [Test]
         public void UnMemoize()
         {
-            MemoizerFactory<long, string> myMemoizerFactory = myExpensiveFunction.CacheFor(30).Minutes.InstrumentWith(Console.WriteLine);
+            IMemoizer<long, string> standaloneMemoizer = myExpensiveFunction.CacheFor(30).Minutes.InstrumentWith(Console.WriteLine).CreateMemoizer();
 
-            // Nope...
-            //MemoizerConfiguration myMemoizerConfig = new MemoizerConfiguration(myExpensiveFunction, ExpirationType.Relative, 30, TimeUnit.Minutes, Console.WriteLine);
-            //MemoizerFactory<long, string> myMemoizerFactory = new MemoizerFactory<long, string>(myMemoizerConfig);
+            MemoizerFactory<long, string> sharedMemoizerConfig1 = myExpensiveFunction.CacheFor(30).Minutes.InstrumentWith(Console.WriteLine);
+            MemoizerFactory<long, string> sharedMemoizerConfig2 = myExpensiveFunction.Memoize().InstrumentWith(Console.WriteLine);
+            MemoizerFactory<long, string> sharedMemoizerConfig3 = typicalDatabaseInvocation_DelegatedFunc3.Memoize().InstrumentWith(Console.WriteLine);
 
-            // Maybe this standalone memoizer instance is already cached, maybe not...
-            myExpensiveFunctionMemoizer.InvokeWith(1492L);
+            // Nope - this does not fly - cannot close mutable structures in a Func ...#help why?
+            //Func<long, string> standaloneMemoizerInvocation = standaloneMemoizer.InvokeWith;
+            //Func<long, string> sharedMemoizer1Invocation = sharedMemoizerConfig1.GetMemoizer().InvokeWith;
+            //Func<long, string> sharedMemoizer2Invocation = sharedMemoizerConfig2.GetMemoizer().InvokeWith;
+            //Func<long, string> sharedMemoizer3Invocation = sharedMemoizerConfig3.GetMemoizer().InvokeWith;
 
-            // Maybe the memoizer^2 registry instance is already cached, maybe not...
-            myMemoizerFactory.GetMemoizer().InvokeWith(1492L);
+            // The standalone memoizer instance is not cached yet
+            AssertThat(standaloneMemoizer.InvokeWith, 1989L, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
 
-            // Cached value via the standalone memoizer
-            long startTime = DateTime.Now.Ticks;
-            string retVal = myExpensiveFunctionMemoizer.InvokeWith(1492L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 1492L));
-            long durationInTicks = DateTime.Now.Ticks - startTime;
-            long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
+            // ...now it is
+            AssertThat(standaloneMemoizer.InvokeWith, 1989L, Is.LessThan(10));
 
-            // Cached value via the memoizer^2 registry
-            startTime = DateTime.Now.Ticks;
-            retVal = myMemoizerFactory.GetMemoizer().InvokeWith(1492L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 1492L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
+            // The memoizer^2 registry instances are either cached, or not...
+            sharedMemoizerConfig1.GetMemoizer().InvokeWith(1989L);
+            sharedMemoizerConfig1.GetMemoizer().InvokeWith(2089L);
+            sharedMemoizerConfig2.GetMemoizer().InvokeWith(1989L);
+            sharedMemoizerConfig3.GetMemoizer().InvokeWith(1989L);
 
-
-            myExpensiveFunction.UnMemoize();
+            // ...now they are
+            AssertThat(sharedMemoizerConfig1.GetMemoizer().InvokeWith, 1989L, Is.LessThan(10));
+            AssertThat(sharedMemoizerConfig1.GetMemoizer().InvokeWith, 2089L, Is.LessThan(10));
+            AssertThat(sharedMemoizerConfig2.GetMemoizer().InvokeWith, 1989L, Is.LessThan(10));
+            AssertThat(sharedMemoizerConfig3.GetMemoizer().InvokeWith, 1989L, Is.LessThan(10));
             
-            // The standalone memoizer instance is still working...
-            startTime = DateTime.Now.Ticks;
-            retVal = myExpensiveFunctionMemoizer.InvokeWith(1492L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 1492L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
+            // Remove all shared memoizers having function 'myExpensiveFunction'
+            myExpensiveFunction.UnMemoize();
 
-            // But the memoizer is removed from the memoizer^2 registry - so that will be re-cached...
-            startTime = DateTime.Now.Ticks;
-            retVal = myMemoizerFactory.GetMemoizer().InvokeWith(1492L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 1492L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
+            // Standalone memoizer instance is not affected
+            AssertThat(standaloneMemoizer.InvokeWith, 1989L, Is.LessThan(10));
 
-            // But then the memoizer is yet again in the memoizer^2 registry
-            startTime = DateTime.Now.Ticks;
-            retVal = myMemoizerFactory.GetMemoizer().InvokeWith(1492L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 1492L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
+            AssertThat(sharedMemoizerConfig1.GetMemoizer().InvokeWith, 1989L, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
+            AssertThat(sharedMemoizerConfig1.GetMemoizer().InvokeWith, 1989L, Is.LessThan(10));
+
+            // ...for all arguments
+            AssertThat(sharedMemoizerConfig1.GetMemoizer().InvokeWith, 2089L, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
+            AssertThat(sharedMemoizerConfig1.GetMemoizer().InvokeWith, 2089L, Is.LessThan(10));
+
+            // Second registry memoizer is using the same Func, so it is also cleared
+            AssertThat(sharedMemoizerConfig2.GetMemoizer().InvokeWith, 1989L, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
+            AssertThat(sharedMemoizerConfig2.GetMemoizer().InvokeWith, 1989L, Is.LessThan(10));
+
+            // Third registry memoizer is a different Func, so it is not affected
+            AssertThat(sharedMemoizerConfig3.GetMemoizer().InvokeWith, 1989L, Is.LessThan(10));
         }
 
 
         [Test]
         public void Remove()
         {
-            MemoizerFactory<long, string> myMemoizerFactory = myExpensiveFunction.CacheFor(30).Minutes.InstrumentWith(Console.WriteLine);
+            IMemoizer<long, string> standaloneMemoizer = myExpensiveFunction.CacheFor(30).Minutes.InstrumentWith(Console.WriteLine).CreateMemoizer();
 
-            // Nope...
-            //MemoizerConfiguration myMemoizerConfig = new MemoizerConfiguration(myExpensiveFunction, ExpirationType.Relative, 30, TimeUnit.Minutes, Console.WriteLine);
-            //MemoizerFactory<long, string> myMemoizerFactory = new MemoizerFactory<long, string>(myMemoizerConfig);
+            MemoizerFactory<long, string> sharedMemoizer1 = myExpensiveFunction.CacheFor(30).Minutes.InstrumentWith(Console.WriteLine);
+            MemoizerFactory<long, string> sharedMemoizer2 = myExpensiveFunction.Memoize().InstrumentWith(Console.WriteLine);
+            MemoizerFactory<long, string> sharedMemoizer3 = typicalDatabaseInvocation_DelegatedFunc3.Memoize().InstrumentWith(Console.WriteLine);
 
-            // Maybe this standalone memoizer instance is already cached, maybe not...
-            myExpensiveFunctionMemoizer.InvokeWith(1536L);
+            // The standalone memoizer instance is not cached yet
+            AssertThat(standaloneMemoizer.InvokeWith, 1989L, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
 
-            // Maybe the memoizer^2 registry instance is already cached, maybe not...
-            myMemoizerFactory.GetMemoizer().InvokeWith(1536L);
+            // ...now it is
+            AssertThat(standaloneMemoizer.InvokeWith, 1989L, Is.LessThan(10));
 
-            // Cached value via the standalone memoizer
-            long startTime = DateTime.Now.Ticks;
-            string retVal = myExpensiveFunctionMemoizer.InvokeWith(1536L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 1536L));
-            long durationInTicks = DateTime.Now.Ticks - startTime;
-            long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
+            // The memoizer^2 registry instances are either cached, or not...
+            sharedMemoizer1.GetMemoizer().InvokeWith(1989L);
+            sharedMemoizer1.GetMemoizer().InvokeWith(2089L);
+            sharedMemoizer2.GetMemoizer().InvokeWith(1989L);
+            sharedMemoizer3.GetMemoizer().InvokeWith(1989L);
 
-            // Cached value via the memoizer^2 registry
-            startTime = DateTime.Now.Ticks;
-            retVal = myMemoizerFactory.GetMemoizer().InvokeWith(1536L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 1536L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
-
+            // ...now they are
+            AssertThat(sharedMemoizer1.GetMemoizer().InvokeWith, 1989L, Is.LessThan(10));
+            AssertThat(sharedMemoizer1.GetMemoizer().InvokeWith, 2089L, Is.LessThan(10));
+            AssertThat(sharedMemoizer2.GetMemoizer().InvokeWith, 1989L, Is.LessThan(10));
+            AssertThat(sharedMemoizer3.GetMemoizer().InvokeWith, 1989L, Is.LessThan(10));
 
             // Removal from the standalone memoizer instance
-            myExpensiveFunctionMemoizer.Remove(1536L);
+            standaloneMemoizer.Remove(1989L);
 
-            // Memoizer^2 registry is not affected
-            startTime = DateTime.Now.Ticks;
-            retVal = myMemoizerFactory.GetMemoizer().InvokeWith(1536L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 1536L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
+            // Standalone memoizer must be re-cached
+            AssertThat(standaloneMemoizer.InvokeWith, 1989L, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
+            AssertThat(standaloneMemoizer.InvokeWith, 1989L, Is.LessThan(10));
 
-            // But the value is removed from the standalone memoizer - so that will be re-cached...
-            startTime = DateTime.Now.Ticks;
-            retVal = myExpensiveFunctionMemoizer.InvokeWith(1536L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 1536L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
-
-            startTime = DateTime.Now.Ticks;
-            retVal = myExpensiveFunctionMemoizer.InvokeWith(1536L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 1536L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
-
-
-            // Removal from the Memoizer^2 registry
-            myMemoizerFactory.GetMemoizer().Remove(1536L);
-            
-            // Standalone memoizer instance is not affected
-            startTime = DateTime.Now.Ticks;
-            retVal = myExpensiveFunctionMemoizer.InvokeWith(1536L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 1536L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
-
-            // But the value is removed from the memoizer^2 registry - so that will be re-cached...
-            startTime = DateTime.Now.Ticks;
-            retVal = myMemoizerFactory.GetMemoizer().InvokeWith(1536L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 1536L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
-
-            startTime = DateTime.Now.Ticks;
-            retVal = myMemoizerFactory.GetMemoizer().InvokeWith(1536L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 1536L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
+            // Neither of the shared memoizer instances are affected
+            AssertThat(sharedMemoizer1.GetMemoizer().InvokeWith, 1989L, Is.LessThan(10));
+            AssertThat(sharedMemoizer2.GetMemoizer().InvokeWith, 1989L, Is.LessThan(10));
+            AssertThat(sharedMemoizer3.GetMemoizer().InvokeWith, 1989L, Is.LessThan(10));
         }
 
 
         [Test]
         public void RemoveFromCache()
         {
-            MemoizerFactory<long, string> myMemoizerFactory = myExpensiveFunction.CacheFor(30).Minutes.InstrumentWith(Console.WriteLine);
-            MemoizerFactory<long, string> myMemoizerFactory2 = myExpensiveFunction.Memoize().InstrumentWith(Console.WriteLine);
-            MemoizerFactory<long, string> myMemoizerFactory3 = typicalDatabaseInvocation_DelegatedFunc3.Memoize().InstrumentWith(Console.WriteLine);
+            IMemoizer<long, string> standaloneMemoizer = myExpensiveFunction.CacheFor(30).Minutes.InstrumentWith(Console.WriteLine).CreateMemoizer();
 
-            // Maybe this standalone memoizer instance is already cached, maybe not...
-            myExpensiveFunctionMemoizer.InvokeWith(1989L);
+            MemoizerFactory<long, string> sharedMemoizer1 = myExpensiveFunction.CacheFor(30).Minutes.InstrumentWith(Console.WriteLine);
+            MemoizerFactory<long, string> sharedMemoizer2 = myExpensiveFunction.Memoize().InstrumentWith(Console.WriteLine);
+            MemoizerFactory<long, string> sharedMemoizer3 = typicalDatabaseInvocation_DelegatedFunc3.Memoize().InstrumentWith(Console.WriteLine);
 
-            // Maybe the memoizer^2 registry instance is already cached, maybe not...
-            myMemoizerFactory.GetMemoizer().InvokeWith(1989L);
-            myMemoizerFactory.GetMemoizer().InvokeWith(2089L);
-            myMemoizerFactory2.GetMemoizer().InvokeWith(1989L);
-            myMemoizerFactory3.GetMemoizer().InvokeWith(1989L);
+            // The standalone memoizer instance is not cached yet
+            AssertThat(standaloneMemoizer.InvokeWith, 1989L, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
 
-            // Cached value via the standalone memoizer
-            long startTime = DateTime.Now.Ticks;
-            string retVal = myExpensiveFunctionMemoizer.InvokeWith(1989L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 1989L));
-            long durationInTicks = DateTime.Now.Ticks - startTime;
-            long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
+            // ...now it is
+            AssertThat(standaloneMemoizer.InvokeWith, 1989L, Is.LessThan(10));
 
-            // Cached value via the memoizer^2 registry
-            startTime = DateTime.Now.Ticks;
-            retVal = myMemoizerFactory.GetMemoizer().InvokeWith(1989L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 1989L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
+            // The memoizer^2 registry instances are either cached, or not...
+            sharedMemoizer1.GetMemoizer().InvokeWith(1989L);
+            sharedMemoizer1.GetMemoizer().InvokeWith(2089L);
+            sharedMemoizer2.GetMemoizer().InvokeWith(1989L);
+            sharedMemoizer3.GetMemoizer().InvokeWith(1989L);
 
+            // ...now they are
+            AssertThat(sharedMemoizer1.GetMemoizer().InvokeWith, 1989L, Is.LessThan(10));
+            AssertThat(sharedMemoizer1.GetMemoizer().InvokeWith, 2089L, Is.LessThan(10));
+            AssertThat(sharedMemoizer2.GetMemoizer().InvokeWith, 1989L, Is.LessThan(10));
+            AssertThat(sharedMemoizer3.GetMemoizer().InvokeWith, 1989L, Is.LessThan(10));
 
+            // Remove all cached values originating from 'myExpensiveFunction(1989L)'
             myExpensiveFunction.RemoveFromCache(1989L);
 
             // Standalone memoizer instance is not affected
-            startTime = DateTime.Now.Ticks;
-            retVal = myExpensiveFunctionMemoizer.InvokeWith(1989L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 1989L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
+            AssertThat(standaloneMemoizer.InvokeWith, 1989L, Is.LessThan(10));
 
             // Cached value for different parameter is not affected
-            startTime = DateTime.Now.Ticks;
-            retVal = myMemoizerFactory.GetMemoizer().InvokeWith(2089L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 2089L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
+            AssertThat(sharedMemoizer1.GetMemoizer().InvokeWith, 2089L, Is.LessThan(10));
 
             // Cached value is removed from the memoizer^2 registry - so that will be re-cached...
-            startTime = DateTime.Now.Ticks;
-            retVal = myMemoizerFactory.GetMemoizer().InvokeWith(1989L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 1989L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
+            AssertThat(sharedMemoizer1.GetMemoizer().InvokeWith, 1989L, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
+            AssertThat(sharedMemoizer1.GetMemoizer().InvokeWith, 1989L, Is.LessThan(10));
 
-            startTime = DateTime.Now.Ticks;
-            retVal = myMemoizerFactory.GetMemoizer().InvokeWith(1989L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 1989L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
+            // Second registry memoizer is using the same Func, so it is also cleared
+            AssertThat(sharedMemoizer2.GetMemoizer().InvokeWith, 1989L, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
+            AssertThat(sharedMemoizer2.GetMemoizer().InvokeWith, 1989L, Is.LessThan(10));
 
-            // Second memoizer is using the same Func, so it is also cleared
-            startTime = DateTime.Now.Ticks;
-            retVal = myMemoizerFactory2.GetMemoizer().InvokeWith(1989L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 1989L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
-
-            startTime = DateTime.Now.Ticks;
-            retVal = myMemoizerFactory2.GetMemoizer().InvokeWith(1989L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 1989L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
-
-            // Third memoizer is a different Func, so it is not affected
-            startTime = DateTime.Now.Ticks;
-            retVal = myMemoizerFactory3.GetMemoizer().InvokeWith(1989L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 1989L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
-        }
-
-
-        [Test]
-        public void RemovalOfIndividualItemInCache___OnGoing()
-        {
-            MemoizerFactory<long, string> myMemoizerFactory = myExpensiveFunction.CacheFor(30).Minutes.InstrumentWith(Console.WriteLine);
-
-            // Maybe this standalone memoizer instance is already cached, maybe not...
-            long startTime = DateTime.Now.Ticks;
-            string retVal = myExpensiveFunctionMemoizer.InvokeWith(42L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
-            long durationInTicks = DateTime.Now.Ticks - startTime;
-            long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            //Assert.That(durationInMilliseconds, Is.LessThan(10));
-
-            // Now it is...
-            startTime = DateTime.Now.Ticks;
-            retVal = myExpensiveFunctionMemoizer.InvokeWith(42L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
-
-            // First time invocation of the memoizer^2 registry version
-            startTime = DateTime.Now.Ticks;
-            retVal = myMemoizerFactory.GetMemoizer().InvokeWith(42L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
-
-            // Now that's cached as well...
-            startTime = DateTime.Now.Ticks;
-            retVal = myMemoizerFactory.GetMemoizer().InvokeWith(42L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
-
-
-            //myExpensiveFunctionMemoizer.Dispose(); // Not supported anymore
-            //myExpensiveFunctionMemoizer = null;
-            //myExpensiveFunctionMemoizer = myExpensiveFunction.CacheFor(30).Minutes.InstrumentWith(Console.WriteLine).GetMemoizer();
-
-            myExpensiveFunction.UnMemoize(); // OK
-
-            //myExpensiveFunctionMemoizer.Clear(); // OK
-
-            //myExpensiveFunctionMemoizer.Reset(); // To be defined? (alias of Clear())
-
-            //myExpensiveFunctionMemoizer.Remove(42L); // OK
-
-            myExpensiveFunction.RemoveFromCache(42L); // OK
-
-
-            // The IMemoizer instance is still working...
-            startTime = DateTime.Now.Ticks;
-            retVal = myExpensiveFunctionMemoizer.InvokeWith(42L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
-
-            // But the memoizer is removed from the memoizer^2 registry - so that will take its time...
-            startTime = DateTime.Now.Ticks;
-            retVal = myMemoizerFactory.GetMemoizer().InvokeWith(42L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
-
-            // But then the memoizer is yet again in the memoizer^2 registry
-            startTime = DateTime.Now.Ticks;
-            retVal = myMemoizerFactory.GetMemoizer().InvokeWith(42L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
-        }
-
-
-        [Test]
-        [Ignore("TODO")]
-        public void IndividualItemClearing()
-        {
-            long startTime = DateTime.Now.Ticks;
-            string retVal = ExpensiveFunctionWithExpiration(42L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
-            long durationInTicks = DateTime.Now.Ticks - startTime;
-            long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
-            //Console.WriteLine("First memoized method invocation with latency " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)");
-
-            startTime = DateTime.Now.Ticks;
-            retVal = ExpensiveFunctionWithExpiration(4224L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 4224L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
-
-            startTime = DateTime.Now.Ticks;
-            retVal = ExpensiveFunctionWithExpiration2(42L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
-
-            myExpensiveFunction.Memoize().KeepItemsCachedFor(1).Seconds.GetMemoizer().Remove(42L);
-
-            startTime = DateTime.Now.Ticks;
-            retVal = ExpensiveFunctionWithExpiration2(42L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 42L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
-
-            startTime = DateTime.Now.Ticks;
-            retVal = ExpensiveFunctionWithExpiration(4224L);
-            Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 4224L));
-            durationInTicks = DateTime.Now.Ticks - startTime;
-            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(durationInMilliseconds, Is.LessThan(10));
+            // Third registry memoizer is a different Func, so it is not affected
+            AssertThat(sharedMemoizer3.GetMemoizer().InvokeWith, 1989L, Is.LessThan(10));
         }
 
 
