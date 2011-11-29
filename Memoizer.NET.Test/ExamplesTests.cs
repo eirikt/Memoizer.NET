@@ -30,6 +30,14 @@ namespace Memoizer.NET.Test
         const string METHOD_RESPONSE_ELEMENT = "VeryExpensiveMethodResponseFor";
 
 
+        //static string TypicalReferenceDataStaticInvocation()
+        //{
+        //    Console.WriteLine("TypicalReferenceDataStaticInvocation invoked...");
+        //    Thread.Sleep(1345);
+        //    Console.WriteLine("TypicalReferenceDataStaticInvocation returns...");
+        //    return "Some one-time-invocation data stuff";
+        //}
+
         static string TypicalDatabaseStaticInvocation(long longArg)
         {
             Console.WriteLine("TypicalDatabaseInvocation invoked...");
@@ -289,7 +297,7 @@ namespace Memoizer.NET.Test
             AssertThat(sharedMemoizerConfig1.GetMemoizer().InvokeWith, 2089L, Is.LessThan(10));
             AssertThat(sharedMemoizerConfig2.GetMemoizer().InvokeWith, 1989L, Is.LessThan(10));
             AssertThat(sharedMemoizerConfig3.GetMemoizer().InvokeWith, 1989L, Is.LessThan(10));
-            
+
             // Remove all shared memoizers having function 'myExpensiveFunction'
             myExpensiveFunction.UnMemoize();
 
@@ -518,6 +526,125 @@ namespace Memoizer.NET.Test
             Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + 123456L));
             Console.WriteLine("(123456L) invocation with latency " + durationInMilliseconds + " ms took " + durationInMilliseconds + " ms | " + durationInTicks + " ticks " + "(should take > " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms)");
             Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(DATABASE_RESPONSE_LATENCY_IN_MILLIS));
+        }
+
+
+        [Test]
+        public void NoArgumentsMemoizer()
+        {
+            Func<string> expensiveNoArgsInvocationFunc =
+                delegate
+                {
+                    Console.WriteLine("TypicalReferenceDataStaticInvocation invoked...");
+                    Thread.Sleep(1345);
+                    Console.WriteLine("TypicalReferenceDataStaticInvocation returns...");
+                    return "Some no-arguments-one-time-only-invocation data stuff";
+                };
+
+            IMemoizer<string> memoizer = expensiveNoArgsInvocationFunc.CacheFor(1).Seconds.GetMemoizer();
+
+
+            // Cached for 1 second memoizer
+            long startTime = DateTime.Now.Ticks;
+            string retVal = memoizer.Invoke();
+            long durationInTicks = DateTime.Now.Ticks - startTime;
+            long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(retVal, Is.EqualTo("Some no-arguments-one-time-only-invocation data stuff"));
+            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(1345)); // ms
+            Console.WriteLine("One-time-invocation took " + durationInMilliseconds + " ms | " + durationInTicks + " ticks");
+
+            startTime = DateTime.Now.Ticks;
+            retVal = memoizer.Invoke();
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(retVal, Is.EqualTo("Some no-arguments-one-time-only-invocation data stuff"));
+            Assert.That(durationInMilliseconds, Is.LessThan(5)); // ms
+            Console.WriteLine("One-time-invocation took " + durationInMilliseconds + " ms | " + durationInTicks + " ticks");
+
+
+            // Cached for 1 second on-the-fly function - should be cached already
+            startTime = DateTime.Now.Ticks;
+            retVal = expensiveNoArgsInvocationFunc.CacheFor(1).Seconds.GetMemoizer().Invoke();
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(retVal, Is.EqualTo("Some no-arguments-one-time-only-invocation data stuff"));
+            Assert.That(durationInMilliseconds, Is.LessThan(5)); // ms
+            Console.WriteLine("One-time-invocation took " + durationInMilliseconds + " ms | " + durationInTicks + " ticks");
+
+
+            // Function only - not yet cached
+            startTime = DateTime.Now.Ticks;
+            retVal = expensiveNoArgsInvocationFunc.CachedInvoke();
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(retVal, Is.EqualTo("Some no-arguments-one-time-only-invocation data stuff"));
+            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(1345)); // ms
+            Console.WriteLine("One-time-invocation took " + durationInMilliseconds + " ms | " + durationInTicks + " ticks");
+
+            startTime = DateTime.Now.Ticks;
+            retVal = expensiveNoArgsInvocationFunc.CachedInvoke();
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(retVal, Is.EqualTo("Some no-arguments-one-time-only-invocation data stuff"));
+            Assert.That(durationInMilliseconds, Is.LessThan(5)); // ms
+            Console.WriteLine("One-time-invocation took " + durationInMilliseconds + " ms | " + durationInTicks + " ticks");
+
+
+            expensiveNoArgsInvocationFunc.RemoveFromCache();
+
+            startTime = DateTime.Now.Ticks;
+            retVal = expensiveNoArgsInvocationFunc.CachedInvoke();
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(retVal, Is.EqualTo("Some no-arguments-one-time-only-invocation data stuff"));
+            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(1345)); // ms
+            Console.WriteLine("One-time-invocation took " + durationInMilliseconds + " ms | " + durationInTicks + " ticks");
+
+            startTime = DateTime.Now.Ticks;
+            retVal = expensiveNoArgsInvocationFunc.CachedInvoke();
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(retVal, Is.EqualTo("Some no-arguments-one-time-only-invocation data stuff"));
+            Assert.That(durationInMilliseconds, Is.LessThan(5)); // ms
+            Console.WriteLine("One-time-invocation took " + durationInMilliseconds + " ms | " + durationInTicks + " ticks");
+
+
+            expensiveNoArgsInvocationFunc.RemoveFromCache();
+
+            startTime = DateTime.Now.Ticks;
+            retVal = expensiveNoArgsInvocationFunc.CacheFor(1).Seconds.GetMemoizer().Invoke();
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(retVal, Is.EqualTo("Some no-arguments-one-time-only-invocation data stuff"));
+            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(1345)); // ms
+            Console.WriteLine("One-time-invocation took " + durationInMilliseconds + " ms | " + durationInTicks + " ticks");
+
+            startTime = DateTime.Now.Ticks;
+            retVal = expensiveNoArgsInvocationFunc.CacheFor(1).Seconds.GetMemoizer().Invoke();
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(retVal, Is.EqualTo("Some no-arguments-one-time-only-invocation data stuff"));
+            Assert.That(durationInMilliseconds, Is.LessThan(5)); // ms
+            Console.WriteLine("One-time-invocation took " + durationInMilliseconds + " ms | " + durationInTicks + " ticks");
+
+
+            Thread.Sleep(1000);
+
+            startTime = DateTime.Now.Ticks;
+            retVal = expensiveNoArgsInvocationFunc.CacheFor(55).Seconds.GetMemoizer().Invoke();
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(retVal, Is.EqualTo("Some no-arguments-one-time-only-invocation data stuff"));
+            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(1345)); // ms
+            Console.WriteLine("One-time-invocation took " + durationInMilliseconds + " ms | " + durationInTicks + " ticks");
+
+            startTime = DateTime.Now.Ticks;
+            retVal = expensiveNoArgsInvocationFunc.CacheFor(55).Seconds.GetMemoizer().Invoke();
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(retVal, Is.EqualTo("Some no-arguments-one-time-only-invocation data stuff"));
+            Assert.That(durationInMilliseconds, Is.LessThan(5)); // ms
+            Console.WriteLine("One-time-invocation took " + durationInMilliseconds + " ms | " + durationInTicks + " ticks");
         }
 
 

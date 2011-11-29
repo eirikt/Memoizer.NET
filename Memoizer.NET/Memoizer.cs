@@ -49,6 +49,10 @@ namespace Memoizer.NET
         int NumberOfTimesCleared { get; }
         int NumberOfElementsCleared { get; }
     }
+    public interface IMemoizer<out TResult> : IThreadSafe, IDisposable, IClearable, IManageableMemoizer
+    {
+        TResult Invoke();
+    }
     public interface IMemoizer<in TParam1, out TResult> : IThreadSafe, IDisposable, IClearable, IManageableMemoizer
     {
         TResult InvokeWith(TParam1 param);
@@ -145,7 +149,7 @@ namespace Memoizer.NET
 
 
         /// <summary>
-        /// Invokes the method delegate - consulting the cache on the way.
+        /// Invokes the function delegate - consulting the cache on the way.
         /// </summary>
         protected TResult Invoke(params object[] args)
         {
@@ -188,29 +192,87 @@ namespace Memoizer.NET
 
             // The 'Result' property blocks until a value is available
             //Console.WriteLine("OS thread ID=" + AppDomain.GetCurrentThreadId() + ", " + "Managed thread ID=" + Thread.CurrentThread.GetHashCode() + "/" + Thread.CurrentThread.ManagedThreadId + ": Status: " + ((Task<TResult>)cacheItem.Value).Status);
-            var cacheItem = ((Task<TResult>)taskCacheItem.Value).Result;
+            var cachedValue = ((Task<TResult>)taskCacheItem.Value).Result;
             //Console.WriteLine("OS thread ID=" + AppDomain.GetCurrentThreadId() + ", " + "Managed thread ID=" + Thread.CurrentThread.GetHashCode() + "/" + Thread.CurrentThread.ManagedThreadId + ": Invoke(" + args + ") took " + (DateTime.Now.Ticks - startTime) + " ticks");
 
             Interlocked.Increment(ref this.numberOfTimesInvoked);
             ConditionalLogging("Invocation #" + this.numberOfTimesInvoked + " took " + (DateTime.Now.Ticks - startTime) + " ticks | " + (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond + " ms");
 
-            return cacheItem;
+            return cachedValue;
         }
     }
+
+
+    internal class Memoizer<TResult> : IMemoizer<TResult>
+    {
+        readonly Func<TResult> functionToBeMemoized;
+        readonly CacheItemPolicy cacheItemPolicy;
+        readonly string key;
+
+        
+        public Memoizer(MemoizerConfiguration memoizerConfig) : this(memoizerConfig, shared: true) { }
+
+        public Memoizer(MemoizerConfiguration memoizerConfig, bool shared)
+        {
+            this.functionToBeMemoized = (Func<TResult>)memoizerConfig.Function;
+            this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerConfig.ExpirationType, memoizerConfig.ExpirationValue, memoizerConfig.ExpirationTimeUnit);
+            this.key = memoizerConfig.GetHashCode().ToString();
+        }
+        
+
+        static readonly object @NOARG_MEMOIZER_LOCK = new Object();
+
+        public TResult Invoke()
+        {
+            // Works, but ugh...
+            lock (@NOARG_MEMOIZER_LOCK)
+            {
+                TResult val = (TResult)MemoryCache.Default.Get(this.key);
+                if (val == null)
+                    MemoryCache.Default.Set(new CacheItem(this.key, this.functionToBeMemoized.Invoke()), this.cacheItemPolicy);
+            }
+            return (TResult)MemoryCache.Default.GetCacheItem(this.key).Value;
+
+            // TODO: does not work... why?
+            //CacheItem taskCacheItem = MemoryCache.Default.GetCacheItem(this.key);
+            //if (taskCacheItem == null)
+            //{
+            //    CacheItem newCacheItem = new CacheItem(this.key, new Task<TResult>(() => this.functionToBeMemoized()));
+
+            //    // The 'AddOrGetExisting' method is atomic: If a cached value for the key exists, the existing cached value is returned; otherwise null is returned as value property
+            //    taskCacheItem = MemoryCache.Default.AddOrGetExisting(newCacheItem, this.cacheItemPolicy);
+            //    if (taskCacheItem.Value == null)
+            //    {
+            //        taskCacheItem.Value = newCacheItem.Value;
+
+            //        // The 'Start' method is idempotent
+            //        ((Task<TResult>)taskCacheItem.Value).Start();
+            //    }
+            //}
+
+            //// The 'Result' property blocks until a value is available
+            //return ((Task<TResult>)taskCacheItem.Value).Result;
+        }
+
+        public void Dispose() { MemoryCache.Default.Remove(key); }
+
+        public void Clear() { Dispose(); }
+
+        public int NumberOfTimesInvoked { get { throw new NotImplementedException(); } }
+
+        public int NumberOfTimesNoCacheInvoked { get { throw new NotImplementedException(); } }
+
+        public int NumberOfTimesCleared { get { throw new NotImplementedException(); } }
+
+        public int NumberOfElementsCleared { get { throw new NotImplementedException(); } }
+    }
+
+
 
 
     internal class Memoizer<TParam1, TResult> : AbstractMemoizer<TResult>, IMemoizer<TParam1, TResult>
     {
         readonly Func<TParam1, TResult> functionToBeMemoized;
-
-        //internal Memoizer(MemoizerFactory<TParam1, TResult> memoizerFactory)
-        //    : this(memoizerFactory.Function)
-        //{
-        //    //this.functionToBeMemoized = memoizerFactory.Function;
-        //    //this.cache = new MemoryCache(MemoizerHelper.CreateFunctionHash(this.functionToBeMemoized));
-        //    this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerFactory.ExpirationType, memoizerFactory.ExpirationValue, memoizerFactory.ExpirationTimeUnit);
-        //    this.loggingMethod = memoizerFactory.LoggerAction;
-        //}
 
         internal Memoizer(MemoizerConfiguration memoizerConfig, bool shared = true)
         {
@@ -227,13 +289,6 @@ namespace Memoizer.NET
             this.functionToBeMemoized = functionToBeMemoized;
             this.cache = new MemoryCache(MemoizerHelper.CreateFunctionHash(this.functionToBeMemoized).ToString());
         }
-
-        //internal Memoizer(Func<TParam1, TResult> functionToBeMemoized, CacheItemPolicy cacheItemPolicy)
-        //{
-        //    this.functionToBeMemoized = functionToBeMemoized;
-        //    this.cache = new MemoryCache(MemoizerHelper.CreateFunctionHash(this.functionToBeMemoized));
-        //    this.cacheItemPolicy = cacheItemPolicy;
-        //}
 
         protected override Func<TResult> GetFunctionClosure(params object[] args)
         {

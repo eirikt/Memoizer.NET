@@ -52,7 +52,7 @@ namespace Memoizer.NET
         /// </summary>
         public override int GetHashCode()
         {
-            if (FunctionId > 21474) { throw new InvalidOperationException("Memoizer.NET supports only 21474 different Func references..."); }
+            if (FunctionId > 21474) { throw new InvalidOperationException("Memoizer.NET only supports 21474 different Func references at the moment..."); }
             string funcId = FunctionId.ToString();
 
             int expirationConfigHash = MemoizerHelper.PRIMES[6] + ExpirationType.GetHashCode();

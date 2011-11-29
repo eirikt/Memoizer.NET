@@ -103,6 +103,10 @@ namespace Memoizer.NET
         #endregion
 
         #region CacheFor(int expirationValue)
+        public static MemoizerFactory_AwaitingExpirationUnit<TResult> CacheFor<TResult>(this Func<TResult> functionToBeMemoized, int expirationValue)
+        {
+            return new MemoizerFactory<TResult>(functionToBeMemoized).KeepItemsCachedFor(expirationValue);
+        }
         public static MemoizerFactory_AwaitingExpirationUnit<TParam1, TResult> CacheFor<TParam1, TResult>(this Func<TParam1, TResult> functionToBeMemoized, int expirationValue)
         {
             return new MemoizerFactory<TParam1, TResult>(functionToBeMemoized).KeepItemsCachedFor(expirationValue);
@@ -122,6 +126,10 @@ namespace Memoizer.NET
         #endregion
 
         #region CachedInvoke(TParam... args)
+        public static TResult CachedInvoke<TResult>(this Func<TResult> functionToBeMemoized)
+        {
+            return new MemoizerFactory<TResult>(functionToBeMemoized).GetMemoizer().Invoke();
+        }
         public static TResult CachedInvoke<TParam1, TResult>(this Func<TParam1, TResult> functionToBeMemoized, TParam1 arg1)
         {
             return new MemoizerFactory<TParam1, TResult>(functionToBeMemoized).GetMemoizer().InvokeWith(arg1);
@@ -141,6 +149,10 @@ namespace Memoizer.NET
         #endregion
 
         #region RemoveFromCache() [remove this particular cached invocation from all memoizers using this Func from memoizer^2 registry]
+        public static void RemoveFromCache<TResult>(this Func<TResult> memoizedFunction)
+        {
+            MemoizerFactory<TResult>.RemoveCachedElementsFromRegistryMemoizersHavingFunction(memoizedFunction);
+        }
         public static void RemoveFromCache<TParam1, TResult>(this Func<TParam1, TResult> memoizedFunction, TParam1 arg1ForRemoval)
         {
             MemoizerFactory<TParam1, TResult>.RemoveCachedElementsFromRegistryMemoizersHavingFunction(memoizedFunction, arg1ForRemoval);
@@ -241,7 +253,7 @@ namespace Memoizer.NET
 
                 bool firstTime = false;
                 long funcId_long = MemoizerHelper.GetObjectId(function, ref firstTime);
-                if (funcId_long > 21474) { throw new InvalidOperationException("Memoizer.NET supports only 21474 different Func references..."); }
+                if (funcId_long > 21474) { throw new InvalidOperationException("Memoizer.NET only supports 21474 different Func references at the moment..."); }
                 string funcIdPartOfFunctionToLookFor = funcId_long.ToString().PadLeft(5, '0');
 
                 if (funcIdPartOfFunctionToLookFor == funcIdPartOfMemoizerConfigurationHashCode)
@@ -250,10 +262,6 @@ namespace Memoizer.NET
             return memoizerKeyList;
         }
 
-        /// <summary>
-        /// Lock object for removal of the memoizer from the memoizer^2 registry.
-        /// </summary>
-        //static readonly object @lock = new Object();
 
         /// <summary>
         /// Remove all memoizer instances having the given Func, from the memoizer^2 registry
@@ -288,6 +296,8 @@ namespace Memoizer.NET
     #region MemoizerHelper
     public class MemoizerHelper
     {
+        public static string[] STATIC_HASH_VALUES = new[] { "" };
+
         public static int[] PRIMES = new[] { 31, 37, 43, 47, 59, 61, 71, 73, 89, 97, 101, 103, 113, 127, 131, 137 };
 
         static readonly ObjectIDGenerator OBJECT_ID_GENERATOR = new ObjectIDGenerator();
@@ -302,10 +312,10 @@ namespace Memoizer.NET
         public static string CreateParameterHash(params object[] args)
         //public static string CreateParameterHash(bool possiblySharedMemoizerConfig = true, params object[] args)
         {
-            if (args == null) { throw new ArgumentException("Argument array cannot be null"); }
+            if (args == null)
+                return STATIC_HASH_VALUES[0];
 
             if (args.Length == 1)
-            {
                 //if (args[0].GetType().Name.StartsWith("MemoizerConfiguration"))
                 //{
                 //    //return CreateMemoizerHash(args[0]);
@@ -316,7 +326,6 @@ namespace Memoizer.NET
                 ////    return GetObjectId(args[0]);
 
                 return args[0].GetHashCode().ToString();
-            }
 
             int retVal = args[0].GetHashCode() * PRIMES[0];
             for (int i = 1; i < args.Length; ++i)
@@ -331,6 +340,114 @@ namespace Memoizer.NET
             bool firstTime = false;
             return GetObjectId(func, ref firstTime);
         }
+    }
+    #endregion
+
+
+    #region
+    public class MemoizerFactory<TResult>
+    {
+        internal static readonly Lazy<Memoizer<MemoizerConfiguration, Memoizer<TResult>>> LAZY_MEMOIZER_MEMOIZER =
+           new Lazy<Memoizer<MemoizerConfiguration, Memoizer<TResult>>>(
+               () => new Memoizer<MemoizerConfiguration, Memoizer<TResult>>(
+                   memoizerConfig => new Memoizer<TResult>(memoizerConfig)),
+               isThreadSafe: typeof(IMemoizer<MemoizerConfiguration, IMemoizer<TResult>>) is IThreadSafe);
+
+        internal static void RemoveCachedElementsFromRegistryMemoizersHavingFunction(Func<TResult> memoizedFunction)
+        {
+            IEnumerable<string> memoizerKeyList = MemoizerRegistryHelper.FindMemoizerKeysInRegistryHavingFunction(memoizedFunction, LAZY_MEMOIZER_MEMOIZER.Value);
+            foreach (var memoizerKey in memoizerKeyList)
+            {
+                Task<Memoizer<TResult>> cacheValueTask = (Task<Memoizer<TResult>>)LAZY_MEMOIZER_MEMOIZER.Value.cache.Get(memoizerKey);
+                IMemoizer<TResult> memoizer = cacheValueTask.Result;
+                memoizer.Clear();
+            }
+        }
+
+        readonly Func<TResult> function;
+
+        internal ExpirationType ExpirationType { get; set; }
+        internal int ExpirationValue { get; set; }
+        internal TimeUnit ExpirationTimeUnit { get; set; }
+
+        Action<String> loggerMethod;
+
+
+        internal MemoizerFactory(Func<TResult> functionToBeMemoized)
+        {
+            this.function = functionToBeMemoized;
+        }
+
+        internal Func<TResult> Function
+        {
+            get { return this.function; }
+        }
+
+        internal Action<String> LoggerAction
+        {
+            get { return this.loggerMethod; }
+        }
+
+        MemoizerConfiguration MemoizerConfiguration
+        {
+            get { return new MemoizerConfiguration(this.function, this.ExpirationType, this.ExpirationValue, this.ExpirationTimeUnit, this.loggerMethod); }
+        }
+
+        public MemoizerFactory_AwaitingExpirationUnit<TResult> KeepItemsCachedFor(int cacheExpirationValue)
+        {
+            return new MemoizerFactory_AwaitingExpirationUnit<TResult>(cacheExpirationValue, this);
+        }
+
+        public MemoizerFactory<TResult> InstrumentWith(Action<String> loggingAction)
+        {
+            this.loggerMethod = loggingAction;
+            return this;
+        }
+
+        /// <summary>
+        /// Force creation and <i>not</i> caching/sharing (via memoizer^2 registry) of created memoizer instance.
+        /// </summary>
+        public IMemoizer<TResult> CreateMemoizer()
+        {
+            return GetMemoizer(cachedAndSharedMemoizerInstance: false);
+        }
+
+        public IMemoizer<TResult> GetMemoizer(bool cachedAndSharedMemoizerInstance = true)
+        {
+            return cachedAndSharedMemoizerInstance
+                ? LAZY_MEMOIZER_MEMOIZER.Value.InvokeWith(this.MemoizerConfiguration)
+                : new Memoizer<TResult>(this.MemoizerConfiguration, shared: false);
+        }
+    }
+
+
+    public class MemoizerFactory_AwaitingExpirationUnit<TResult>
+    {
+        readonly ExpirationType expirationType = ExpirationType.Relative;
+        readonly int expirationValue;
+
+        readonly MemoizerFactory<TResult> memoizerFactory;
+
+        public MemoizerFactory_AwaitingExpirationUnit(int expirationValue, MemoizerFactory<TResult> memoizerFactory)
+        {
+            this.expirationValue = expirationValue;
+            this.memoizerFactory = memoizerFactory;
+        }
+
+        MemoizerFactory<TResult> ConfigureCacheItemPolicyWithTimeUnit(TimeUnit timeUnit)
+        {
+            this.memoizerFactory.ExpirationType = this.expirationType;
+            this.memoizerFactory.ExpirationValue = this.expirationValue;
+            this.memoizerFactory.ExpirationTimeUnit = timeUnit;
+
+            return this.memoizerFactory;
+        }
+
+        public MemoizerFactory<TResult> Milliseconds { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Milliseconds); } }
+        public MemoizerFactory<TResult> Seconds { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Seconds); } }
+        public MemoizerFactory<TResult> Minutes { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Minutes); } }
+        public MemoizerFactory<TResult> Hours { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Hours); } }
+        public MemoizerFactory<TResult> Days { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Days); } }
     }
     #endregion
 
