@@ -600,7 +600,7 @@ namespace Memoizer.NET.Test
 
         [Test]
         public void FibonacciNumbers(
-            [Values(38)] int numberOfFibonacciArguments)
+            [Values(39)] int numberOfFibonacciArguments)
         {
             FIBONACCI_INVOCATIONS = 0;
             Console.Write("Fibonacci(" + numberOfFibonacciArguments + ") = ");
@@ -610,7 +610,7 @@ namespace Memoizer.NET.Test
             long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
             Console.WriteLine();
             Console.WriteLine("Fibonacci function invoked " + FIBONACCI_INVOCATIONS + " times. Took " + durationInTicks + " ticks | " + durationInMilliseconds + " ms");
-            Assert.That(FIBONACCI_INVOCATIONS, Is.EqualTo(126491971));
+            Assert.That(FIBONACCI_INVOCATIONS, Is.EqualTo(204668309));
             Assert.That(durationInMilliseconds, Is.GreaterThan(1000));
 
             Console.WriteLine();
@@ -620,8 +620,8 @@ namespace Memoizer.NET.Test
             Console.Write(memoizedFibonacci(numberOfFibonacciArguments));
             durationInTicks = DateTime.Now.Ticks - startTime;
             durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
-            Assert.That(FIBONACCI_INVOCATIONS, Is.EqualTo(39));
-            Assert.That(durationInMilliseconds, Is.LessThan(20));
+            Assert.That(FIBONACCI_INVOCATIONS, Is.EqualTo(40));
+            Assert.That(durationInMilliseconds, Is.LessThan(25));
             Console.WriteLine();
             Console.WriteLine("Fibonacci function invoked " + FIBONACCI_INVOCATIONS + " times. Took " + durationInTicks + " ticks | " + durationInMilliseconds + " ms");
         }

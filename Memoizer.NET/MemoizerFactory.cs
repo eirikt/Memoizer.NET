@@ -15,6 +15,7 @@
  */
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.Caching;
 using System.Runtime.Serialization;
@@ -27,9 +28,9 @@ namespace Memoizer.NET
     public static class FuncExtensionMethods
     {
         #region CreateMemoizer()
-        public static IMemoizer< TResult> CreateMemoizer< TResult>(this Func< TResult> functionToBeMemoized)
+        public static IMemoizer<TResult> CreateMemoizer<TResult>(this Func<TResult> functionToBeMemoized)
         {
-            return new MemoizerFactory< TResult>(functionToBeMemoized).CreateMemoizer();
+            return new MemoizerFactory<TResult>(functionToBeMemoized).CreateMemoizer();
         }
         public static IMemoizer<TParam1, TResult> CreateMemoizer<TParam1, TResult>(this Func<TParam1, TResult> functionToBeMemoized)
         {
@@ -50,9 +51,9 @@ namespace Memoizer.NET
         #endregion
 
         #region GetMemoizer()
-        public static IMemoizer< TResult> GetMemoizer< TResult>(this Func< TResult> functionToBeMemoized)
+        public static IMemoizer<TResult> GetMemoizer<TResult>(this Func<TResult> functionToBeMemoized)
         {
-            return new MemoizerFactory< TResult>(functionToBeMemoized).GetMemoizer();
+            return new MemoizerFactory<TResult>(functionToBeMemoized).GetMemoizer();
         }
         public static IMemoizer<TParam1, TResult> GetMemoizer<TParam1, TResult>(this Func<TParam1, TResult> functionToBeMemoized)
         {
@@ -73,9 +74,9 @@ namespace Memoizer.NET
         #endregion
 
         #region Memoize() [go into memoizer builder mode]
-        public static MemoizerFactory< TResult> Memoize< TResult>(this Func< TResult> functionToBeMemoized)
+        public static MemoizerFactory<TResult> Memoize<TResult>(this Func<TResult> functionToBeMemoized)
         {
-            return new MemoizerFactory< TResult>(functionToBeMemoized);
+            return new MemoizerFactory<TResult>(functionToBeMemoized);
         }
         public static MemoizerFactory<TParam1, TResult> Memoize<TParam1, TResult>(this Func<TParam1, TResult> functionToBeMemoized)
         {
@@ -96,9 +97,9 @@ namespace Memoizer.NET
         #endregion
 
         #region UnMemoize() [remove all memoizers using this particular Func from memoizer^2 registry]
-        public static void UnMemoize< TResult>(this Func< TResult> functionToUnMemoize)
+        public static void UnMemoize<TResult>(this Func<TResult> functionToUnMemoize)
         {
-            MemoizerRegistryHelper.RemoveRegistryMemoizersHavingFunction(functionToUnMemoize, MemoizerFactory< TResult>.LAZY_MEMOIZER_MEMOIZER.Value);
+            MemoizerRegistryHelper.RemoveRegistryMemoizersHavingFunction(functionToUnMemoize, MemoizerFactory<TResult>.LAZY_MEMOIZER_MEMOIZER.Value);
         }
         public static void UnMemoize<TParam1, TResult>(this Func<TParam1, TResult> functionToUnMemoize)
         {
@@ -312,7 +313,7 @@ namespace Memoizer.NET
     #region MemoizerHelper
     public class MemoizerHelper
     {
-        public static string[] STATIC_HASH_VALUES = new[] { "" };
+        public static string[] STATIC_HASH_VALUES = new[] { "NULLARGARRAY" };
 
         public static int[] PRIMES = new[] { 31, 37, 43, 47, 59, 61, 71, 73, 89, 97, 101, 103, 113, 127, 131, 137 };
 
@@ -331,7 +332,18 @@ namespace Memoizer.NET
             if (args == null)
                 return STATIC_HASH_VALUES[0];
 
+            //IList<object> argList = args.OfType<object>().Where(a => a != null).ToList();
+            //IList<object> argList = args.OfType<object>().ToList(); 
+
+            //IList<object> argList = new List<object>(args.Length);
+            //foreach (var arg in args.Where(a => a != null))
+            //    argList.Add(arg);
+
+            //if (argList.Count == 0)
+            //    return "NULLARG";
+
             if (args.Length == 1)
+            {
                 //if (args[0].GetType().Name.StartsWith("MemoizerConfiguration"))
                 //{
                 //    //return CreateMemoizerHash(args[0]);
@@ -341,11 +353,23 @@ namespace Memoizer.NET
                 ////if (args[0].GetType().Name.StartsWith("Func"))
                 ////    return GetObjectId(args[0]);
 
-                return args[0].GetHashCode().ToString();
+                return args[0] == null ? "NULLARG" : args[0].GetHashCode().ToString();
+            }
 
-            int retVal = args[0].GetHashCode() * PRIMES[0];
+            int retVal;
+
+            if (args[0] == null)
+                retVal = Int32.MinValue;
+            else
+                retVal = args[0].GetHashCode() * PRIMES[0];
+
             for (int i = 1; i < args.Length; ++i)
-                retVal = retVal * PRIMES[i] + args[i].GetHashCode();
+            {
+                if (args[i] == null)
+                    retVal = retVal * PRIMES[i] + Int32.MaxValue;
+                else
+                    retVal = retVal * PRIMES[i] + args[i].GetHashCode();
+            }
 
             return retVal.ToString();
         }

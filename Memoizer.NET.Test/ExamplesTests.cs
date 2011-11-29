@@ -530,6 +530,61 @@ namespace Memoizer.NET.Test
 
 
         [Test]
+        public void ShouldCacheInvocationWithNullArgs()
+        {
+            Func<string, string> expensiveInvocationFunc1 = delegate(string arg) { Thread.Sleep(765); return "Cowabunga-" + arg + "!"; };
+            IMemoizer<string, string> expensiveInvocationFuncMemoizer1 = expensiveInvocationFunc1.CreateMemoizer();
+
+            Func<string, string, string, string> expensiveInvocationFunc3 = delegate(string arg1, string arg2, string arg3) { Thread.Sleep(765); return "Deadly-" + arg1 + "-" + arg2 + "-" + arg3 + "!"; };
+            IMemoizer<string, string, string, string> expensiveInvocationFuncMemoizer3 = expensiveInvocationFunc3.CreateMemoizer();
+
+            // 1 arg
+            long startTime = DateTime.Now.Ticks;
+            string retVal = expensiveInvocationFuncMemoizer1.InvokeWith(null);
+            long durationInTicks = DateTime.Now.Ticks - startTime;
+            long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(retVal, Is.EqualTo("Cowabunga-!"));
+            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(765));
+
+            startTime = DateTime.Now.Ticks;
+            retVal = expensiveInvocationFuncMemoizer1.InvokeWith(null);
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(retVal, Is.EqualTo("Cowabunga-!"));
+            Assert.That(durationInMilliseconds, Is.LessThan(25));
+
+            // 3 args
+            startTime = DateTime.Now.Ticks;
+            retVal = expensiveInvocationFuncMemoizer3.InvokeWith(null, null, null);
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(retVal, Is.EqualTo("Deadly---!"));
+            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(765));
+
+            startTime = DateTime.Now.Ticks;
+            retVal = expensiveInvocationFuncMemoizer3.InvokeWith(null, "gaga", null);
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(retVal, Is.EqualTo("Deadly--gaga-!"));
+            Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(765));
+
+            startTime = DateTime.Now.Ticks;
+            retVal = expensiveInvocationFuncMemoizer3.InvokeWith(null, null, null);
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(retVal, Is.EqualTo("Deadly---!"));
+            Assert.That(durationInMilliseconds, Is.LessThan(25));
+
+            startTime = DateTime.Now.Ticks;
+            retVal = expensiveInvocationFuncMemoizer3.InvokeWith(null, "gaga", null);
+            durationInTicks = DateTime.Now.Ticks - startTime;
+            durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
+            Assert.That(retVal, Is.EqualTo("Deadly--gaga-!"));
+            Assert.That(durationInMilliseconds, Is.LessThan(25));
+        }
+
+
+        [Test]
         public void NoArgumentsMemoizer()
         {
             Func<string> expensiveNoArgsInvocationFunc =

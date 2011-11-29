@@ -192,7 +192,7 @@ namespace Memoizer.NET
 
     /// <remarks>
     /// Example concrete implementation of an <code>AbstractTwoPhaseExecutorThread</code> worker/task thread.
-    /// E.g. do notice how to correctly get hold of <code>TaskNumer</code> and <code>ParticipantNumber</code>.
+    /// E.g. do notice how to correctly get hold of the <code>TaskNumber</code> and <code>ParticipantNumber</code> properties.
     /// </remarks>
     public class TrivialTask : AbstractTwoPhaseExecutorThread
     {
