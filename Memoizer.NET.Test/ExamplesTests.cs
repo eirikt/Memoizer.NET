@@ -544,7 +544,7 @@ namespace Memoizer.NET.Test
             IMemoizer<string> memoizer = expensiveNoArgsInvocationFunc.CacheFor(1).Seconds.GetMemoizer();
 
 
-            // Cached for 1 second memoizer
+            // Cached-for-1-second memoizer
             long startTime = DateTime.Now.Ticks;
             string retVal = memoizer.Invoke();
             long durationInTicks = DateTime.Now.Ticks - startTime;
@@ -562,7 +562,7 @@ namespace Memoizer.NET.Test
             Console.WriteLine("One-time-invocation took " + durationInMilliseconds + " ms | " + durationInTicks + " ticks");
 
 
-            // Cached for 1 second on-the-fly function - should be cached already
+            // Cached-for-1-second-on-the-fly function - should be cached already
             startTime = DateTime.Now.Ticks;
             retVal = expensiveNoArgsInvocationFunc.CacheFor(1).Seconds.GetMemoizer().Invoke();
             durationInTicks = DateTime.Now.Ticks - startTime;
@@ -609,7 +609,7 @@ namespace Memoizer.NET.Test
             Console.WriteLine("One-time-invocation took " + durationInMilliseconds + " ms | " + durationInTicks + " ticks");
 
 
-            expensiveNoArgsInvocationFunc.RemoveFromCache();
+            expensiveNoArgsInvocationFunc.UnMemoize();
 
             startTime = DateTime.Now.Ticks;
             retVal = expensiveNoArgsInvocationFunc.CacheFor(1).Seconds.GetMemoizer().Invoke();
@@ -648,7 +648,25 @@ namespace Memoizer.NET.Test
         }
 
 
+        [Test, ExpectedException(typeof(NullReferenceException), ExpectedMessage = "Whoops!", MatchType = MessageMatch.Exact)]
+        public void ExceptionsShouldBubbleAllTheWay()
+        {
+            Func<string> exceptionInvocationFunc = delegate { throw new NullReferenceException("Whoops!"); };
+            exceptionInvocationFunc.CachedInvoke();
+        }
+
+
+        [Test, ExpectedException(typeof(ArgumentException), ExpectedMessage = "Aiii!", MatchType = MessageMatch.Exact)]
+        public void ExceptionsShouldBubbleAllTheWay2()
+        {
+            Func<string> exceptionInvocationFunc = delegate { throw new ArgumentException("Aiii!"); };
+            IMemoizer<string> memoizer = exceptionInvocationFunc.CacheFor(1).Seconds.GetMemoizer();
+            memoizer.Invoke();
+        }
+
+
         // TODO: concurrent use of different and equal memoizer factories with the same func
+
 
     }
 }

@@ -15,6 +15,7 @@
  */
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using NUnit.Framework;
 
@@ -64,8 +65,7 @@ namespace Memoizer.NET.Test
                 hash = hash * 17 + IntProperty.GetHashCode();
                 hash = hash * 31 + StringProperty.GetHashCode();
                 if (ChildrenProperty != null)
-                    foreach (var someValueClass in ChildrenProperty)
-                        hash = hash * 13 + someValueClass.GetHashCode();
+                    hash = ChildrenProperty.Aggregate(hash, (current, someValueClass) => current*13 + someValueClass.GetHashCode());
                 return hash;
             }
             public override bool Equals(object otherObject)
