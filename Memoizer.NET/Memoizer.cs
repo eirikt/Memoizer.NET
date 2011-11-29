@@ -192,7 +192,9 @@ namespace Memoizer.NET
 
             // The 'Result' property blocks until a value is available
             //Console.WriteLine("OS thread ID=" + AppDomain.GetCurrentThreadId() + ", " + "Managed thread ID=" + Thread.CurrentThread.GetHashCode() + "/" + Thread.CurrentThread.ManagedThreadId + ": Status: " + ((Task<TResult>)cacheItem.Value).Status);
-            var cachedValue = ((Task<TResult>)taskCacheItem.Value).Result;
+            TResult cachedValue;
+            try { cachedValue = ((Task<TResult>)taskCacheItem.Value).Result; }
+            catch (Exception e) { throw e.InnerException; }
             //Console.WriteLine("OS thread ID=" + AppDomain.GetCurrentThreadId() + ", " + "Managed thread ID=" + Thread.CurrentThread.GetHashCode() + "/" + Thread.CurrentThread.ManagedThreadId + ": Invoke(" + args + ") took " + (DateTime.Now.Ticks - startTime) + " ticks");
 
             Interlocked.Increment(ref this.numberOfTimesInvoked);
@@ -209,7 +211,7 @@ namespace Memoizer.NET
         readonly CacheItemPolicy cacheItemPolicy;
         readonly string key;
 
-        
+
         public Memoizer(MemoizerConfiguration memoizerConfig) : this(memoizerConfig, shared: true) { }
 
         public Memoizer(MemoizerConfiguration memoizerConfig, bool shared)
@@ -218,7 +220,7 @@ namespace Memoizer.NET
             this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerConfig.ExpirationType, memoizerConfig.ExpirationValue, memoizerConfig.ExpirationTimeUnit);
             this.key = memoizerConfig.GetHashCode().ToString();
         }
-        
+
 
         static readonly object @NOARG_MEMOIZER_LOCK = new Object();
 

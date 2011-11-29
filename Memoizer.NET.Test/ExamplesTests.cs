@@ -649,7 +649,7 @@ namespace Memoizer.NET.Test
 
 
         [Test, ExpectedException(typeof(NullReferenceException), ExpectedMessage = "Whoops!", MatchType = MessageMatch.Exact)]
-        public void ExceptionsShouldBubbleAllTheWay()
+        public void ExceptionsShouldBubbleAllTheWay_NoArgVersion()
         {
             Func<string> exceptionInvocationFunc = delegate { throw new NullReferenceException("Whoops!"); };
             exceptionInvocationFunc.CachedInvoke();
@@ -657,11 +657,28 @@ namespace Memoizer.NET.Test
 
 
         [Test, ExpectedException(typeof(ArgumentException), ExpectedMessage = "Aiii!", MatchType = MessageMatch.Exact)]
-        public void ExceptionsShouldBubbleAllTheWay2()
+        public void ExceptionsShouldBubbleAllTheWay_NoArgVersion2()
         {
             Func<string> exceptionInvocationFunc = delegate { throw new ArgumentException("Aiii!"); };
             IMemoizer<string> memoizer = exceptionInvocationFunc.CacheFor(1).Seconds.GetMemoizer();
             memoizer.Invoke();
+        }
+
+
+        [Test, ExpectedException(typeof(NullReferenceException), ExpectedMessage = "Whoops!", MatchType = MessageMatch.Exact)]
+        public void ExceptionsShouldBubbleAllTheWay()
+        {
+            Func<long, string> exceptionInvocationFunc = delegate { throw new NullReferenceException("Whoops!"); };
+            exceptionInvocationFunc.CachedInvoke(42L);
+        }
+
+
+        [Test, ExpectedException(typeof(ArgumentException), ExpectedMessage = "Aiii!", MatchType = MessageMatch.Exact)]
+        public void ExceptionsShouldBubbleAllTheWay2()
+        {
+            Func<long, string> exceptionInvocationFunc = delegate { throw new ArgumentException("Aiii!"); };
+            IMemoizer<long, string> memoizer = exceptionInvocationFunc.CacheFor(1).Seconds.GetMemoizer();
+            memoizer.InvokeWith(42L);
         }
 
 
