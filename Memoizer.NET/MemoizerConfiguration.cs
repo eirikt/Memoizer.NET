@@ -48,14 +48,14 @@ namespace Memoizer.NET
         /// <summary>
         /// MemoizerConfiguration hash code format: 5 digits with function ID + 5 digits hash of the rest.
         /// 2^31 == 2 147 483 648 == 21474 83648 => max 21474 different Funcs, and 83648 different expiration configurations...
-        /// This has clearly limitations, but I guess it's OK as a proof-of-concept - it's fixable :-)
+        /// This has clearly limitations, but it's OK as a proof-of-concept, I guess - it's fixable :-)
         /// </summary>
         public override int GetHashCode()
         {
             if (FunctionId > 21474) { throw new InvalidOperationException("Memoizer.NET only supports 21474 different Func references at the moment..."); }
             string funcId = FunctionId.ToString();
 
-            int expirationConfigHash = MemoizerHelper.PRIMES[6] + ExpirationType.GetHashCode();
+            int expirationConfigHash = MemoizerHelper.PRIMES[15] + ExpirationType.GetHashCode();
             expirationConfigHash = expirationConfigHash * MemoizerHelper.PRIMES[11] + ExpirationValue.GetHashCode();
             expirationConfigHash = expirationConfigHash * MemoizerHelper.PRIMES[7] + ExpirationTimeUnit.GetHashCode();
 

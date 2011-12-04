@@ -561,25 +561,23 @@ namespace Memoizer.NET.Test
         static int FIBONACCI_INVOCATIONS;
 
 
-        static readonly Func<long, long> fibonacci = (arg =>
+        static readonly Func<int, long> fibonacci = (arg =>
         {
             ++FIBONACCI_INVOCATIONS;
-            if (arg < 2)
+            if (arg <= 1)
                 return arg;
 
             return fibonacci(arg - 1) + fibonacci(arg - 2);
         });
-        static readonly Func<long, long> FIBONACCI2 = (arg => arg < 2 ? arg : fibonacci(arg - 1) + fibonacci(arg - 2));
 
 
-        static readonly Func<long, long> memoizedFibonacci =
+        static readonly Func<int, long> memoizedFibonacci =
             (arg =>
                 {
                     ++FIBONACCI_INVOCATIONS;
-                    if (arg < 2) return arg;
+                    if (arg <= 1) return arg;
                     return memoizedFibonacci.CachedInvoke(arg - 1) + memoizedFibonacci.CachedInvoke(arg - 2);
                 });
-        static readonly Func<long, long> MEMOIZED_FIBONACCI2 = (arg => arg < 2 ? arg : memoizedFibonacci.CachedInvoke(arg - 1) + memoizedFibonacci.CachedInvoke(arg - 2));
 
 
         [Test]
@@ -621,7 +619,7 @@ namespace Memoizer.NET.Test
             durationInTicks = DateTime.Now.Ticks - startTime;
             durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
             Assert.That(FIBONACCI_INVOCATIONS, Is.EqualTo(40));
-            Assert.That(durationInMilliseconds, Is.LessThan(25));
+            Assert.That(durationInMilliseconds, Is.LessThan(30));
             Console.WriteLine();
             Console.WriteLine("Fibonacci function invoked " + FIBONACCI_INVOCATIONS + " times. Took " + durationInTicks + " ticks | " + durationInMilliseconds + " ms");
         }
@@ -657,7 +655,7 @@ namespace Memoizer.NET.Test
             Console.WriteLine("Fibonacci(" + numberOfFibonacciArguments + ") = ");
             long startTime = DateTime.Now.Ticks;
             for (int i = 0; i <= numberOfFibonacciArguments; ++i)
-                Console.Write(fibonacci.CachedInvoke<long,long>(i) + " ");
+                Console.Write(fibonacci.CachedInvoke(i) + " ");
             long durationInTicks = DateTime.Now.Ticks - startTime;
             long durationInMilliseconds = durationInTicks / TimeSpan.TicksPerMillisecond;
             Console.WriteLine();

@@ -15,12 +15,10 @@
  */
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Runtime.Caching;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
-
 
 namespace Memoizer.NET
 {
@@ -253,7 +251,7 @@ namespace Memoizer.NET
     #endregion
 
     #region MemoizerRegistryHelper
-    public class MemoizerRegistryHelper
+    class MemoizerRegistryHelper
     {
         /// <summary>
         /// Coupled with the <code>MemoizerConfiguration.GetHashCode()</code> method.
@@ -281,11 +279,11 @@ namespace Memoizer.NET
 
 
         /// <summary>
-        /// Remove all memoizer instances having the given Func, from the memoizer^2 registry
+        /// Remove all memoizer instances having the given Func, from the memoizer registry
         /// </summary>
-        /// <param name="functionToUnMemoize">The memoized function to remove from the memoizer^2 registry</param>
-        /// <param name="memoizerRegistry">The memoizer^2 registry instance</param>
-        /// <returns>Number of memoizer instances removed from memoizer^2 registry</returns>
+        /// <param name="functionToUnMemoize">The memoized function to remove from the memoizer registry</param>
+        /// <param name="memoizerRegistry">The memoizer registry instance</param>
+        /// <returns>Number of memoizer instances removed from memoizer registry</returns>
         //internal static int RemoveRegistryMemoizersHavingFunction(Func<TParam1, TResult> functionToUnMemoize)
         internal static int RemoveRegistryMemoizersHavingFunction<T>(object functionToUnMemoize, Memoizer<MemoizerConfiguration, T> memoizerRegistry) where T : IDisposable
         {
@@ -313,8 +311,6 @@ namespace Memoizer.NET
     #region MemoizerHelper
     public class MemoizerHelper
     {
-        public static string[] STATIC_HASH_VALUES = new[] { "NULLARGARRAY" };
-
         public static int[] PRIMES = new[] { 31, 37, 43, 47, 59, 61, 71, 73, 89, 97, 101, 103, 113, 127, 131, 137 };
 
         static readonly ObjectIDGenerator OBJECT_ID_GENERATOR = new ObjectIDGenerator();
@@ -330,34 +326,12 @@ namespace Memoizer.NET
         //public static string CreateParameterHash(bool possiblySharedMemoizerConfig = true, params object[] args)
         {
             if (args == null)
-                return STATIC_HASH_VALUES[0];
-
-            //IList<object> argList = args.OfType<object>().Where(a => a != null).ToList();
-            //IList<object> argList = args.OfType<object>().ToList(); 
-
-            //IList<object> argList = new List<object>(args.Length);
-            //foreach (var arg in args.Where(a => a != null))
-            //    argList.Add(arg);
-
-            //if (argList.Count == 0)
-            //    return "NULLARG";
+                return "NULLARGARRAY";
 
             if (args.Length == 1)
-            {
-                //if (args[0].GetType().Name.StartsWith("MemoizerConfiguration"))
-                //{
-                //    //return CreateMemoizerHash(args[0]);
-                //    return args[0].GetHashCode().ToString();
-                //}
-
-                ////if (args[0].GetType().Name.StartsWith("Func"))
-                ////    return GetObjectId(args[0]);
-
                 return args[0] == null ? "NULLARG" : args[0].GetHashCode().ToString();
-            }
 
             int retVal;
-
             if (args[0] == null)
                 retVal = Int32.MinValue;
             else
@@ -383,8 +357,7 @@ namespace Memoizer.NET
     }
     #endregion
 
-
-    #region
+    #region MemoizerFactory<TResult>
     public class MemoizerFactory<TResult>
     {
         internal static readonly Lazy<Memoizer<MemoizerConfiguration, Memoizer<TResult>>> LAZY_MEMOIZER_MEMOIZER =
@@ -483,9 +456,10 @@ namespace Memoizer.NET
 
     #region MemoizerFactory<TParam1, TResult>
     // TODO: rename to MemoizerConfig ...? It's just a better class name for a public class
+    // TODO: extract code into a MemoizerRegistry class(es)
     public class MemoizerFactory<TParam1, TResult>
     {
-        #region CLR-wide shared memoizer of memoizers
+        #region CLR-wide shared memoizer of memoizers (a.k.a. memoizer registry)
         // Static delegate for creating a memoizer with TParam1 as key type, and TResult as item type, from a MemoizerFactory instance
         static readonly Func<MemoizerConfiguration, Memoizer<TParam1, TResult>> CREATE_MEMOIZER_FROM_CONFIG =
             new Func<MemoizerConfiguration, Memoizer<TParam1, TResult>>(
