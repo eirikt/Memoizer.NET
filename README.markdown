@@ -5,6 +5,7 @@ A [`System.Runtime.Caching.MemoryCache`](http://msdn.microsoft.com/en-us/library
 
 ### API
 Memoizer.NET adds a set of extension methods to your `Func` references.
+
 	.CachedInvoke([args]*)
 	.Memoize()
 	.CacheFor([expiration value]1)
@@ -21,18 +22,23 @@ The two last extension methods deals with explicit/forced expiration, see below.
 
 ### Usage
 #### Example 1 - default caching policy:
+
 	Func<long, string> myExpensiveFunction = ...
 	string val = myExpensiveFunction.CachedInvoke(someId);
 
 #### Example 2 - implicit expiration via policy: keep items cached for 30 minutes:
+
 	string val = myExpensiveFunction.Memoize().KeepItemsCachedFor(30).Minutes.GetMemoizer().InvokeWith(someId);
 Or
+
 	string val = myExpensiveFunction.CacheFor(30).Minutes.GetMemoizer().InvokeWith(someId);
 
 #### Example 3 - explicit expiration:
+
 	myExpensiveFunction.RemoveFromCache(someId);
 
 #### Example 4 - clearing all cached values using this function:
+
 	myExpensiveFunction.UnMemoize();
 
 The "inlined" style, where the memoizer is configured and created/retrieved multiple times at runtime, works - because the memoized method handles are themselves memoized (behind the curtain), using a _memoizer registry_. More on that below.
@@ -41,6 +47,7 @@ The "inlined" style, where the memoizer is configured and created/retrieved mult
 Memoizer.NET does not support memoization of recursive functions out of the box, as it does not do any kind of IL manipulation.
 
 E.g the ubiquitous Fibonacci sequence example will not work just by memoizing the root function. Instead, the recursion points have to be memoized, like this:
+
 	Func<int, long> fibonacci =
 	    (arg =>
 		    {
@@ -49,11 +56,12 @@ E.g the ubiquitous Fibonacci sequence example will not work just by memoizing th
             });
 Now, the `fibonacci` function can be invoked as a regular C# function, but orders of magnitude faster.
 
-### Working with an `IMemoizer`
-
+### Working with an IMemoizer
 Obtaining the `IMemoizer` object;
+
 	IMemoizer memoizedFunc = myExpensiveFunction.GetMemoizer();
 Or with a expiration policy:
+
 	IMemoizer memoizedFunc = myExpensiveFunction.CacheFor(30).Minutes.GetMemoizer();
 
 The _memoizer registry_ is shared memoization of these `IMemoizer` objects using the Memoizer.NET itself. A combined hash consisting of the `Func` reference and the expiration policy, is used as key. This means that the same `Func` reference with different expiration policies are treated as two different `IMemoizer` instances by the memoizer registry. The `GetMemoizer` method consults the memoizer registry when creating the `IMemoizer` instance.
@@ -63,6 +71,7 @@ By working directly against an `IMemoizer` instance, you get a performance benef
 You can also bypass the memoizer registry entirely by using `CreateMemoizer()` instead of `GetMemoizer()`. Now the `IMemoizer` instance is created and handed directly to you without being put into the memoizer registry. 
 
 `IMemoizer<TParam, TResult>` instances have methods like:
+
     TResult InvokeWith(TParam param)
 	void Remove(TParam param)
 	void Clear()
