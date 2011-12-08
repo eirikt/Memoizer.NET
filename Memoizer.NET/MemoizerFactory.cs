@@ -67,7 +67,7 @@ namespace Memoizer.NET
     #region MemoizerHelper
     public static class MemoizerHelper
     {
-        static readonly int[] PRIMES = new[] { 31, 37, 43, 47, 59, 61, 71, 73, 89, 97, 101, 103, 113, 127, 131, 137 };
+        static internal readonly int[] PRIMES = new[] { 31, 37, 43, 47, 59, 61, 71, 73, 89, 97, 101, 103, 113, 127, 131, 137 };
 
         static readonly ObjectIDGenerator OBJECT_ID_GENERATOR = new ObjectIDGenerator();
 
