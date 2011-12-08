@@ -17,6 +17,11 @@ using System;
 
 namespace Memoizer.NET
 {
+    #region Enums
+    public enum ExpirationType { Relative, Absolute }
+
+    public enum TimeUnit { Milliseconds, Seconds, Minutes, Hours, Days }
+    #endregion
 
     /// <remarks>
     /// Immutable class for configuration of memoizers - used for creating memoizer instances.
