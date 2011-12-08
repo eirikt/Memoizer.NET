@@ -107,7 +107,7 @@ namespace Memoizer.NET
     /// </remarks>
     public abstract class AbstractTwoPhaseExecutorThread
     {
-        Thread thread;
+        readonly Thread thread;
 
         /// <summary>
         /// The thread barrier.
@@ -163,8 +163,8 @@ namespace Memoizer.NET
             get
             {
                 return
-                    "OS thread ID=" + AppDomain.GetCurrentThreadId() + ", " +
-                    "Managed thread ID=" + Thread.CurrentThread.GetHashCode() + "/" + Thread.CurrentThread.ManagedThreadId;
+                    "OS thread ID=" + this.thread.ManagedThreadId + ", " +
+                    "Managed thread ID=" + this.thread.GetHashCode() + "/" + this.thread.ManagedThreadId;
             }
         }
 

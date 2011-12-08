@@ -21,7 +21,7 @@ using System.Runtime.Serialization;
 namespace Memoizer.NET
 {
     #region CacheItemPolicyFactory
-    public class CacheItemPolicyFactory
+    static class CacheItemPolicyFactory
     {
         public static CacheItemPolicy CreateCacheItemPolicy(ExpirationType expirationType, int expirationValue, TimeUnit expirationTimeUnit)
         {
@@ -61,13 +61,11 @@ namespace Memoizer.NET
             }
             return cacheItemPolicy;
         }
-
-        CacheItemPolicyFactory() { }
     }
     #endregion
 
     #region ReflectionHelper
-    public class ReflectionHelper
+    static class ReflectionHelper
     {
         public static object GetProperty(object source, string propertyName)
         {
@@ -75,13 +73,11 @@ namespace Memoizer.NET
             if (propertyInfo == null) { throw new ArgumentException("Could not find a property with the name '" + propertyName + "' in the class '" + source.GetType().Namespace + "." + source.GetType().Name + "'"); }
             return propertyInfo.GetValue(source, null);
         }
-
-        ReflectionHelper() { }
     }
     #endregion
 
     #region MemoizerHelper
-    public class MemoizerHelper
+    public static class MemoizerHelper
     {
         public static int[] PRIMES = new[] { 31, 37, 43, 47, 59, 61, 71, 73, 89, 97, 101, 103, 113, 127, 131, 137 };
 
@@ -126,9 +122,6 @@ namespace Memoizer.NET
             bool firstTime = false;
             return GetObjectId(func, ref firstTime);
         }
-
-
-        MemoizerHelper() { }
     }
     #endregion
 

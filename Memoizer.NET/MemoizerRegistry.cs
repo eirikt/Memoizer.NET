@@ -5,10 +5,8 @@ using System.Threading.Tasks;
 namespace Memoizer.NET
 {
     #region MemoizerRegistryHelper
-    class MemoizerRegistryHelper
+    static class MemoizerRegistryHelper
     {
-        MemoizerRegistryHelper() { }
-
         /// <summary>
         /// Coupled with the <code>MemoizerConfiguration.GetHashCode()</code> method.
         /// </summary>
@@ -65,20 +63,18 @@ namespace Memoizer.NET
     #endregion
 
     #region MemoizerRegistry<TResult>
-    class MemoizerRegistry<TResult>
+    static class MemoizerRegistry<TResult>
     {
         internal static readonly Lazy<Memoizer<MemoizerConfiguration, Memoizer<TResult>>> LAZY_MEMOIZER_REGISTRY =
            new Lazy<Memoizer<MemoizerConfiguration, Memoizer<TResult>>>(
                () => new Memoizer<MemoizerConfiguration, Memoizer<TResult>>(
                    memoizerConfig => new Memoizer<TResult>(memoizerConfig)),
                isThreadSafe: typeof(IMemoizer<MemoizerConfiguration, IMemoizer<TResult>>) is IThreadSafe);
-
-        MemoizerRegistry() { }
     }
     #endregion
 
     #region MemoizerRegistry<TParam1, TResult>
-    class MemoizerRegistry<TParam1, TResult>
+    static class MemoizerRegistry<TParam1, TResult>
     {
         #region CLR-wide shared memoizer of memoizers (a.k.a. memoizer registry)
         // Static delegate for creating a memoizer with TParam1 as key type, and TResult as item type, from a MemoizerRegistry instance
@@ -116,13 +112,11 @@ namespace Memoizer.NET
                 memoizer.Remove(arg1);
             }
         }
-
-        MemoizerRegistry() { }
     }
     #endregion
 
     #region MemoizerRegistry<TParam1, TParam2, TResult>
-    class MemoizerRegistry<TParam1, TParam2, TResult>
+    static class MemoizerRegistry<TParam1, TParam2, TResult>
     {
         internal static readonly Lazy<Memoizer<MemoizerConfiguration, Memoizer<TParam1, TParam2, TResult>>> LAZY_MEMOIZER_REGISTRY =
            new Lazy<Memoizer<MemoizerConfiguration, Memoizer<TParam1, TParam2, TResult>>>(
@@ -140,13 +134,11 @@ namespace Memoizer.NET
                 memoizer.Remove(arg1, arg2);
             }
         }
-
-        MemoizerRegistry() { }
     }
     #endregion
 
     #region MemoizerRegistry<TParam1, TParam2, TParam3, TResult>
-    class MemoizerRegistry<TParam1, TParam2, TParam3, TResult>
+    static class MemoizerRegistry<TParam1, TParam2, TParam3, TResult>
     {
         internal static readonly Lazy<Memoizer<MemoizerConfiguration, Memoizer<TParam1, TParam2, TParam3, TResult>>> LAZY_MEMOIZER_REGISTRY =
            new Lazy<Memoizer<MemoizerConfiguration, Memoizer<TParam1, TParam2, TParam3, TResult>>>(
@@ -164,13 +156,11 @@ namespace Memoizer.NET
                 memoizer.Remove(arg1, arg2, arg3);
             }
         }
-
-        MemoizerRegistry() { }
     }
     #endregion
 
     #region MemoizerRegistry<TParam1, TParam2,TParam3, TParam3,TParam4, TResult>
-    class MemoizerRegistry<TParam1, TParam2, TParam3, TParam4, TResult>
+    static class MemoizerRegistry<TParam1, TParam2, TParam3, TParam4, TResult>
     {
         internal static readonly Lazy<Memoizer<MemoizerConfiguration, Memoizer<TParam1, TParam2, TParam3, TParam4, TResult>>> LAZY_MEMOIZER_REGISTRY =
             new Lazy<Memoizer<MemoizerConfiguration, Memoizer<TParam1, TParam2, TParam3, TParam4, TResult>>>(
@@ -188,8 +178,6 @@ namespace Memoizer.NET
                 memoizer.Remove(arg1, arg2, arg3, arg4);
             }
         }
-
-        MemoizerRegistry() { }
     }
     #endregion
 }
