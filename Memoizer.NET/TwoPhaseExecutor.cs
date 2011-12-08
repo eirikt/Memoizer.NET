@@ -81,22 +81,14 @@ namespace Memoizer.NET
                 Console.WriteLine("Main thread: Arriving at 2nd barrier rendevouz - probably as one of the first ones, waiting for all tasks to complete...");
             Barrier.SignalAndWait(Timeout.Infinite);
         }
-
-//#pragma warning disable 612,618
-        //public static string GetThreadInfo()
-        //{
-        //    return
-        //        "OS thread ID=" + AppDomain.GetCurrentThreadId() + ", " +
-        //        "Managed thread ID=" + Thread.CurrentThread.GetHashCode() + "/" + Thread.CurrentThread.ManagedThreadId;
-        //}
     }
-//#pragma warning restore 612,618
 
 
     public static class BarrierExtensionMethods
     {
         public static string GetInfo(this Barrier barrier)
         {
+            if (barrier == null) { throw new ArgumentException("Barrier parameter cannot null"); }
             return "Barrier phase is " + barrier.CurrentPhaseNumber + ", remaining participants are " + (barrier.ParticipantsRemaining) + " of a total of " + (barrier.ParticipantCount - 1) + " (plus main thread)";
         }
     }
@@ -208,7 +200,8 @@ namespace Memoizer.NET
     {
         static int TASK_COUNTER;
 
-        public TrivialTask(Barrier barrier) : base(barrier, true)
+        public TrivialTask(Barrier barrier)
+            : base(barrier, true)
         {
             TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
             ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);

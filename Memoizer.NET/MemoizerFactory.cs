@@ -64,22 +64,10 @@ namespace Memoizer.NET
     }
     #endregion
 
-    #region ReflectionHelper
-    static class ReflectionHelper
-    {
-        public static object GetProperty(object source, string propertyName)
-        {
-            PropertyInfo propertyInfo = source.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-            if (propertyInfo == null) { throw new ArgumentException("Could not find a property with the name '" + propertyName + "' in the class '" + source.GetType().Namespace + "." + source.GetType().Name + "'"); }
-            return propertyInfo.GetValue(source, null);
-        }
-    }
-    #endregion
-
     #region MemoizerHelper
     public static class MemoizerHelper
     {
-        public static int[] PRIMES = new[] { 31, 37, 43, 47, 59, 61, 71, 73, 89, 97, 101, 103, 113, 127, 131, 137 };
+        static readonly int[] PRIMES = new[] { 31, 37, 43, 47, 59, 61, 71, 73, 89, 97, 101, 103, 113, 127, 131, 137 };
 
         static readonly ObjectIDGenerator OBJECT_ID_GENERATOR = new ObjectIDGenerator();
 
@@ -175,6 +163,8 @@ namespace Memoizer.NET
         {
             return GetMemoizer(cachedAndSharedMemoizerInstance: false);
         }
+
+        public IMemoizer<TResult> GetMemoizer() { return GetMemoizer(true); }
 
         public IMemoizer<TResult> GetMemoizer(bool cachedAndSharedMemoizerInstance = true)
         {
