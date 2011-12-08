@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("Memoizer.NET.Test")]
-[assembly: AssemblyDescription("A test assemply for the 'Memoizer.NET' assembly")]
+[assembly: AssemblyDescription("A test assembly for Memoizer.NET")]
 #if DEBUG
 [assembly: AssemblyConfiguration("Debug")]
 #else
@@ -33,6 +33,9 @@ using System.Runtime.InteropServices;
 //[assembly: AssemblyVersion("0.5.0.0")]
 //[assembly: AssemblyInformationalVersion("v0.5")]
 
-[assembly: AssemblyVersion("0.6.0.*")]
-//[assembly: AssemblyFileVersion("0.6.0.*")]
-[assembly: AssemblyInformationalVersion("v0.6-SNAPSHOT")]
+//[assembly: AssemblyVersion("0.6.0.*")]
+////[assembly: AssemblyFileVersion("0.6.0.*")]
+//[assembly: AssemblyInformationalVersion("v0.6-SNAPSHOT")]
+
+[assembly: AssemblyVersion("0.6.0.0")]
+[assembly: AssemblyInformationalVersion("v0.6")]

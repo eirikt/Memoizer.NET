@@ -226,11 +226,12 @@ namespace Memoizer.NET
 
         public TResult Invoke()
         {
-            // Works, but ugh...
+            // Seems to work, but ugh...
             lock (@NOARG_MEMOIZER_LOCK)
             {
                 TResult val = (TResult)MemoryCache.Default.Get(this.key);
-                if (val == null)
+                //if (val.Equals(default(TResult)))
+                if (val == null || val.Equals(default(TResult)))
                     MemoryCache.Default.Set(new CacheItem(this.key, this.functionToBeMemoized.Invoke()), this.cacheItemPolicy);
             }
             return (TResult)MemoryCache.Default.GetCacheItem(this.key).Value;

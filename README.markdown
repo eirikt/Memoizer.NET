@@ -1,7 +1,7 @@
 ## Memoizer.NET
 This project is an implementation of a function-level/fine-grained cache (a.k.a. _memoizer_). It is based on an implementation from the book ["Java Concurrency in Practice"](http://jcip.net "http://jcip.net") by Brian Goetz et. al. - ported to C# 4.0. The noble thing about this implementation is that the _values_ are not cached, but rather _asynchronous tasks_ for retrieving those values. These tasks are guaranteed not to be executed more than once in case of concurrent first-time invocations.
 
-A [`System.Runtime.Caching.MemoryCache`](http://msdn.microsoft.com/en-us/library/system.runtime.caching.memorycache.aspx "http://msdn.microsoft.com/en-us/library/system.runtime.caching.memorycache.aspx") instance is used as cache, enabling configuration via the [`System.Runtime.Caching.CacheItemPolicy`](http://msdn.microsoft.com/en-us/library/system.runtime.caching.cacheitempolicy.aspx "http://msdn.microsoft.com/en-us/library/system.runtime.caching.cacheitempolicy.aspx"). Default cache configuration is: items to be held as long as the CLR is alive, or until the memoizer is disposed/cleared. 
+A [`System.Runtime.Caching.MemoryCache`](http://msdn.microsoft.com/en-us/library/system.runtime.caching.memorycache.aspx "http://msdn.microsoft.com/en-us/library/system.runtime.caching.memorycache.aspx") instance is used as cache, enabling configuration via the [`System.Runtime.Caching.CacheItemPolicy`](http://msdn.microsoft.com/en-us/library/system.runtime.caching.cacheitempolicy.aspx "http://msdn.microsoft.com/en-us/library/system.runtime.caching.cacheitempolicy.aspx"). Default cache configuration is: items to be held as long as the CLR is alive (or until the item is explicitly removed).
 
 ### API
 Memoizer.NET adds a set of extension methods to your `Func` references.
@@ -29,7 +29,7 @@ The two last extension methods deals with explicit/forced expiration, see below.
 #### Example 2 - implicit expiration via policy: keep items cached for 30 minutes:
 
 	string val = myExpensiveFunction.Memoize().KeepItemsCachedFor(30).Minutes.GetMemoizer().InvokeWith(someId);
-Or
+Or:
 
 	string val = myExpensiveFunction.CacheFor(30).Minutes.GetMemoizer().InvokeWith(someId);
 
@@ -59,12 +59,12 @@ Now, the `fibonacci` function can be invoked as a regular C# function, but order
 ### Working with an IMemoizer
 Obtaining the `IMemoizer` object;
 
-	IMemoizer memoizedFunc = myExpensiveFunction.GetMemoizer();
-Or with a expiration policy:
+	IMemoizer memoizedFunc = myExpensiveFunction.GetMemoizer():
+Or with an expiration policy:
 
 	IMemoizer memoizedFunc = myExpensiveFunction.CacheFor(30).Minutes.GetMemoizer();
 
-The _memoizer registry_ is shared memoization of these `IMemoizer` objects using the Memoizer.NET itself. A combined hash consisting of the `Func` reference and the expiration policy, is used as key. This means that the same `Func` reference with different expiration policies are treated as two different `IMemoizer` instances by the memoizer registry. The `GetMemoizer` method consults the memoizer registry when creating the `IMemoizer` instance.
+The _memoizer registry_ is shared memoization of these `IMemoizer` objects using the Memoizer.NET itself. A combined hash consisting of the `Func` reference and the expiration policy, is used as key. This means that the same `Func` reference with different expiration policies are treated as two different `IMemoizer` instances by the memoizer registry. The `GetMemoizer` method consults the memoizer registry when creating `IMemoizer` instances.
 
 By working directly against an `IMemoizer` instance, you get a performance benefit. This is because only one cache invocation is needed instead of two, as being the case when working directly with `Func` references. (One for retrieving the memoizer from the registry, and a second one for looking up the value in the memoizer.)
 
