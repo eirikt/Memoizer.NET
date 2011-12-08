@@ -82,15 +82,15 @@ namespace Memoizer.NET
             Barrier.SignalAndWait(Timeout.Infinite);
         }
 
-#pragma warning disable 612,618
-        public static string GetThreadInfo()
-        {
-            return
-                "OS thread ID=" + AppDomain.GetCurrentThreadId() + ", " +
-                "Managed thread ID=" + Thread.CurrentThread.GetHashCode() + "/" + Thread.CurrentThread.ManagedThreadId;
-        }
+//#pragma warning disable 612,618
+        //public static string GetThreadInfo()
+        //{
+        //    return
+        //        "OS thread ID=" + AppDomain.GetCurrentThreadId() + ", " +
+        //        "Managed thread ID=" + Thread.CurrentThread.GetHashCode() + "/" + Thread.CurrentThread.ManagedThreadId;
+        //}
     }
-#pragma warning restore 612,618
+//#pragma warning restore 612,618
 
 
     public static class BarrierExtensionMethods
@@ -158,6 +158,16 @@ namespace Memoizer.NET
         /// </summary>
         public bool Instrumentation { get; set; }
 
+        public string ThreadInfo
+        {
+            get
+            {
+                return
+                    "OS thread ID=" + AppDomain.GetCurrentThreadId() + ", " +
+                    "Managed thread ID=" + Thread.CurrentThread.GetHashCode() + "/" + Thread.CurrentThread.ManagedThreadId;
+            }
+        }
+
         void GetPhasedAction()
         {
             if (Instrumentation)
@@ -202,7 +212,7 @@ namespace Memoizer.NET
         {
             TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
             ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);
-            Action = () => Console.WriteLine("Barrier participant #" + ParticipantNumber + " [invocation #" + ExecutionIndex + "] [" + TwoPhaseExecutor.GetThreadInfo() + "]");
+            Action = () => Console.WriteLine("Barrier participant #" + ParticipantNumber + " [invocation #" + ExecutionIndex + "] [" + ThreadInfo + "]");
             if (Instrumentation)
                 Console.WriteLine(this.GetType().Name + " #" + TaskNumber + " created... [(possible) barrier participant #" + ParticipantNumber + "]");
         }

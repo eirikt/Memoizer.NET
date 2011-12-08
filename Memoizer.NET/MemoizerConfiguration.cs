@@ -73,8 +73,8 @@ namespace Memoizer.NET
         {
             if (ReferenceEquals(null, otherObject)) { return false; }
             if (ReferenceEquals(this, otherObject)) { return true; }
-            if (!(otherObject is MemoizerConfiguration)) { return false; }
             MemoizerConfiguration otherMemoizerConfiguration = otherObject as MemoizerConfiguration;
+            if (otherMemoizerConfiguration == null) { return false; }
             return this.GetHashCode().Equals(otherMemoizerConfiguration.GetHashCode());
         }
     }

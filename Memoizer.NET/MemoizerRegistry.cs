@@ -7,6 +7,8 @@ namespace Memoizer.NET
     #region MemoizerRegistryHelper
     class MemoizerRegistryHelper
     {
+        MemoizerRegistryHelper() { }
+
         /// <summary>
         /// Coupled with the <code>MemoizerConfiguration.GetHashCode()</code> method.
         /// </summary>
@@ -70,6 +72,8 @@ namespace Memoizer.NET
                () => new Memoizer<MemoizerConfiguration, Memoizer<TResult>>(
                    memoizerConfig => new Memoizer<TResult>(memoizerConfig)),
                isThreadSafe: typeof(IMemoizer<MemoizerConfiguration, IMemoizer<TResult>>) is IThreadSafe);
+
+        MemoizerRegistry() { }
     }
     #endregion
 
@@ -112,6 +116,8 @@ namespace Memoizer.NET
                 memoizer.Remove(arg1);
             }
         }
+
+        MemoizerRegistry() { }
     }
     #endregion
 
@@ -134,6 +140,8 @@ namespace Memoizer.NET
                 memoizer.Remove(arg1, arg2);
             }
         }
+
+        MemoizerRegistry() { }
     }
     #endregion
 
@@ -156,6 +164,8 @@ namespace Memoizer.NET
                 memoizer.Remove(arg1, arg2, arg3);
             }
         }
+
+        MemoizerRegistry() { }
     }
     #endregion
 
@@ -178,6 +188,8 @@ namespace Memoizer.NET
                 memoizer.Remove(arg1, arg2, arg3, arg4);
             }
         }
+
+        MemoizerRegistry() { }
     }
     #endregion
 }
