@@ -24,7 +24,7 @@ namespace Memoizer.NET
     #endregion
 
     /// <remarks>
-    /// Immutable class for configuration of memoizers - used for creating memoizer instances.
+    /// Immutable value class representing a memoizer configuration - used for creating memoizer instances.
     /// </remarks>
     internal class MemoizerConfiguration
     {

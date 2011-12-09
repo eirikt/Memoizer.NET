@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 using System;
-using System.Reflection;
 using System.Runtime.Caching;
 using System.Runtime.Serialization;
 
@@ -163,8 +162,6 @@ namespace Memoizer.NET
         {
             return GetMemoizer(cachedAndSharedMemoizerInstance: false);
         }
-
-        public IMemoizer<TResult> GetMemoizer() { return GetMemoizer(true); }
 
         public IMemoizer<TResult> GetMemoizer(bool cachedAndSharedMemoizerInstance = true)
         {

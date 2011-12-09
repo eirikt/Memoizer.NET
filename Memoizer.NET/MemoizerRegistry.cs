@@ -11,8 +11,8 @@ namespace Memoizer.NET
         /// Coupled with the <code>MemoizerConfiguration.GetHashCode()</code> method.
         /// </summary>
         /// <param name="function">The memoized function to look for</param>
-        /// <param name="memoizerRegistry">The memoizer^2 registry instance to look into</param>
-        /// <returns>An enumeration of keys pointing to memoizer instances in the memoizer^2 registry, having the given function</returns>
+        /// <param name="memoizerRegistry">The memoizer registry instance to look into</param>
+        /// <returns>An enumeration of keys pointing to memoizer instances in the memoizer registry, having the given function</returns>
         internal static IEnumerable<string> FindMemoizerKeysInRegistryHavingFunction<T>(object function, Memoizer<MemoizerConfiguration, T> memoizerRegistry)
         {
             IList<string> memoizerKeyList = new List<string>();

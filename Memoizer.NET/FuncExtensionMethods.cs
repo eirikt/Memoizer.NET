@@ -3,6 +3,9 @@
 namespace Memoizer.NET
 {
     #region Func extension methods
+    /// <summary>
+    /// Primary Memoizer.NET API entrance points
+    /// </summary>
     public static class FuncExtensionMethods
     {
         #region CreateMemoizer()
