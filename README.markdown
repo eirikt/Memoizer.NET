@@ -112,6 +112,7 @@ See the `Memoizer.NET.Test.MemoizerTests` class for usage examples. In v0.7 a mi
 #### v0.7 [jan 2012]
 
 - A mini DSL/builder for easy `Memoizer.Net.TwoPhaseExecutor` usage
+- NuGet distribution packages
 - Optimizations...
 
 

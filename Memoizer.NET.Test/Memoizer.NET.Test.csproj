@@ -52,6 +52,7 @@
     <Compile Include="TwoPhaseExecutorTests.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Memoizer.NET.Test.nuspec" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
