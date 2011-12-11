@@ -212,5 +212,39 @@ namespace Memoizer.NET
     }
 
 
-    // TODO: create a "mini-DSL"/builder for easy creation of AbstractTwoPhaseExecutorThread objects
+
+    public static partial class FuncExtensionMethods
+    {
+        public static TwoPhaseExecutionContext Execute<TParam1, TParam2, TResult>(this Func<TParam1, TParam2, TResult> functionToBeMemoized, int numberOfIterations, int numberOfConcurrentThreadsWitinhEachIteration)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+
+    public class TwoPhaseExecutionContextResultSet
+    {
+        public int DurationInMilliseconds { get { throw new NotImplementedException(); } }
+
+
+        public TwoPhaseExecutionContextResult this[int i, int i1]
+        {
+            get { throw new NotImplementedException(); }
+        }
+    }
+
+
+    public class TwoPhaseExecutionContextResult
+    {
+        public string Result { get { throw new NotImplementedException(); } }
+    }
+
+
+    public class TwoPhaseExecutionContext
+    {
+        public TwoPhaseExecutionContextResultSet Execute(string jabadabadoo, long l)
+        {
+            throw new NotImplementedException();
+        }
+    }
 }

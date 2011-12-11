@@ -22,7 +22,7 @@ namespace Memoizer.NET
     #region CacheItemPolicyFactory
     static class CacheItemPolicyFactory
     {
-        public static CacheItemPolicy CreateCacheItemPolicy(ExpirationType expirationType, int expirationValue, TimeUnit expirationTimeUnit)
+        internal static CacheItemPolicy CreateCacheItemPolicy(ExpirationType expirationType, int expirationValue, TimeUnit expirationTimeUnit)
         {
             CacheItemPolicy cacheItemPolicy = new CacheItemPolicy();
             switch (expirationType)
@@ -214,32 +214,11 @@ namespace Memoizer.NET
 
         Action<String> loggerMethod;
 
-
-        internal MemoizerFactory(Func<TParam1, TResult> functionToBeMemoized)
-        {
-            this.function = functionToBeMemoized;
-        }
-
-        internal Func<TParam1, TResult> Function
-        {
-            get { return this.function; }
-        }
-
-        internal Action<String> LoggerAction
-        {
-            get { return this.loggerMethod; }
-        }
-
-        MemoizerConfiguration MemoizerConfiguration
-        {
-            get { return new MemoizerConfiguration(this.function, this.ExpirationType, this.ExpirationValue, this.ExpirationTimeUnit, this.loggerMethod); }
-        }
-
-        public MemoizerFactory_AwaitingExpirationUnit<TParam1, TResult> KeepItemsCachedFor(int cacheExpirationValue)
-        {
-            return new MemoizerFactory_AwaitingExpirationUnit<TParam1, TResult>(cacheExpirationValue, this);
-        }
-
+        internal MemoizerFactory(Func<TParam1, TResult> functionToBeMemoized) { this.function = functionToBeMemoized; }
+        internal Func<TParam1, TResult> Function { get { return this.function; } }
+        internal Action<String> LoggerAction { get { return this.loggerMethod; } }
+        MemoizerConfiguration MemoizerConfiguration { get { return new MemoizerConfiguration(this.function, this.ExpirationType, this.ExpirationValue, this.ExpirationTimeUnit, this.loggerMethod); } }
+        public MemoizerFactory_AwaitingExpirationUnit<TParam1, TResult> KeepItemsCachedFor(int cacheExpirationValue) { return new MemoizerFactory_AwaitingExpirationUnit<TParam1, TResult>(cacheExpirationValue, this); }
         public MemoizerFactory<TParam1, TResult> InstrumentWith(Action<String> loggingAction)
         {
             this.loggerMethod = loggingAction;
@@ -249,10 +228,7 @@ namespace Memoizer.NET
         /// <summary>
         /// Force creation and <i>not</i> caching/sharing (via memoizer^2 registry) of created memoizer instance.
         /// </summary>
-        public IMemoizer<TParam1, TResult> CreateMemoizer()
-        {
-            return GetMemoizer(cachedAndSharedMemoizerInstance: false);
-        }
+        public IMemoizer<TParam1, TResult> CreateMemoizer() { return GetMemoizer(cachedAndSharedMemoizerInstance: false); }
 
         public IMemoizer<TParam1, TResult> GetMemoizer(bool cachedAndSharedMemoizerInstance = true)
         {
@@ -306,29 +282,15 @@ namespace Memoizer.NET
         Action<String> loggerMethod;
         internal Action<String> LoggerAction { get { return this.loggerMethod; } }
 
-        MemoizerConfiguration MemoizerConfiguration
-        {
-            get { return new MemoizerConfiguration(this.function, this.ExpirationType, this.ExpirationValue, this.ExpirationTimeUnit, this.loggerMethod); }
-        }
-
-        internal MemoizerFactory(Func<TParam1, TParam2, TResult> functionToBeMemoized)
-        {
-            this.function = functionToBeMemoized;
-        }
-
-        public MemoizerFactory_AwaitingExpirationUnit<TParam1, TParam2, TResult> KeepItemsCachedFor(int cacheExpirationValue)
-        {
-            return new MemoizerFactory_AwaitingExpirationUnit<TParam1, TParam2, TResult>(cacheExpirationValue, this);
-        }
-
+        MemoizerConfiguration MemoizerConfiguration { get { return new MemoizerConfiguration(this.function, this.ExpirationType, this.ExpirationValue, this.ExpirationTimeUnit, this.loggerMethod); } }
+        internal MemoizerFactory(Func<TParam1, TParam2, TResult> functionToBeMemoized) { this.function = functionToBeMemoized; }
+        public MemoizerFactory_AwaitingExpirationUnit<TParam1, TParam2, TResult> KeepItemsCachedFor(int cacheExpirationValue) { return new MemoizerFactory_AwaitingExpirationUnit<TParam1, TParam2, TResult>(cacheExpirationValue, this); }
         public MemoizerFactory<TParam1, TParam2, TResult> InstrumentWith(Action<String> loggerMethod)
         {
             this.loggerMethod = loggerMethod;
             return this;
         }
-
         public IMemoizer<TParam1, TParam2, TResult> CreateMemoizer() { return GetMemoizer(false); }
-
         public IMemoizer<TParam1, TParam2, TResult> GetMemoizer(bool cacheAndShareMemoizerInstance = true)
         {
             return cacheAndShareMemoizerInstance
@@ -381,29 +343,15 @@ namespace Memoizer.NET
         Action<String> loggerMethod;
         internal Action<String> LoggerAction { get { return this.loggerMethod; } }
 
-        MemoizerConfiguration MemoizerConfiguration
-        {
-            get { return new MemoizerConfiguration(this.function, this.ExpirationType, this.ExpirationValue, this.ExpirationTimeUnit, this.loggerMethod); }
-        }
-
-        internal MemoizerFactory(Func<TParam1, TParam2, TParam3, TResult> functionToBeMemoized)
-        {
-            this.function = functionToBeMemoized;
-        }
-
-        public MemoizerFactory_AwaitingExpirationUnit<TParam1, TParam2, TParam3, TResult> KeepItemsCachedFor(int cacheExpirationValue)
-        {
-            return new MemoizerFactory_AwaitingExpirationUnit<TParam1, TParam2, TParam3, TResult>(cacheExpirationValue, this);
-        }
-
+        MemoizerConfiguration MemoizerConfiguration { get { return new MemoizerConfiguration(this.function, this.ExpirationType, this.ExpirationValue, this.ExpirationTimeUnit, this.loggerMethod); } }
+        internal MemoizerFactory(Func<TParam1, TParam2, TParam3, TResult> functionToBeMemoized) { this.function = functionToBeMemoized; }
+        public MemoizerFactory_AwaitingExpirationUnit<TParam1, TParam2, TParam3, TResult> KeepItemsCachedFor(int cacheExpirationValue) { return new MemoizerFactory_AwaitingExpirationUnit<TParam1, TParam2, TParam3, TResult>(cacheExpirationValue, this); }
         public MemoizerFactory<TParam1, TParam2, TParam3, TResult> InstrumentWith(Action<String> loggerMethod)
         {
             this.loggerMethod = loggerMethod;
             return this;
         }
-
         public IMemoizer<TParam1, TParam2, TParam3, TResult> CreateMemoizer() { return GetMemoizer(false); }
-
         public IMemoizer<TParam1, TParam2, TParam3, TResult> GetMemoizer(bool cacheAndShareMemoizerInstance = true)
         {
             return cacheAndShareMemoizerInstance
@@ -457,29 +405,15 @@ namespace Memoizer.NET
         Action<String> loggerMethod;
         internal Action<String> LoggerAction { get { return this.loggerMethod; } }
 
-        MemoizerConfiguration MemoizerConfiguration
-        {
-            get { return new MemoizerConfiguration(this.function, this.ExpirationType, this.ExpirationValue, this.ExpirationTimeUnit, this.loggerMethod); }
-        }
-
-        internal MemoizerFactory(Func<TParam1, TParam2, TParam3, TParam4, TResult> functionToBeMemoized)
-        {
-            this.function = functionToBeMemoized;
-        }
-
-        public MemoizerFactory_AwaitingExpirationUnit<TParam1, TParam2, TParam3, TParam4, TResult> KeepItemsCachedFor(int cacheExpirationValue)
-        {
-            return new MemoizerFactory_AwaitingExpirationUnit<TParam1, TParam2, TParam3, TParam4, TResult>(cacheExpirationValue, this);
-        }
-
+        MemoizerConfiguration MemoizerConfiguration { get { return new MemoizerConfiguration(this.function, this.ExpirationType, this.ExpirationValue, this.ExpirationTimeUnit, this.loggerMethod); } }
+        internal MemoizerFactory(Func<TParam1, TParam2, TParam3, TParam4, TResult> functionToBeMemoized) { this.function = functionToBeMemoized; }
+        public MemoizerFactory_AwaitingExpirationUnit<TParam1, TParam2, TParam3, TParam4, TResult> KeepItemsCachedFor(int cacheExpirationValue) { return new MemoizerFactory_AwaitingExpirationUnit<TParam1, TParam2, TParam3, TParam4, TResult>(cacheExpirationValue, this); }
         public MemoizerFactory<TParam1, TParam2, TParam3, TParam4, TResult> InstrumentWith(Action<String> loggerMethod)
         {
             this.loggerMethod = loggerMethod;
             return this;
         }
-
         public IMemoizer<TParam1, TParam2, TParam3, TParam4, TResult> CreateMemoizer() { return GetMemoizer(false); }
-
         public IMemoizer<TParam1, TParam2, TParam3, TParam4, TResult> GetMemoizer(bool cacheAndShareMemoizerInstance = true)
         {
             return cacheAndShareMemoizerInstance

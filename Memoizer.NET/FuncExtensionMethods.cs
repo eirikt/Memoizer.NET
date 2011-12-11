@@ -6,7 +6,7 @@ namespace Memoizer.NET
     /// <summary>
     /// Primary Memoizer.NET API entrance points
     /// </summary>
-    public static class FuncExtensionMethods
+    public static partial class FuncExtensionMethods
     {
         #region CreateMemoizer()
         public static IMemoizer<TResult> CreateMemoizer<TResult>(this Func<TResult> functionToBeMemoized)
