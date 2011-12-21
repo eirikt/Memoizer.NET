@@ -70,8 +70,7 @@ namespace Memoizer.NET
            new Lazy<Memoizer<MemoizerConfiguration, Memoizer<TResult>>>(
                () => new Memoizer<MemoizerConfiguration, Memoizer<TResult>>(
                    memoizerConfig => new Memoizer<TResult>(memoizerConfig)),
-               isThreadSafe: typeof(IMemoizer<MemoizerConfiguration, IMemoizer<TResult>>) is IThreadSafe);
-        //LazyThreadSafetyMode.PublicationOnly);
+                   LazyThreadSafetyMode.PublicationOnly);
     }
     #endregion
 
