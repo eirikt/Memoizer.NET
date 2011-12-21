@@ -17,17 +17,15 @@ using System;
 using System.Threading;
 using NUnit.Framework;
 
-//#pragma warning disable 162
 namespace Memoizer.NET.Test
 {
 
-    /// <summary>
-    /// Well, not really a test... rather an instrumented demo
-    /// </summary>
     [TestFixture]
     class TwoPhaseExecutorTests
     {
-
+        /// <summary>
+        /// Well, not really a test... rather an instrumented demo
+        /// </summary>
         //[Ignore("Temporary disabled...")]
         [Test]
         public void Test()
@@ -43,30 +41,148 @@ namespace Memoizer.NET.Test
                 for (int i = 0; i < NUMBER_OF_PARTICIPANTS / 2; ++i)
                 {
                     new TrivialTask(twoPhaseExecutor.Barrier).Start();
-                    new ExpensiveTask(twoPhaseExecutor.Barrier).Start();
+                    new SomeOtherTask(twoPhaseExecutor.Barrier).Start();
                 }
             else
                 for (int i = 0; i < NUMBER_OF_PARTICIPANTS; ++i)
-                    new ExpensiveTask(twoPhaseExecutor.Barrier).Start();
+                    new SomeOtherTask(twoPhaseExecutor.Barrier).Start();
 
             // 3. Start the two-phase executor
             twoPhaseExecutor.Start();
         }
-    }
 
-
-    public class ExpensiveTask : AbstractTwoPhaseExecutorThread
-    {
-        static int TASK_COUNTER;
-
-        public ExpensiveTask(Barrier barrier) : base(barrier, true)
+        class SomeOtherTask : AbstractTwoPhaseExecutorThread
         {
-            TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
-            ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);
-            Action = () => Console.WriteLine("Barrier participant #" + ParticipantNumber + " [invocation #" + ExecutionIndex + "] [" + ThreadInfo + "]");
+            static int TASK_COUNTER;
 
-            if (Instrumentation)
-                Console.WriteLine(this.GetType().Name + " #" + TaskNumber + " created... [(possible) barrier participant #" + ParticipantNumber + "]");
+            public SomeOtherTask(Barrier barrier)
+                : base(barrier, true)
+            {
+                TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
+                ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);
+                Action = () => Console.WriteLine("Barrier participant #" + ParticipantNumber + " [invocation #" + ExecutionIndex + "] [" + ThreadInfo + "]");
+
+                if (Instrumentation)
+                    Console.WriteLine(this.GetType().Name + " #" + TaskNumber + " created... [(possible) barrier participant #" + ParticipantNumber + "]");
+            }
         }
+
+
+        [Test, ExpectedException(typeof(ArgumentException), ExpectedMessage = "Number-of-iteration parameter ('numberOfIterations') cannot be a negative number", MatchType = MessageMatch.Exact)]
+        public void TwoPhaseExecutionContext_IterationParameterCannotBeNegativeNumber(
+            [Values(-10, -1)] int numberOfIterations,
+            [Values(1)] int numberOfConcurrentWorkerThreads)
+        {
+            //////long startTime = DateTime.Now.Ticks;
+            ////IMemoizer<string, long, string> myMemoizer = ReallySlowNetworkInvocation1a.CreateMemoizer();
+
+            //////Action<string, long> myConcurrentAction = (arg1, arg2) => memoizer.InvokeWith(arg1, arg2);
+            ////Func<string, long, string> myConcurrentFunc = (arg1, arg2) => myMemoizer.InvokeWith(arg1, arg2);
+
+            Func<string, long, string> myFunc = MemoizerTests.ReallySlowNetworkStaticInvocation;
+            ////Func<string, long, string> myConcurrentFunc = (arg1, arg2) => ReallySlowNetworkInvocation1a.CreateMemoizer().InvokeWith(arg1, arg2);
+
+            /*TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext =*/
+            myFunc.CreateExecutionContext(numberOfIterations, numberOfConcurrentWorkerThreads);
+            ////TwoPhaseExecutionContextResultSet<string> twoPhaseExecutionContext = Execute(numberOfIterations, numberOfConcurrentTasks, "Jabadabadoo", 888L); // Hva med en slik en like greit...?
+            ////TwoPhaseExecutionContext twoPhaseExecutionContext = myConcurrentFunc.Execute(NUMBER_OF_ITERATIONS).TimelyIterations.And(numberOfConcurrentTasks).SpcelyIterations;
+            /*TwoPhaseExecutionContextResultSet<string, long, string> twoPhaseExecutionContextResultSet =*/
+            //twoPhaseExecutionContext.Execute("Jabadabadoo", 888L); // Hva med en liste med parametre, forskjellige for hver concurrent thread
+
+            //Assert.That(twoPhaseExecutionContextResultSet[0, 0].Result, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "Jabadabadoo" + 888L));
+            //Assert.That(twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds, Is.InRange(NETWORK_RESPONSE_LATENCY_IN_MILLIS, 2600L));
+
+            //Console.WriteLine("MultiThreadedMemoizedInvocation_Memoizer_NewAndEasyVersion: " + numberOfIterations + " rounds with " + numberOfConcurrentTasks + " concurrent, identical, non-memoized method invocations...");
+            ////Console.WriteLine("MultiThreadedMemoizedInvocation_Memoizer_NewAndEasyVersion: " + numberOfIterations + " rounds with " + numberOfConcurrentTasks + " concurrent, identical, memoized method invocations...");
+        }
+
+
+        [Test, ExpectedException(typeof(ArgumentException), ExpectedMessage = "Number-of-worker-threads parameter ('numberOfConcurrentThreadsWitinhEachIteration') cannot be a negative number", MatchType = MessageMatch.Exact)]
+        public void TwoPhaseExecutionContext_NumberOfConcurrentWorkerThreadsParameterCannotBeNegativeNumber(
+            [Values(1)] int numberOfIterations,
+            [Values(-10,-1)] int numberOfConcurrentWorkerThreads)
+        {
+            //////long startTime = DateTime.Now.Ticks;
+            ////IMemoizer<string, long, string> myMemoizer = ReallySlowNetworkInvocation1a.CreateMemoizer();
+
+            //////Action<string, long> myConcurrentAction = (arg1, arg2) => memoizer.InvokeWith(arg1, arg2);
+            ////Func<string, long, string> myConcurrentFunc = (arg1, arg2) => myMemoizer.InvokeWith(arg1, arg2);
+
+            Func<string, long, string> myFunc = MemoizerTests.ReallySlowNetworkStaticInvocation;
+            ////Func<string, long, string> myConcurrentFunc = (arg1, arg2) => ReallySlowNetworkInvocation1a.CreateMemoizer().InvokeWith(arg1, arg2);
+
+            /*TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext =*/
+            myFunc.CreateExecutionContext(numberOfIterations, numberOfConcurrentWorkerThreads);
+            ////TwoPhaseExecutionContextResultSet<string> twoPhaseExecutionContext = Execute(numberOfIterations, numberOfConcurrentTasks, "Jabadabadoo", 888L); // Hva med en slik en like greit...?
+            ////TwoPhaseExecutionContext twoPhaseExecutionContext = myConcurrentFunc.Execute(NUMBER_OF_ITERATIONS).TimelyIterations.And(numberOfConcurrentTasks).SpcelyIterations;
+            /*TwoPhaseExecutionContextResultSet<string, long, string> twoPhaseExecutionContextResultSet =*/
+            //twoPhaseExecutionContext.Execute("Jabadabadoo", 888L); // Hva med en liste med parametre, forskjellige for hver concurrent thread
+
+            //Assert.That(twoPhaseExecutionContextResultSet[0, 0].Result, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "Jabadabadoo" + 888L));
+            //Assert.That(twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds, Is.InRange(NETWORK_RESPONSE_LATENCY_IN_MILLIS, 2600L));
+
+            //Console.WriteLine("MultiThreadedMemoizedInvocation_Memoizer_NewAndEasyVersion: " + numberOfIterations + " rounds with " + numberOfConcurrentTasks + " concurrent, identical, non-memoized method invocations...");
+            ////Console.WriteLine("MultiThreadedMemoizedInvocation_Memoizer_NewAndEasyVersion: " + numberOfIterations + " rounds with " + numberOfConcurrentTasks + " concurrent, identical, memoized method invocations...");
+        }
+
+
+        [Test]
+        public void TwoPhaseExecutionContext_ZeroIterationParameter(
+            [Values(0)] int numberOfIterations,
+            [Values(1)] int numberOfConcurrentWorkerThreads)
+        {
+            ////long startTime = DateTime.Now.Ticks;
+            //IMemoizer<string, long, string> myMemoizer = ReallySlowNetworkInvocation1a.CreateMemoizer();
+
+            ////Action<string, long> myConcurrentAction = (arg1, arg2) => memoizer.InvokeWith(arg1, arg2);
+            //Func<string, long, string> myConcurrentFunc = (arg1, arg2) => myMemoizer.InvokeWith(arg1, arg2);
+
+            Func<string, long, string> myFunc = MemoizerTests.ReallySlowNetworkStaticInvocation;
+            //            Func<string, long, string> myConcurrentFunc = (arg1, arg2) => ReallySlowNetworkInvocation1a.Invoke(arg1, arg2);
+            //Func<string, long, string> myConcurrentFunc = (arg1, arg2) => ReallySlowNetworkInvocation1a.CreateMemoizer().InvokeWith(arg1, arg2);
+
+            TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext = myFunc.CreateExecutionContext(numberOfIterations, numberOfConcurrentWorkerThreads);
+            //TwoPhaseExecutionContextResultSet<string> twoPhaseExecutionContext = Execute(numberOfIterations, numberOfConcurrentTasks, "Jabadabadoo", 888L); // Hva med en slik en like greit...?
+            //TwoPhaseExecutionContext twoPhaseExecutionContext = myConcurrentFunc.Execute(NUMBER_OF_ITERATIONS).TimelyIterations.And(numberOfConcurrentTasks).SpcelyIterations;
+            TwoPhaseExecutionContextResultSet<string, long, string> twoPhaseExecutionContextResultSet = twoPhaseExecutionContext.Execute("Jabadabadoo", 888L); // Hva med en liste med parametre, forskjellige for hver concurrent thread
+
+            Assert.That(twoPhaseExecutionContextResultSet[0, 0], Is.Null);
+            //            Assert.That(twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds, Is.LInRange(NETWORK_RESPONSE_LATENCY_IN_MILLIS, 2600L));
+
+            //Console.WriteLine("MultiThreadedMemoizedInvocation_Memoizer_NewAndEasyVersion: " + numberOfIterations + " rounds with " + numberOfConcurrentTasks + " concurrent, identical, non-memoized method invocations...");
+            //Console.WriteLine("MultiThreadedMemoizedInvocation_Memoizer_NewAndEasyVersion: " + numberOfIterations + " rounds with " + numberOfConcurrentTasks + " concurrent, identical, memoized method invocations...");
+        }
+
+
+
+        [Test]
+        public void TwoPhaseExecutionContext_ZeroNumberOfConcurrentWorkerThreadsParameter(
+            [Values(1)] int numberOfIterations,
+            [Values(0)] int numberOfConcurrentWorkerThreads)
+        {
+            ////long startTime = DateTime.Now.Ticks;
+            //IMemoizer<string, long, string> myMemoizer = ReallySlowNetworkInvocation1a.CreateMemoizer();
+
+            ////Action<string, long> myConcurrentAction = (arg1, arg2) => memoizer.InvokeWith(arg1, arg2);
+            //Func<string, long, string> myConcurrentFunc = (arg1, arg2) => myMemoizer.InvokeWith(arg1, arg2);
+
+            Func<string, long, string> myFunc = MemoizerTests.ReallySlowNetworkStaticInvocation;
+            //            Func<string, long, string> myConcurrentFunc = (arg1, arg2) => ReallySlowNetworkInvocation1a.Invoke(arg1, arg2);
+            //Func<string, long, string> myConcurrentFunc = (arg1, arg2) => ReallySlowNetworkInvocation1a.CreateMemoizer().InvokeWith(arg1, arg2);
+
+            TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext = myFunc.CreateExecutionContext(numberOfIterations, numberOfConcurrentWorkerThreads);
+            //TwoPhaseExecutionContextResultSet<string> twoPhaseExecutionContext = Execute(numberOfIterations, numberOfConcurrentTasks, "Jabadabadoo", 888L); // Hva med en slik en like greit...?
+            //TwoPhaseExecutionContext twoPhaseExecutionContext = myConcurrentFunc.Execute(NUMBER_OF_ITERATIONS).TimelyIterations.And(numberOfConcurrentTasks).SpcelyIterations;
+            TwoPhaseExecutionContextResultSet<string, long, string> twoPhaseExecutionContextResultSet = twoPhaseExecutionContext.Execute("Jabadabadoo", 888L); // Hva med en liste med parametre, forskjellige for hver concurrent thread
+
+            Assert.That(twoPhaseExecutionContextResultSet[0, 0], Is.Null);
+            //            Assert.That(twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds, Is.LInRange(NETWORK_RESPONSE_LATENCY_IN_MILLIS, 2600L));
+
+            //Console.WriteLine("MultiThreadedMemoizedInvocation_Memoizer_NewAndEasyVersion: " + numberOfIterations + " rounds with " + numberOfConcurrentTasks + " concurrent, identical, non-memoized method invocations...");
+            //Console.WriteLine("MultiThreadedMemoizedInvocation_Memoizer_NewAndEasyVersion: " + numberOfIterations + " rounds with " + numberOfConcurrentTasks + " concurrent, identical, memoized method invocations...");
+        }
+
+
+
     }
 }

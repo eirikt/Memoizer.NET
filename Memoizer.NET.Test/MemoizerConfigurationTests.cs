@@ -25,7 +25,7 @@ namespace Memoizer.NET.Test
         [Test]
         public void MemoizerConfigurationHashcodeTests()
         {
-            // TODO: use reflection
+            // TODO: use reflection?
             //MemoizerConfiguration conf1 = new MemoizerConfiguration(
             //    MemoizerFactoryTests.FIBONACCI,
             //    ExpirationType.Relative,

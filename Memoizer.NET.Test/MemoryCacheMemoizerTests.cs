@@ -15,8 +15,6 @@
  */
 
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Runtime.Caching;
 using System.Threading;
 using NUnit.Framework;
