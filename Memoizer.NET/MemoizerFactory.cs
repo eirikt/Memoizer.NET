@@ -290,7 +290,7 @@ namespace Memoizer.NET
             this.loggerMethod = loggerMethod;
             return this;
         }
-        public IMemoizer<TParam1, TParam2, TResult> CreateMemoizer() { return GetMemoizer(false); }
+        public IMemoizer<TParam1, TParam2, TResult> CreateMemoizer() { return GetMemoizer(cacheAndShareMemoizerInstance: false); }
         public IMemoizer<TParam1, TParam2, TResult> GetMemoizer(bool cacheAndShareMemoizerInstance = true)
         {
             return cacheAndShareMemoizerInstance

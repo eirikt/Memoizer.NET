@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Memoizer.NET
@@ -70,6 +71,7 @@ namespace Memoizer.NET
                () => new Memoizer<MemoizerConfiguration, Memoizer<TResult>>(
                    memoizerConfig => new Memoizer<TResult>(memoizerConfig)),
                isThreadSafe: typeof(IMemoizer<MemoizerConfiguration, IMemoizer<TResult>>) is IThreadSafe);
+        //LazyThreadSafetyMode.PublicationOnly);
     }
     #endregion
 
@@ -99,7 +101,8 @@ namespace Memoizer.NET
         internal static readonly Lazy<Memoizer<MemoizerConfiguration, Memoizer<TParam1, TResult>>> LAZY_MEMOIZER_REGISTRY =
            new Lazy<Memoizer<MemoizerConfiguration, Memoizer<TParam1, TResult>>>(
                CREATE_MEMOIZER_REGISTRY,
-               isThreadSafe: typeof(IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TResult>>) is IThreadSafe);
+               LazyThreadSafetyMode.PublicationOnly);
+
         #endregion
 
         internal static void RemoveCachedElementsFromRegistryMemoizersHavingFunction(Func<TParam1, TResult> memoizedFunction, TParam1 arg1)
@@ -119,10 +122,13 @@ namespace Memoizer.NET
     static class MemoizerRegistry<TParam1, TParam2, TResult>
     {
         internal static readonly Lazy<Memoizer<MemoizerConfiguration, Memoizer<TParam1, TParam2, TResult>>> LAZY_MEMOIZER_REGISTRY =
-           new Lazy<Memoizer<MemoizerConfiguration, Memoizer<TParam1, TParam2, TResult>>>(
-               () => new Memoizer<MemoizerConfiguration, Memoizer<TParam1, TParam2, TResult>>(
-                   memoizerConfig => new Memoizer<TParam1, TParam2, TResult>(memoizerConfig)),
-               isThreadSafe: typeof(IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TParam2, TResult>>) is IThreadSafe);
+            new Lazy<Memoizer<MemoizerConfiguration, Memoizer<TParam1, TParam2, TResult>>>(
+                () => new Memoizer<MemoizerConfiguration, Memoizer<TParam1, TParam2, TResult>>(
+                    memoizerConfig => new Memoizer<TParam1, TParam2, TResult>(memoizerConfig)),
+                    //isThreadSafe: typeof(IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TParam2, TResult>>) is IThreadSafe); // System.InvalidOperationException: ValueFactory attempted to access the Value property of this instance.
+                    //LazyThreadSafetyMode.None); // System.InvalidOperationException: ValueFactory attempted to access the Value property of this instance.
+                    //LazyThreadSafetyMode.ExecutionAndPublication); // OK
+                    LazyThreadSafetyMode.PublicationOnly); // OK
 
         internal static void RemoveCachedElementsFromRegistryMemoizersHavingFunction(Func<TParam1, TParam2, TResult> memoizedFunction, TParam1 arg1, TParam2 arg2)
         {
@@ -144,7 +150,8 @@ namespace Memoizer.NET
            new Lazy<Memoizer<MemoizerConfiguration, Memoizer<TParam1, TParam2, TParam3, TResult>>>(
                () => new Memoizer<MemoizerConfiguration, Memoizer<TParam1, TParam2, TParam3, TResult>>(
                    memoizerConfig => new Memoizer<TParam1, TParam2, TParam3, TResult>(memoizerConfig)),
-               isThreadSafe: typeof(IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TParam2, TParam3, TResult>>) is IThreadSafe);
+                   LazyThreadSafetyMode.PublicationOnly);
+
 
         internal static void RemoveCachedElementsFromRegistryMemoizersHavingFunction(Func<TParam1, TParam2, TParam3, TResult> memoizedFunction, TParam1 arg1, TParam2 arg2, TParam3 arg3)
         {
@@ -166,7 +173,7 @@ namespace Memoizer.NET
             new Lazy<Memoizer<MemoizerConfiguration, Memoizer<TParam1, TParam2, TParam3, TParam4, TResult>>>(
                 () => new Memoizer<MemoizerConfiguration, Memoizer<TParam1, TParam2, TParam3, TParam4, TResult>>(
                     memoizerFactory => new Memoizer<TParam1, TParam2, TParam3, TParam4, TResult>(memoizerFactory)),
-                isThreadSafe: typeof(IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TParam2, TParam3, TParam4, TResult>>) is IThreadSafe);
+                    LazyThreadSafetyMode.PublicationOnly);
 
         internal static void RemoveCachedElementsFromRegistryMemoizersHavingFunction(Func<TParam1, TParam2, TParam3, TParam4, TResult> memoizedFunction, TParam1 arg1, TParam2 arg2, TParam3 arg3, TParam4 arg4)
         {
