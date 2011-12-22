@@ -150,7 +150,7 @@ namespace Memoizer.NET
         protected int TaskNumber { get; set; }
 
         /// <summary>
-        /// The worker/task action.
+        /// The worker thread action.
         /// </summary>
         protected Action Action { get; set; }
 
@@ -221,12 +221,49 @@ namespace Memoizer.NET
         }
     }
 
+    public class ActionTwoPhaseExecutorThread<TParam1> : AbstractTwoPhaseExecutorThread
+    {
+        static int TASK_COUNTER;
+
+        public ActionTwoPhaseExecutorThread(Action<TParam1> action, TParam1 arg1, Barrier barrier, bool instrumentation = false)
+            : base(barrier, instrumentation)
+        {
+            TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
+            ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);
+            Action = () => action.Invoke(arg1);
+            if (Instrumentation)
+                Console.WriteLine(this.GetType().Name + " #" + TaskNumber + " created... [(possible) barrier participant #" + ParticipantNumber + "]");
+        }
+    }
+
+    // TODO: to be moved here...
+    //public class FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult> : AbstractTwoPhaseExecutorThread
+    //{
+    //    static int TASK_COUNTER;
+
+    //    readonly Func<TParam1, TParam2, TResult> function;
+
+    //    public TResult Result { get; private set; }
+
+    //    internal FuncTwoPhaseExecutorThread(Func<TParam1, TParam2, TResult> function, TParam1 arg1, TParam2 arg2, Barrier barrier, bool instrumentation = false)
+    //        : base(barrier,instrumentation)
+    //    {
+    //        this.TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
+    //        this.ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);
+    //        this.function = function;
+    //        this.Action = () => this.Result = this.function.Invoke(arg1, arg2);
+
+    //        if (Instrumentation)
+    //            Console.WriteLine(this.GetType().Name + " #" + TaskNumber + " created... [(possible) barrier participant #" + ParticipantNumber + "]");
+    //    }
+    //}
+
     #region New TwoPhaseExecutor API
     public static partial class FuncExtensionMethods
     {
-        public static TwoPhaseExecutionContext<TParam1, TParam2, TResult> CreateExecutionContext<TParam1, TParam2, TResult>(this Func<TParam1, TParam2, TResult> functionToBeMemoized, int numberOfIterations, int numberOfConcurrentThreadsWitinhEachIteration)
+        public static TwoPhaseExecutionContext<TParam1, TParam2, TResult> CreateExecutionContext<TParam1, TParam2, TResult>(this Func<TParam1, TParam2, TResult> functionToBeMemoized, int numberOfIterations, int numberOfConcurrentThreadsWitinhEachIteration, bool instrumentation = false)
         {
-            return new TwoPhaseExecutionContext<TParam1, TParam2, TResult>(functionToBeMemoized, numberOfIterations, numberOfConcurrentThreadsWitinhEachIteration);
+            return new TwoPhaseExecutionContext<TParam1, TParam2, TResult>(functionToBeMemoized, numberOfIterations, numberOfConcurrentThreadsWitinhEachIteration,instrumentation);
         }
     }
 
@@ -236,42 +273,40 @@ namespace Memoizer.NET
         readonly Func<TParam1, TParam2, TResult> functionToBeExecuted;
         readonly int numberOfIterations;
         readonly int numberOfConcurrentThreadsWitinhEachIteration;
+        readonly bool instrumentation;
 
-        public TwoPhaseExecutionContext(Func<TParam1, TParam2, TResult> functionToBeExecuted, int numberOfIterations, int numberOfConcurrentThreadsWitinhEachIteration)
+        public TwoPhaseExecutionContext(Func<TParam1, TParam2, TResult> functionToBeExecuted, int numberOfIterations, int numberOfConcurrentThreadsWitinhEachIteration, bool instrumentation = false)
         {
             if (numberOfIterations < 0) { throw new ArgumentException("Number-of-iteration parameter ('numberOfIterations') cannot be a negative number"); }
             if (numberOfConcurrentThreadsWitinhEachIteration < 0) { throw new ArgumentException("Number-of-worker-threads parameter ('numberOfConcurrentThreadsWitinhEachIteration') cannot be a negative number"); }
             this.functionToBeExecuted = functionToBeExecuted;
             this.numberOfIterations = numberOfIterations;
             this.numberOfConcurrentThreadsWitinhEachIteration = numberOfConcurrentThreadsWitinhEachIteration;
+            this.instrumentation = instrumentation;
         }
 
 
         public TwoPhaseExecutionContextResultSet<TParam1, TParam2, TResult> Execute(TParam1 arg1, TParam2 arg2)
         {
             TwoPhaseExecutionContextResultSet<TParam1, TParam2, TResult> twoPhaseExecutionContextResultSet = new TwoPhaseExecutionContextResultSet<TParam1, TParam2, TResult>(this.numberOfIterations);
-            twoPhaseExecutionContextResultSet.StopWatch.Start();
-
+            
             for (int i = 0; i < this.numberOfIterations; ++i)
             {
                 // Arrange
-                TwoPhaseExecutor twoPhaseExecutor = new TwoPhaseExecutor(this.numberOfConcurrentThreadsWitinhEachIteration);
-                twoPhaseExecutor.Instrumentation = true;
+                TwoPhaseExecutor twoPhaseExecutor = new TwoPhaseExecutor(this.numberOfConcurrentThreadsWitinhEachIteration, this.instrumentation);
 
-                FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>[] workerThread = new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>[twoPhaseExecutor.NumberOfParticipants];
+                FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>[] workerThreads = new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>[twoPhaseExecutor.NumberOfParticipants];
                 for (int j = 0; j < twoPhaseExecutor.NumberOfParticipants; ++j)
                 {
-                    workerThread[j] = new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>(this.functionToBeExecuted, arg1, arg2, twoPhaseExecutor.Barrier);
-                    workerThread[j].Instrumentation = true;
+                    workerThreads[j] = new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>(this.functionToBeExecuted, arg1, arg2, twoPhaseExecutor.Barrier, this.instrumentation);
                 }
 
                 // Act
                 for (int j = 0; j < twoPhaseExecutor.NumberOfParticipants; ++j)
                 {
-                    workerThread[j].Start();
+                    workerThreads[j].Start();
                 }
                 twoPhaseExecutor.Start();
-
 
                 //// Assert
                 //for (int j = 0; j < numberOfConcurrentTasks; ++j)
@@ -281,12 +316,11 @@ namespace Memoizer.NET
                 TwoPhaseExecutionContextResult<TParam1, TParam2, TResult> twoPhaseExecutionContextResult = new TwoPhaseExecutionContextResult<TParam1, TParam2, TResult>(twoPhaseExecutor.NumberOfParticipants);
                 for (int j = 0; j < twoPhaseExecutor.NumberOfParticipants; ++j)
                 {
-                    twoPhaseExecutionContextResult.WorkerThread[j] = workerThread[j];
+                    twoPhaseExecutionContextResult.WorkerThread[j] = workerThreads[j];
                 }
                 //twoPhaseExecutor.Start();
 
                 twoPhaseExecutionContextResultSet.ExecutionResult[i] = twoPhaseExecutionContextResult;
-
             }
             //long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
             //Assert.That(durationInMilliseconds, Is.InRange(NETWORK_RESPONSE_LATENCY_IN_MILLIS, 2600L));
@@ -302,24 +336,20 @@ namespace Memoizer.NET
     }
 
 
+    // TODO: move to common lication above...
     public class FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult> : AbstractTwoPhaseExecutorThread
     {
         static int TASK_COUNTER;
-
         readonly Func<TParam1, TParam2, TResult> function;
-
         public TResult Result { get; private set; }
-
-        internal FuncTwoPhaseExecutorThread(Func<TParam1, TParam2, TResult> function, TParam1 arg1, TParam2 arg2, Barrier barrier)
-            : base(barrier)
+        internal FuncTwoPhaseExecutorThread(Func<TParam1, TParam2, TResult> function, TParam1 arg1, TParam2 arg2, Barrier barrier, bool instrumentation = false)
+            : base(barrier, instrumentation)
         {
-            this.TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
-            this.ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);
             this.function = function;
-            this.Action = () => this.Result = this.function.Invoke(arg1, arg2);
-
-            if (Instrumentation)
-                Console.WriteLine(this.GetType().Name + " #" + TaskNumber + " created... [(possible) barrier participant #" + ParticipantNumber + "]");
+            TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
+            ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);
+            Action = () => Result = this.function.Invoke(arg1, arg2);
+            if (Instrumentation) { Console.WriteLine(GetType().Name + " #" + TaskNumber + " created... [(possible) barrier participant #" + ParticipantNumber + "]"); }
         }
     }
 
@@ -345,13 +375,13 @@ namespace Memoizer.NET
         }
 
 
-        public TResult Result
-        {
-            get
-            {
-                throw new NotImplementedException();
-            }
-        }
+        //public TResult Result
+        //{
+        //    get
+        //    {
+        //        throw new NotImplementedException();
+        //    }
+        //}
     }
 
 
@@ -381,16 +411,22 @@ namespace Memoizer.NET
             {
                 if (this.twoPhaseExecutionContextResults == null || this.twoPhaseExecutionContextResults.Length < 1)
                 {
-                    //return null;
-                    throw new Exception("No TwoPhaseExecutionContextResult results are available...");
+                    throw new Exception("No TwoPhaseExecutionContextResults are available");
                 }
 
-                if (this.twoPhaseExecutionContextResults.Length < iterationIndex+1)
+                if (iterationIndex > this.twoPhaseExecutionContextResults.Length - 1 && this.twoPhaseExecutionContextResults.Length == 1)
                 {
-                    throw new Exception("Result set contains only "+this.twoPhaseExecutionContextResults.Length+" iterations... No point is asking for iteration "+iterationIndex+" then, is it?");
+                    //throw new Exception("Result set contains only "+this.twoPhaseExecutionContextResults.Length+" iterations... No point is asking for iteration "+iterationIndex+" then, is it?");
+                    throw new Exception("Result set contains only 1 iteration... Really no point is asking for iteration #2 (zero-based) then, is it?");
                 }
+                //                Result set contains only 1 iteration... Really no point is asking for iteration #2 (zero-based) then, is it?
 
-
+                if (iterationIndex > this.twoPhaseExecutionContextResults.Length - 1)
+                {
+                    throw new Exception("Result set contains only " + this.twoPhaseExecutionContextResults.Length + " iterations... Really no point is asking for iteration #" + (iterationIndex + 1) + " (zero-based) then, is it?");
+                    //throw new Exception("Result set contains only 1 iteration... Really no point is asking for iteration #2 (zero-based) then, is it?");
+                }
+                //Result set contains only 3 iterations... Really no point is asking for iteration #20 (zero-based) then, is it?", MatchType = MessageMatch.Exact)]
 
 
 
@@ -399,8 +435,21 @@ namespace Memoizer.NET
                 FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>[] funcTwoPhaseExecutorThreads = twoPhaseExecutionContextResult.WorkerThread;
                 if (funcTwoPhaseExecutorThreads == null || funcTwoPhaseExecutorThreads.Length < 1)
                 {
-                    return null;
+                    //return null;
+                    throw new Exception("No FuncTwoPhaseExecutorThreads (worker threads) are available");
                 }
+                if (concurrentThreadIndex > funcTwoPhaseExecutorThreads.Length - 1 && funcTwoPhaseExecutorThreads.Length == 1)
+                {
+                    //throw new Exception("Result set contains only "+this.twoPhaseExecutionContextResults.Length+" iterations... No point is asking for iteration "+iterationIndex+" then, is it?");
+                    throw new Exception("Result set contains only 1 worker thread... Really no point is asking for thread #2 (zero-based) then, is it?");
+                }
+                //                Result set contains only 1 iteration... Really no point is asking for iteration #2 (zero-based) then, is it?
+
+                if (concurrentThreadIndex > funcTwoPhaseExecutorThreads.Length - 1)
+                {
+                    throw new Exception("Result set contains only " + funcTwoPhaseExecutorThreads.Length + " worker threads... Really no point is asking for thread #" + (concurrentThreadIndex + 1) + " (zero-based) then, is it?");
+                }
+
                 FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult> funcTwoPhaseExecutorThread = twoPhaseExecutionContextResult.WorkerThread[concurrentThreadIndex];
 
 
@@ -414,17 +463,26 @@ namespace Memoizer.NET
     public class StopWatch
     {
         long startTime, stopTime;
-
-        public long DurationInMilliseconds
+        public StopWatch() { Start(); }
+        public long DurationInTicks
         {
             get
             {
-                if (this.stopTime != default(long)) { return (this.stopTime - this.startTime) / TimeSpan.TicksPerMillisecond; }
-                return (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
+                if (this.stopTime != default(long)) { return this.stopTime - this.startTime; }
+                return DateTime.Now.Ticks - startTime;
             }
         }
-        internal void Start() { this.startTime = DateTime.Now.Ticks; }
-        internal void Stop() { this.stopTime = DateTime.Now.Ticks; }
+        public long DurationInMilliseconds { get { return DurationInTicks / TimeSpan.TicksPerMillisecond; } }
+        public void Start()
+        {
+            Console.WriteLine("Starting stop watch ...NOW!");
+            this.startTime = DateTime.Now.Ticks;
+        }
+        public void Stop()
+        {
+            this.stopTime = DateTime.Now.Ticks;
+            Console.WriteLine("Stop watch ...Stopped NOW!");
+        }
     }
     #endregion
 }

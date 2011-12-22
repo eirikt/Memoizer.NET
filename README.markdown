@@ -4,7 +4,7 @@ This project is an implementation of a function-level/fine-grained cache (a.k.a.
 A [`System.Runtime.Caching.MemoryCache`](http://msdn.microsoft.com/en-us/library/system.runtime.caching.memorycache.aspx "http://msdn.microsoft.com/en-us/library/system.runtime.caching.memorycache.aspx") instance is used as cache, enabling configuration via the [`System.Runtime.Caching.CacheItemPolicy`](http://msdn.microsoft.com/en-us/library/system.runtime.caching.cacheitempolicy.aspx "http://msdn.microsoft.com/en-us/library/system.runtime.caching.cacheitempolicy.aspx"). Default cache configuration is: items to be held as long as the CLR is alive (or until the item is explicitly removed).
 
 ### API
-Memoizer.NET adds a set of extension methods to your `Func` references.
+Memoizer.NET adds a set of extension methods to your `Func` references:
 
 	.CachedInvoke([args]*)
 	.Memoize()
@@ -86,7 +86,7 @@ A class for synchronized execution of an arbitrary number of worker/task threads
 See the `Memoizer.NET.Test.MemoizerTests` class for usage examples. In v0.7 a mini DSL/builder for easy `Memoizer.Net.TwoPhaseExecutor` usage will be included. Right now the API is rather cumbersome/sucks...
 
 
-## Building the project *
+## Building the solution *
 	%DOTNET_FRAMEWORK_4_HOME%\MSBuild %MEMOIZER_NET_HOME%\Memoizer.NET.csproj /p:Configuration=Release
 
 ...
@@ -98,13 +98,25 @@ See the `Memoizer.NET.Test.MemoizerTests` class for usage examples. In v0.7 a mi
 => "Developers" => "Install .NET Framework 4"
 
 #### 2) Microsoft Windows SDK for Windows 7 and .NET Framework 4:
-[http://www.microsoft.com/download/en/details.aspx?displayLang=en&id=8279
-](http://www.microsoft.com/download/en/details.aspx?displayLang=en&id=8279
- "http://www.microsoft.com/download/en/details.aspx?displayLang=en&id=8279
-")
+[http://www.microsoft.com/download/en/details.aspx?displayLang=en&id=8279](http://www.microsoft.com/download/en/details.aspx?displayLang=en&id=8279 "http://www.microsoft.com/download/en/details.aspx?displayLang=en&id=8279")
 
 #### 3) A command-line window with administrator rights:
     WinKey -> 'cmd' -> CTRL+SHIFT+ENTER
+
+
+## Packaging an assembly using NuGet
+- Go to the project of choice, e.g the Memoizer.NET project
+- Run NuGet pack command:
+
+	cd %MEMOIZER_NET_HOME%\Memoizer.NET
+	nuget pack Memoizer.NET.csproj -symbols
+
+...
+
+*) Prerequisites are:
+
+#### 1) NuGet.exe Command Line
+[http://nuget.codeplex.com/releases/view/58939](http://nuget.codeplex.com/releases/view/58939 "NuGet.exe Command Line")
 
 
 ## Roadmap
