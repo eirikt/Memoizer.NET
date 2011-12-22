@@ -105,11 +105,11 @@ See the `Memoizer.NET.Test.MemoizerTests` class for usage examples. In v0.7 a mi
 
 
 ## Packaging an assembly using NuGet
-- Go to the project of choice, e.g the Memoizer.NET project
-- Run NuGet pack command:
 
-	cd %MEMOIZER_NET_HOME%\Memoizer.NET
-	nuget pack Memoizer.NET.csproj -symbols
+1. Go to the project of choice, e.g the Memoizer.NET project:
+       cd %MEMOIZER_NET_HOME%\Memoizer.NET
+2. Run NuGet pack command:
+       nuget pack Memoizer.NET.csproj -symbols
 
 ...
 
