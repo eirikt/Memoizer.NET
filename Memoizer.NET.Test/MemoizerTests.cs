@@ -445,24 +445,31 @@ namespace Memoizer.NET.Test
         //}
         // Yet again replaced by:
         [Test]
-        //public void MultiThreadedMemoizedInvocation_Memoizer([Values(1, 2, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads)
-        public void MultiThreadedMemoizedInvocation_Memoizer([Values(1, 4, 10, 25, 50, 100, 1000)] int numberOfConcurrentWorkerThreads)
+        public void MultiThreadedMemoizedInvocation_Memoizer([Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads)
+        //public void MultiThreadedMemoizedInvocation_Memoizer([Values(1, 4)] int numberOfConcurrentWorkerThreads)
         {
             Console.WriteLine("------------------- Non-memoized version -------------------");
             Console.WriteLine();
 
             // Not memoized func
             this.reallySlowNetworkInvocation1a
-                .CreateExecutionContext(NUMBER_OF_ITERATIONS, numberOfConcurrentWorkerThreads)
+                //.CreateExecutionContext(numberOfConcurrentWorkerThreads, numberOfIterations: 1, concurrent: true, memoized: false, instrumentation: false)
+                //.CreateExecutionContext(numberOfConcurrentWorkerThreads, numberOfIterations: 3, memoized: false)
+                .CreateExecutionContext(numberOfConcurrentWorkerThreads, memoized: false)
                 .Test("MultiThreadedMemoizedInvocation_Memoizer", 19L);
 
+            Console.WriteLine();
+            Console.WriteLine();
             Console.WriteLine("------------------- Memoized version -----------------------");
             Console.WriteLine();
 
             // Memoized func
-            new Func<string, long, string>((stringArg, longArg) => 
-                reallySlowNetworkInvocation1a.CachedInvoke(stringArg, longArg))
-                .CreateExecutionContext(NUMBER_OF_ITERATIONS, numberOfConcurrentWorkerThreads)
+            new Func<string, long, string>((stringArg, longArg) =>
+                //reallySlowNetworkInvocation1a.CachedInvoke(stringArg, longArg))
+                reallySlowNetworkInvocation1a(stringArg, longArg))
+                //.CreateExecutionContext(numberOfConcurrentWorkerThreads, numberOfIterations: 1, concurrent: true, memoized: true, instrumentation: false)
+                //.CreateExecutionContext(numberOfConcurrentWorkerThreads, numberOfIterations: 3, memoized: true)
+                .CreateExecutionContext(numberOfConcurrentWorkerThreads)
                 .Test("MultiThreadedMemoizedInvocation_Memoizer", 19L);
 
             Console.WriteLine();
@@ -472,7 +479,7 @@ namespace Memoizer.NET.Test
             Console.WriteLine();
 
             // Clean-up: must remove memoized function from registry when doing several test method iterations
-            reallySlowNetworkInvocation1a.UnMemoize();
+            //reallySlowNetworkInvocation1a.UnMemoize();
         }
 
 
