@@ -73,6 +73,7 @@ namespace Memoizer.NET
 
         internal static long GetObjectId(object arg, ref bool firstTime)
         {
+            // Unattended failure experienced: ArrayOutOfBoundException
             return OBJECT_ID_GENERATOR.GetId(arg, out firstTime);
         }
 

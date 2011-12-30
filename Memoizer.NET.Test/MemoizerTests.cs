@@ -448,20 +448,20 @@ namespace Memoizer.NET.Test
         public void MultiThreadedMemoizedInvocation_Memoizer([Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads)
         //public void MultiThreadedMemoizedInvocation_Memoizer([Values(1, 4)] int numberOfConcurrentWorkerThreads)
         {
-            Console.WriteLine("------------------- Non-memoized version -------------------");
-            Console.WriteLine();
+            //Console.WriteLine("------------------- Non-memoized version -------------------");
+            //Console.WriteLine();
 
             // Not memoized func
             this.reallySlowNetworkInvocation1a
                 //.CreateExecutionContext(numberOfConcurrentWorkerThreads, numberOfIterations: 1, concurrent: true, memoized: false, instrumentation: false)
                 //.CreateExecutionContext(numberOfConcurrentWorkerThreads, numberOfIterations: 3, memoized: false)
-                .CreateExecutionContext(numberOfConcurrentWorkerThreads, memoized: false)
+                .CreateExecutionContext(numberOfConcurrentWorkerThreads, memoize: false)
                 .Test("MultiThreadedMemoizedInvocation_Memoizer", 19L);
 
-            Console.WriteLine();
-            Console.WriteLine();
-            Console.WriteLine("------------------- Memoized version -----------------------");
-            Console.WriteLine();
+            //Console.WriteLine();
+            //Console.WriteLine();
+            //Console.WriteLine("------------------- Memoized version -----------------------");
+            //Console.WriteLine();
 
             // Memoized func
             new Func<string, long, string>((stringArg, longArg) =>
@@ -472,11 +472,11 @@ namespace Memoizer.NET.Test
                 .CreateExecutionContext(numberOfConcurrentWorkerThreads)
                 .Test("MultiThreadedMemoizedInvocation_Memoizer", 19L);
 
-            Console.WriteLine();
-            Console.WriteLine();
-            Console.WriteLine();
-            Console.WriteLine();
-            Console.WriteLine();
+            //Console.WriteLine();
+            //Console.WriteLine();
+            //Console.WriteLine();
+            //Console.WriteLine();
+            //Console.WriteLine();
 
             // Clean-up: must remove memoized function from registry when doing several test method iterations
             //reallySlowNetworkInvocation1a.UnMemoize();
@@ -744,6 +744,39 @@ namespace Memoizer.NET.Test
             Assert.That(durationInMilliseconds, Is.LessThan(maximumExpectedLatencyInMillis));
             //}
         }
+
+
+        // New version
+        [Test]
+        public void MultiThreadedMemoizedInvocationWithClearing_Memoizer_NewVersion(
+            [Values(1)] int numberOfConcurrentTasks)
+        {
+            TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext1 =
+                reallySlowNetworkInvocation1c.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentTasks//,
+                                                                     //numberOfIterations: 1,
+                                                                     //concurrent: true,
+                                                                     //memoize: true,
+                                                                     //memoizerClearingTask: false,
+                                                                     //functionLatency: default(long),
+                                                                     //instrumentation: true
+                                                                     );
+
+            TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext2 =
+                reallySlowNetworkInvocation1c.CreateExecutionContext(/*numberOfConcurrentThreadsWitinhEachIteration:*/ 1,
+                                                                     //numberOfIterations: 1,
+                                                                     //concurrent: true,
+                                                                     //memoize: false, // N/A
+                                                                     memoizerClearingTask: true // => 'memoize' arg is N/A, and 'functionLatency' arg is N/A
+                                                                     //functionLatency: default(long), // N/A
+                                                                     //instrumentation: true);
+                                                                     );
+
+            //twoPhaseExecutionContext1.And(twoPhaseExecutionContext2).Test("Jabadabadoo", 888L);
+            twoPhaseExecutionContext1.And(twoPhaseExecutionContext2).Test();
+        }
+
+        
+
 
 
         static int FIBONACCI_INVOCATIONS;

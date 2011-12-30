@@ -8,6 +8,15 @@ namespace Memoizer.NET
     /// </summary>
     public static partial class FuncExtensionMethods
     {
+        // TODO ?
+        //#region IsMemoized()
+        //public static bool IsMemoized<TResult>(this Func<TResult> functionToBeMemoized) { }
+        //public static bool IsMemoized<TParam1, TResult>(this Func<TParam1, TResult> functionToBeMemoized) { }
+        //public static bool IsMemoized<TParam1, TParam2, TResult>(this Func<TParam1, TParam2, TResult> functionToBeMemoized) { }
+        //public static bool IsMemoized<TParam1, TParam2, TParam3, TResult>(this Func<TParam1, TParam2, TParam3, TResult> functionToBeMemoized) { }
+        //public static bool IsMemoized<TParam1, TParam2, TParam3, TParam4, TResult>(this Func<TParam1, TParam2, TParam3, TParam4, TResult> functionToBeMemoized) { }
+        //#endregion
+
         #region CreateMemoizer()
         public static IMemoizer<TResult> CreateMemoizer<TResult>(this Func<TResult> functionToBeMemoized)
         {
