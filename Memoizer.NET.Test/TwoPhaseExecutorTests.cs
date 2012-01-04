@@ -74,7 +74,7 @@ namespace Memoizer.NET.Test
             [Values(1)] int numberOfConcurrentWorkerThreads)
         {
             Func<string, long, string> myFunc = MemoizerTests.ReallySlowNetworkStaticInvocation;
-            myFunc.CreateExecutionContext(numberOfIterations, numberOfConcurrentWorkerThreads);
+            myFunc.CreateExecutionContext(numberOfIterations: numberOfIterations, numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads);
         }
 
 
@@ -84,7 +84,7 @@ namespace Memoizer.NET.Test
             [Values(-10, -1)] int numberOfConcurrentWorkerThreads)
         {
             Func<string, long, string> myFunc = MemoizerTests.ReallySlowNetworkStaticInvocation;
-            myFunc.CreateExecutionContext(numberOfIterations, numberOfConcurrentWorkerThreads);
+            myFunc.CreateExecutionContext(numberOfIterations: numberOfIterations, numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads);
         }
 
 
@@ -94,7 +94,7 @@ namespace Memoizer.NET.Test
             [Values(1)] int numberOfConcurrentWorkerThreads)
         {
             Func<string, long, string> myFunc = MemoizerTests.ReallySlowNetworkStaticInvocation;
-            TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext = myFunc.CreateExecutionContext(numberOfIterations, numberOfConcurrentWorkerThreads);
+            TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext = myFunc.CreateExecutionContext(numberOfIterations: numberOfIterations, numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads);
             TwoPhaseExecutionContextResultSet<string, long, string> twoPhaseExecutionContextResultSet = twoPhaseExecutionContext.Execute("Jabadabadoo", 888L); // Hva med en liste med parametre, forskjellige for hver concurrent thread
             Assert.That(twoPhaseExecutionContextResultSet[0, 0], Is.Null);
         }
@@ -106,7 +106,7 @@ namespace Memoizer.NET.Test
             [Values(0)] int numberOfConcurrentWorkerThreads)
         {
             Func<string, long, string> myFunc = MemoizerTests.ReallySlowNetworkStaticInvocation;
-            TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext = myFunc.CreateExecutionContext(numberOfIterations, numberOfConcurrentWorkerThreads);
+            TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext = myFunc.CreateExecutionContext(numberOfIterations: numberOfIterations, numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads);
             TwoPhaseExecutionContextResultSet<string, long, string> twoPhaseExecutionContextResultSet = twoPhaseExecutionContext.Execute("Jabadabadoo", 888L); // Hva med en liste med parametre, forskjellige for hver concurrent thread
             Assert.That(twoPhaseExecutionContextResultSet[0, 0], Is.Null);
         }
@@ -116,7 +116,7 @@ namespace Memoizer.NET.Test
         public void TwoPhaseExecutionContext_OutOfBoundsErrorMessages1()
         {
             Func<string, long, string> myFunc = MemoizerTests.ReallySlowNetworkStaticInvocation;
-            TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext = myFunc.CreateExecutionContext(1, 2);
+            TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext = myFunc.CreateExecutionContext(numberOfIterations: 1, numberOfConcurrentThreadsWitinhEachIteration: 2);
             TwoPhaseExecutionContextResultSet<string, long, string> twoPhaseExecutionContextResultSet = twoPhaseExecutionContext.Execute("Jabadabadoo", 888L); // Hva med en liste med parametre, forskjellige for hver concurrent thread
             //FuncTwoPhaseExecutorThread<string, long, string> funcTwoPhaseExecutorThread = twoPhaseExecutionContextResultSet[1, 0];
             var x = twoPhaseExecutionContextResultSet[1, 0];
@@ -127,7 +127,7 @@ namespace Memoizer.NET.Test
         public void TwoPhaseExecutionContext_OutOfBoundsErrorMessages2()
         {
             Func<string, long, string> myFunc = MemoizerTests.ReallySlowNetworkStaticInvocation;
-            TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext = myFunc.CreateExecutionContext(3, 2);
+            TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext = myFunc.CreateExecutionContext(numberOfIterations: 3, numberOfConcurrentThreadsWitinhEachIteration: 2);
             TwoPhaseExecutionContextResultSet<string, long, string> twoPhaseExecutionContextResultSet = twoPhaseExecutionContext.Execute("Jabadabadoo", 888L); // Hva med en liste med parametre, forskjellige for hver concurrent thread
             var x = twoPhaseExecutionContextResultSet[19, 0];
         }
@@ -137,7 +137,7 @@ namespace Memoizer.NET.Test
         public void TwoPhaseExecutionContext_OutOfBoundsErrorMessages3()
         {
             Func<string, long, string> myFunc = MemoizerTests.ReallySlowNetworkStaticInvocation;
-            TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext = myFunc.CreateExecutionContext(2, 1);
+            TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext = myFunc.CreateExecutionContext(numberOfIterations: 2, numberOfConcurrentThreadsWitinhEachIteration: 1);
             TwoPhaseExecutionContextResultSet<string, long, string> twoPhaseExecutionContextResultSet = twoPhaseExecutionContext.Execute("Jabadabadoo", 888L); // Hva med en liste med parametre, forskjellige for hver concurrent thread
             var x = twoPhaseExecutionContextResultSet[1, 1];
         }
@@ -147,7 +147,7 @@ namespace Memoizer.NET.Test
         public void TwoPhaseExecutionContext_OutOfBoundsErrorMessages4()
         {
             Func<string, long, string> myFunc = MemoizerTests.ReallySlowNetworkStaticInvocation;
-            TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext = myFunc.CreateExecutionContext(3, 10);
+            TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext = myFunc.CreateExecutionContext(numberOfIterations: 3, numberOfConcurrentThreadsWitinhEachIteration: 10);
             TwoPhaseExecutionContextResultSet<string, long, string> twoPhaseExecutionContextResultSet = twoPhaseExecutionContext.Execute("Jabadabadoo", 888L); // Hva med en liste med parametre, forskjellige for hver concurrent thread
             var x = twoPhaseExecutionContextResultSet[1, 99];
         }
