@@ -328,7 +328,7 @@ namespace Memoizer.NET
             int numberOfConcurrentThreadsWitinhEachIteration,
             int numberOfIterations = 1,
             bool concurrent = true,
-            bool memoize = true,
+            bool memoize = false,
             bool memoizerClearingTask = false,
             long functionLatency = default(long),
             bool instrumentation = false)
@@ -352,6 +352,7 @@ namespace Memoizer.NET
         //readonly IEnumerable<Tuple<Func<TParam1, TParam2, TResult>, Int32>> functionsToBeExecuted;
         //ICollection<Tuple<Func<TParam1, TParam2, TResult>, Int32>> functionsToBeExecuted;
 
+        // TODO: rewrite to proper internal class
         readonly List<Tuple<int, Func<TParam1, TParam2, TResult>, bool, bool, long, bool>> functionsToBeExecuted;
 
         readonly int numberOfIterations;
@@ -372,11 +373,11 @@ namespace Memoizer.NET
         internal TwoPhaseExecutionContext(Func<TParam1, TParam2, TResult> functionToBeExecuted,
                                          int numberOfConcurrentThreadsWitinhEachIteration,
                                          int numberOfIterations,
-            bool concurrent = true,
-                                         bool memoize = true,
-                                         bool isMemoizerClearingTask = false,
-                                         long functionLatencyInMilliseconds = default(long),
-                                         bool instrumentation = false)
+                                         bool concurrent,
+                                         bool memoize,
+                                         bool isMemoizerClearingTask,
+                                         long functionLatencyInMilliseconds,
+                                         bool instrumentation)
         {
             if (numberOfIterations < 0) { throw new ArgumentException("Number-of-iteration parameter ('numberOfIterations') cannot be a negative number"); }
             if (numberOfConcurrentThreadsWitinhEachIteration < 0) { throw new ArgumentException("Number-of-worker-threads parameter ('numberOfConcurrentThreadsWitinhEachIteration') cannot be a negative number"); }
@@ -424,11 +425,11 @@ namespace Memoizer.NET
         internal bool IsMemoized { get { return this.memoize; } }
         internal bool IsInstrumented { get { return this.instrumentation; } }
 
-        bool isMerged;
-        internal bool IsMerged
+        bool isMergedWithOneOrMoreThreadOnlyContexts;
+        internal bool IsMergedWithOneOrMoreThreadOnlyContexts
         {
-            get { return this.isMerged; }
-            set { this.isMerged = value; this.twoPhaseExecutor.IsMerged = this.isMerged; }
+            get { return this.isMergedWithOneOrMoreThreadOnlyContexts; }
+            set { this.isMergedWithOneOrMoreThreadOnlyContexts = value; /*this.twoPhaseExecutor.IsMerged = this.isMerged;*/ }
         }
         //internal bool IsMergingOverheadAppliedAlready { get; private set; }
 
@@ -458,7 +459,7 @@ namespace Memoizer.NET
                 //    // Extra overhead for memoized functions (always using 1 as number of iterations)
                 //    return Convert.ToInt64(NumberOfConcurrentWorkerThreads * threadContentionFactor);// * 0.75d);
                 //}
-                if (this.twoPhaseExecutor.IsMerged)
+                if (/*this.twoPhaseExecutor.*/IsMergedWithOneOrMoreThreadOnlyContexts)
                 {
                     // Extra overhead for merged context (multiple functions)
                     return Convert.ToInt64(NumberOfConcurrentWorkerThreads * threadContentionFactor + 50d);
@@ -483,7 +484,12 @@ namespace Memoizer.NET
             //Array.Copy(anotherTwoPhaseExecutionContext.workerThreads, 0, mergedWorkerThreads, this.workerThreads.Length, anotherTwoPhaseExecutionContext.workerThreads.Length);
             //this.workerThreads = mergedWorkerThreads;
             ////this.twoPhaseExecutor.IsMerged = true;
-            //this.IsMerged = true;
+            /// 
+            // TODO: sjekk om det er snakk om 1-tråders TwoPhaseExecutionContext'er - det er da det må legges til overhead - ikke fordi de er merged...
+            if (this.NumberOfConcurrentWorkerThreads == 1 || anotherTwoPhaseExecutionContext.NumberOfConcurrentWorkerThreads == 1)
+            {
+                this.IsMergedWithOneOrMoreThreadOnlyContexts = true;
+            }
             //this.functionToBeExecuted = functionToBeExecuted;
 
             this.functionsToBeExecuted.AddRange(anotherTwoPhaseExecutionContext.functionsToBeExecuted);
@@ -704,36 +710,16 @@ namespace Memoizer.NET
             StringBuilder reportBuilder = new StringBuilder();
 
             reportBuilder.Append(this.twoPhaseExecutionContext.NumberOfIterations);
-            if (this.twoPhaseExecutionContext.NumberOfIterations == 1)
-            {
-                reportBuilder.Append(" round ");
-            }
-            else
-            {
-                reportBuilder.Append(" rounds ");
-            }
+            reportBuilder.Append(this.twoPhaseExecutionContext.NumberOfIterations == 1 ? " round " : " rounds ");
             reportBuilder.Append("of " + this.twoPhaseExecutionContext.NumberOfConcurrentWorkerThreads + " ");
 
-            if (this.twoPhaseExecutionContext.IsConcurrent)
-            {
-                reportBuilder.Append("concurrent");
-            }
-            else
-            {
-                reportBuilder.Append("sequential");
-            }
+            reportBuilder.Append(this.twoPhaseExecutionContext.IsConcurrent ? "concurrent" : "sequential");
 
-            if (this.twoPhaseExecutionContext.IsMemoized)
-            {
-                reportBuilder.Append(", memoized");
-            }
-            else
-            {
-                reportBuilder.Append(string.Empty);
-            }
-            reportBuilder.Append(", identical method invocations ");
+            reportBuilder.Append(this.twoPhaseExecutionContext.IsMemoized ? ", memoized" : ", non-memoized");
+            //reportBuilder.Append(", identical method invocations ");
+            reportBuilder.Append(" method invocations");
 
-            reportBuilder.Append("having approx. " + this.twoPhaseExecutionContext.LatencyInMilliseconds + " ms latency - took " + this.StopWatch.DurationInMilliseconds + " ms | " + this.StopWatch.DurationInTicks + " ticks");
+            reportBuilder.Append(" having approx. " + this.twoPhaseExecutionContext.LatencyInMilliseconds + " ms latency - took " + this.StopWatch.DurationInMilliseconds + " ms | " + this.StopWatch.DurationInTicks + " ticks");
 
             reportBuilder.Append(" (should take ");
 
@@ -752,8 +738,8 @@ namespace Memoizer.NET
                 reportBuilder.Append(((this.twoPhaseExecutionContext.NumberOfIterations * this.twoPhaseExecutionContext.LatencyInMilliseconds) + this.twoPhaseExecutionContext.CalculateOverheadInMillisecondsFor()));//this.twoPhaseExecutionContext.NumberOfConcurrentWorkerThreads)));
 
             reportBuilder.Append(")");
-            if (this.twoPhaseExecutionContext.NumberOfConcurrentWorkerThreads == 1) reportBuilder.Append(" (extra 1-thread-only latency expected added...)");
-            if (this.twoPhaseExecutionContext.IsMerged) reportBuilder.Append(" (extra merged-TwoPhaseExecutionContexts latency expected added...)");
+            if (this.twoPhaseExecutionContext.NumberOfConcurrentWorkerThreads == 1) reportBuilder.Append(" (extra 1-thread-only latency expectation penalty added...)");
+            if (this.twoPhaseExecutionContext.IsMergedWithOneOrMoreThreadOnlyContexts) reportBuilder.Append(" (extra 1-thread-only latency expectation penalty added...)");
 
             return reportBuilder.ToString();
         }
