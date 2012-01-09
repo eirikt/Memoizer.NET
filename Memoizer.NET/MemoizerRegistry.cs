@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -8,6 +9,12 @@ namespace Memoizer.NET
     #region MemoizerRegistryHelper
     static class MemoizerRegistryHelper
     {
+#if DEBUG
+        const bool MEMOIZER_REGISTRY_INSTRUMENTATION = true;
+#else
+        const bool MEMOIZER_REGISTRY_INSTRUMENTATION = false;
+#endif
+
         /// <summary>
         /// Coupled with the <code>MemoizerConfiguration.GetHashCode()</code> method.
         /// </summary>
@@ -32,6 +39,7 @@ namespace Memoizer.NET
             return memoizerKeyList;
         }
 
+        static int numberOfTimesInvoked;
 
         /// <summary>
         /// Remove all memoizer instances having the given Func, from the memoizer registry
@@ -39,26 +47,52 @@ namespace Memoizer.NET
         /// <param name="functionToUnMemoize">The memoized function to remove from the memoizer registry</param>
         /// <param name="memoizerRegistry">The memoizer registry instance</param>
         /// <returns>Number of memoizer instances removed from memoizer registry</returns>
-        //internal static int RemoveRegistryMemoizersHavingFunction(Func<TParam1, TResult> functionToUnMemoize)
         internal static int RemoveRegistryMemoizersHavingFunction<T>(object functionToUnMemoize, Memoizer<MemoizerConfiguration, T> memoizerRegistry) where T : IDisposable
+        //internal static int RemoveRegistryMemoizersHavingFunction<T>(object functionToUnMemoize, Memoizer<MemoizerConfiguration, T> memoizerRegistry) where T : IMemoizer ...would have been nice
         {
-            int numberOfMemoizersRemoved = 0;
+            int numberOfMemoizersRemovedInTotal;
+            if (MEMOIZER_REGISTRY_INSTRUMENTATION)
+            {
+                Interlocked.Increment(ref numberOfTimesInvoked);
+                numberOfMemoizersRemovedInTotal = 0;
+            }
             IEnumerable<string> memoizerKeyList = FindMemoizerKeysInRegistryHavingFunction(functionToUnMemoize, memoizerRegistry);
             foreach (var memoizerKey in memoizerKeyList)
             {
-                //Task<Memoizer<TParam1, TResult>> cacheValueTask = (Task<Memoizer<TParam1, TResult>>)LAZY_MEMOIZER_MEMOIZER.Value.cache.Get(memoizerKey);
                 Task<T> cacheValueTask = (Task<T>)memoizerRegistry.cache.Get(memoizerKey);
                 IDisposable memoizer = cacheValueTask.Result;
                 if (memoizerRegistry.cache.Contains(memoizerKey))
                 {
+                    // TODO: use reflection for now...
+                    //if (MEMOIZER_REGISTRY_INSTRUMENTATION)
+                    //{
+                    //    int numbersOfItems = memoizer.GetCount();
+                    //}
                     memoizer.Dispose();
-                    //long i = LAZY_MEMOIZER_MEMOIZER.Value.cache.GetCount();
                     memoizerRegistry.cache.Remove(memoizerKey);
-                    ++numberOfMemoizersRemoved;
-                    //Console.WriteLine(memoizerKey + "[" + numberOfMemoizersRemoved + "] memoizer removed");
+                    if (MEMOIZER_REGISTRY_INSTRUMENTATION)
+                    {
+                        ++numberOfMemoizersRemovedInTotal;
+                        //Console.Write("memoizer [key=" + memoizerKey + "] removed - contaning " + numbersOfItems + " function invocation argument permutation items...");
+                        Console.Write("memoizer [key=" + memoizerKey + "] removed");
+                        if (memoizerRegistry.cache.GetCount() == 0)
+                            Console.WriteLine(" (memoizer registry is empty)");
+                        else
+                            if (memoizerRegistry.cache.GetCount() == 1)
+                                Console.WriteLine(" (memoizer registry still contains " + memoizerRegistry.cache.GetCount() + " memoizer configuration)");
+                            else
+                                Console.WriteLine(" (memoizer registry still contains " + memoizerRegistry.cache.GetCount() + " memoizer configurations)");
+                    }
                 }
             }
-            return numberOfMemoizersRemoved;
+            if (numberOfMemoizersRemovedInTotal != memoizerKeyList.Count())
+                throw new InvalidOperationException("Number of cached functions: " + memoizerKeyList.Count() + ", number of items removed from cache: " + numberOfMemoizersRemovedInTotal);
+
+            if (MEMOIZER_REGISTRY_INSTRUMENTATION)
+            {
+                Console.WriteLine("RemoveRegistryMemoizersHavingFunction() invoked " + numberOfTimesInvoked + " times...");
+            }
+            return numberOfMemoizersRemovedInTotal;
         }
     }
     #endregion
@@ -87,12 +121,14 @@ namespace Memoizer.NET
                     return new Memoizer<TParam1, TResult>(memoizerConfig);
                 });
 
-        // Static delegate for creating a memoizer with MemoizerRegistry as key type, and Memoizer as item type, from function CREATE_MEMOIZER_FROM_FACTORY above
+        // Static delegate for creating a memoizer with MemoizerRegistry as key type, and Memoizer as item type, from function CREATE_MEMOIZER_FROM_CONFIG above
         static readonly Func<Memoizer<MemoizerConfiguration, Memoizer<TParam1, TResult>>> CREATE_MEMOIZER_REGISTRY =
             new Func<Memoizer<MemoizerConfiguration, Memoizer<TParam1, TResult>>>(
                 delegate()
                 {
-                    //Console.WriteLine("Creating Memoizer for Memoizer items with key MemoizerRegistry<TParam1, TResult>...");
+#if DEBUG
+                    Console.WriteLine("Creating Memoizer for Memoizer<TParam1, TResult> items...");
+#endif
                     return new Memoizer<MemoizerConfiguration, Memoizer<TParam1, TResult>>(CREATE_MEMOIZER_FROM_CONFIG);
                 });
 
@@ -124,9 +160,9 @@ namespace Memoizer.NET
             new Lazy<Memoizer<MemoizerConfiguration, Memoizer<TParam1, TParam2, TResult>>>(
                 () => new Memoizer<MemoizerConfiguration, Memoizer<TParam1, TParam2, TResult>>(
                     memoizerConfig => new Memoizer<TParam1, TParam2, TResult>(memoizerConfig)),
-                    //isThreadSafe: typeof(IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TParam2, TResult>>) is IThreadSafe); // System.InvalidOperationException: ValueFactory attempted to access the Value property of this instance.
-                    //LazyThreadSafetyMode.None); // System.InvalidOperationException: ValueFactory attempted to access the Value property of this instance.
-                    //LazyThreadSafetyMode.ExecutionAndPublication); // OK
+            //isThreadSafe: typeof(IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TParam2, TResult>>) is IThreadSafe); // System.InvalidOperationException: ValueFactory attempted to access the Value property of this instance.
+            //LazyThreadSafetyMode.None); // System.InvalidOperationException: ValueFactory attempted to access the Value property of this instance.
+            //LazyThreadSafetyMode.ExecutionAndPublication); // OK
                     LazyThreadSafetyMode.PublicationOnly); // OK
 
         internal static void RemoveCachedElementsFromRegistryMemoizersHavingFunction(Func<TParam1, TParam2, TResult> memoizedFunction, TParam1 arg1, TParam2 arg2)

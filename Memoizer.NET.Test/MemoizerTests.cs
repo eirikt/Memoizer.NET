@@ -151,6 +151,8 @@ namespace Memoizer.NET.Test
         Func<long, long> slow1000Square = (arg1 => { Thread.Sleep(1000); return arg1 * arg1; });
         Func<long, long> slow1000PowerOfThree = (arg1 => { Thread.Sleep(1000); return arg1 * arg1 * arg1; });
 
+
+        //[Ignore("Temporary disabled...")]
         [Test]
         public void StringsArePrimitivesArentThey()
         {
@@ -161,6 +163,8 @@ namespace Memoizer.NET.Test
             Assert.That(typeof(String).IsPrimitive, Is.False); // Nope, they're not
         }
 
+
+        //[Ignore("Temporary disabled...")]
         [Test]
         public void ShouldCreateAHashForDelegates()
         {
@@ -204,79 +208,7 @@ namespace Memoizer.NET.Test
         }
 
 
-        //class VeryExpensiveDirectServiceCallTask : AbstractTwoPhaseExecutorThread
-        //{
-        //    static int TASK_COUNTER;
-        //    public string Result { get; private set; }
-
-        //    public VeryExpensiveDirectServiceCallTask(Barrier barrier, string stringArg, long longArg)
-        //        : base(barrier)
-        //    {
-        //        TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
-        //        ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);
-        //        Action = () => this.Result = ReallySlowNetworkStaticInvocation(stringArg, longArg);
-
-        //        if (Instrumentation)
-        //            Console.WriteLine(this.GetType().Name + " #" + TaskNumber + " created... [(possible) barrier participant #" + ParticipantNumber + "]");
-        //    }
-        //}
-
-        ////[Ignore("Temporary disabled...")]
-        //[Test]
-        //public void MultiThreadedDirectInvocation_old()
-        //{
-        //    long startTime = DateTime.Now.Ticks;
-        //    for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
-        //    {
-        //        // Arrange
-        //        TwoPhaseExecutor twoPhaseExecutor = new TwoPhaseExecutor(NUMBER_OF_CONCURRENT_TASKS);
-        //        VeryExpensiveDirectServiceCallTask[] tasks = new VeryExpensiveDirectServiceCallTask[NUMBER_OF_CONCURRENT_TASKS];
-        //        for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
-        //            tasks[j] = new VeryExpensiveDirectServiceCallTask(twoPhaseExecutor.Barrier, "MultiThreadedDirectInvocation", 15L);
-
-        //        // Act
-        //        for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
-        //            tasks[j].Start();
-        //        twoPhaseExecutor.Start();
-
-        //        // Assert
-        //        for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
-        //            Assert.That(tasks[j].Result, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "MultiThreadedDirectInvocation" + 15L));
-        //    }
-        //    long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
-        //    Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(NUMBER_OF_ITERATIONS * NETWORK_RESPONSE_LATENCY_IN_MILLIS));
-        //    Console.WriteLine(
-        //        "MultiThreadedDirectInvocation: " + NUMBER_OF_CONCURRENT_TASKS + " concurrent, identical, non-memoized method invocations." +
-        //        " " + NUMBER_OF_ITERATIONS + " iterations with " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms latency took " + durationInMilliseconds + " ms" +
-        //        " (should take > " + NUMBER_OF_ITERATIONS * NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms).");
-        //}
-        //// Replaced by:
-        //[Test]
-        //public void MultiThreadedDirectInvocation_now_also_old()
-        //{
-        //    int NUMBER_OF_ITERATIONS = 1;
-
-        //    // Arrange
-        //    TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext =
-        //        this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfIterations: NUMBER_OF_ITERATIONS, numberOfConcurrentThreadsWitinhEachIteration: NUMBER_OF_CONCURRENT_TASKS);
-
-        //    // Act
-        //    TwoPhaseExecutionContextResultSet<string, long, string> twoPhaseExecutionContextResultSet =
-        //        twoPhaseExecutionContext.Execute("MultiThreadedDirectInvocation", 15L);
-
-        //    // Assert
-        //    for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
-        //        for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
-        //            Assert.That(twoPhaseExecutionContextResultSet[i, j].Result, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "MultiThreadedDirectInvocation" + 15L));
-
-        //    long endTime = twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds;
-        //    Assert.That(twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds, Is.GreaterThanOrEqualTo(NUMBER_OF_ITERATIONS * NETWORK_RESPONSE_LATENCY_IN_MILLIS));
-        //    Assert.That(endTime, Is.GreaterThanOrEqualTo(NUMBER_OF_ITERATIONS * NETWORK_RESPONSE_LATENCY_IN_MILLIS));
-
-        //    // Document/report
-        //    Console.WriteLine(twoPhaseExecutionContextResultSet.GetReport());
-        //}
-        // Yet again replaced by:
+        //[Ignore("Temporary disabled...")]
         [Test]
         public void MultiThreadedDirectInvocation()
         {
@@ -294,30 +226,12 @@ namespace Memoizer.NET.Test
         #endregion
 
         #region GoetzMemoryCacheMemoizer, a.k.a. THE Memoizer
-        //Func<string, string> veryExpensiveNullInvocationFunc =
-        //    new Func<string, string>(delegate(string s)
-        //    {
-        //        Thread.Sleep(NETWORK_RESPONSE_LATENCY_IN_MILLIS);
-        //        return null;
-        //    });
-        //Func<string, string> veryExpensiveNullInvocationFunc2 =
-        //    delegate
-        //    {
-        //        Thread.Sleep(NETWORK_RESPONSE_LATENCY_IN_MILLIS);
-        //        return null;
-        //    };
         Func<string, string> veryExpensiveNullInvocationFunc3 = s =>
         {
             Thread.Sleep(NETWORK_RESPONSE_LATENCY_IN_MILLIS);
             return null;
         };
-        //string VeryExpensiveNullInvocation(string arg)
-        //{
-        //    //Console.WriteLine("Sleeping for 1000ms... [" + DateTime.Now + "]");
-        //    Thread.Sleep(NETWORK_RESPONSE_LATENCY_IN_MILLIS);
-        //    //Console.WriteLine("Awake again...[" + DateTime.Now + "]");
-        //    return null;
-        //}
+
 
         //[Ignore("Temporary disabled...")]
         [Test]
@@ -417,443 +331,72 @@ namespace Memoizer.NET.Test
         }
 
 
-        //class VeryExpensiveMemoizedServiceCallTask_Memoizer : AbstractTwoPhaseExecutorThread
-        //{
-        //    static int TASK_COUNTER;
-        //    public string Result { get; private set; }
-        //    readonly IMemoizer<string, long, string> memoizer;
-
-        //    internal VeryExpensiveMemoizedServiceCallTask_Memoizer(Barrier barrier, IMemoizer<string, long, string> memoizer, string stringArg, long longArg)
-        //        : base(barrier)
-        //    {
-        //        TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
-        //        ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);
-        //        this.memoizer = memoizer;
-        //        Action = () => this.Result = this.memoizer.InvokeWith(stringArg, longArg);
-
-        //        if (Instrumentation)
-        //            Console.WriteLine(this.GetType().Name + " #" + TaskNumber + " created... [(possible) barrier participant #" + ParticipantNumber + "]");
-        //    }
-        //}
-
-        ///// <summary>
-        ///// Concurrent invocations of the memoizer
-        ///// </summary>
-        ////[Ignore("Temporary disabled...")]
-        //[Test]
-        //public void MultiThreadedMemoizedInvocation_Memoizer([Values(1, 2, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentTasks)
-        //{
-        //    long startTime = DateTime.Now.Ticks;
-        //    IMemoizer<string, long, string> memoizer = reallySlowNetworkInvocation1a.CreateMemoizer();
-        //    for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
-        //    {
-        //        // Arrange
-        //        TwoPhaseExecutor twoPhaseExecutor = new TwoPhaseExecutor(numberOfConcurrentTasks);
-        //        VeryExpensiveMemoizedServiceCallTask_Memoizer[] tasks = new VeryExpensiveMemoizedServiceCallTask_Memoizer[numberOfConcurrentTasks];
-        //        for (int j = 0; j < numberOfConcurrentTasks; ++j)
-        //            tasks[j] = new VeryExpensiveMemoizedServiceCallTask_Memoizer(twoPhaseExecutor.Barrier, memoizer, "MultiThreadedMemoizedInvocation_Memoizer", 15L);
-
-        //        // Act
-        //        for (int j = 0; j < numberOfConcurrentTasks; ++j)
-        //            tasks[j].Start();
-        //        twoPhaseExecutor.Start();
-
-        //        // Assert
-        //        for (int j = 0; j < numberOfConcurrentTasks; ++j)
-        //            Assert.That(tasks[j].Result, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "MultiThreadedMemoizedInvocation_Memoizer" + 15L));
-        //    }
-        //    long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
-        //    Assert.That(durationInMilliseconds, Is.InRange(NETWORK_RESPONSE_LATENCY_IN_MILLIS, 2600L));
-        //    Console.WriteLine(
-        //        "MultiThreadedMemoizedInvocation_Memoizer: " + NUMBER_OF_ITERATIONS + " rounds with " + numberOfConcurrentTasks + " concurrent, identical, memoized method invocations:" +
-        //        " " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms non-cached method latency took " + durationInMilliseconds + " ms" +
-        //        " (should take " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " > " + durationInMilliseconds + " > 2600 ms).");
-        //}
-        // Replaced by:
-        //[Test]
-        //public void MultiThreadedMemoizedInvocation_Memoizer([Values(1, 2, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentTasks)
-        //{
-        //    TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext =
-        //        this.reallySlowNetworkInvocation1a.CreateExecutionContext(NUMBER_OF_ITERATIONS, numberOfConcurrentTasks);
-
-        //    TwoPhaseExecutionContextResultSet<string, long, string> twoPhaseExecutionContextResultSet =
-        //        twoPhaseExecutionContext.Execute("MultiThreadedMemoizedInvocation_Memoizer", 19L);
-
-        //    // TODO: add automatic assertions
-        //    for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
-        //        for (int j = 0; j < numberOfConcurrentTasks; ++j)
-        //            Assert.That(twoPhaseExecutionContextResultSet[i, j].Result, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "MultiThreadedMemoizedInvocation_Memoizer" + 19L));
-
-        //    // TODO: add automatic reporting
-        //    Console.WriteLine(twoPhaseExecutionContextResultSet.GetReport());
-
-        //    Assert.That(twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds,
-        //        Is.InRange(NUMBER_OF_ITERATIONS * NETWORK_RESPONSE_LATENCY_IN_MILLIS,
-        //                   NUMBER_OF_ITERATIONS * NETWORK_RESPONSE_LATENCY_IN_MILLIS + twoPhaseExecutionContext.CalculateOverheadInMillisecondsFor(numberOfConcurrentTasks)));
-        //}
-        // Yet again replaced by:
+        //[Ignore("Temporary disabled...")]
         [Test]
-        public void MultiThreadedMemoizedInvocation_Memoizer([Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads)
+        public void MultiThreadedMemoizedInvocation_Memoizer(
+            [Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads,
+            [Values(1, 3)] int numberOfIterations)
         {
-            //Console.WriteLine("------------------- Non-memoized version -------------------");
-            //Console.WriteLine();
+            int NUMBER_OF_ITERATIONS = numberOfIterations;
 
             // Not memoized func
-            this.reallySlowNetworkInvocation1a
-                //.CreateExecutionContext(numberOfConcurrentWorkerThreads, numberOfIterations: 1, concurrent: true, memoize: false, instrumentation: false)
-                .CreateExecutionContext(numberOfConcurrentWorkerThreads, NUMBER_OF_ITERATIONS)
-                //.CreateExecutionContext(numberOfConcurrentWorkerThreads, memoize: false)
+            this.reallySlowNetworkInvocation1b
+                .CreateExecutionContext(numberOfConcurrentWorkerThreads, NUMBER_OF_ITERATIONS, instrumentation: false)
                 .TestUsingArguments("MultiThreadedMemoizedInvocation_NonMemoized", 191L);
 
-            //Console.WriteLine();
-            //Console.WriteLine();
-            //Console.WriteLine("------------------- Memoized version -----------------------");
-            //Console.WriteLine();
-
             // Memoized func
-            new Func<string, long, string>((stringArg, longArg) =>
-                //reallySlowNetworkInvocation1a.CachedInvoke(stringArg, longArg))
-                reallySlowNetworkInvocation1c(stringArg, longArg))
-                //.CreateExecutionContext(numberOfConcurrentWorkerThreads, numberOfIterations: 1, concurrent: true, memoize: true, instrumentation: false)
-                .CreateExecutionContext(numberOfConcurrentWorkerThreads, NUMBER_OF_ITERATIONS, memoize: true)
-                //.CreateExecutionContext(numberOfConcurrentWorkerThreads)
+            this.reallySlowNetworkInvocation1c
+                .CreateExecutionContext(numberOfConcurrentWorkerThreads, NUMBER_OF_ITERATIONS, memoize: true, instrumentation: false)
                 .TestUsingArguments("MultiThreadedMemoizedInvocation_Memoized", 192L);
 
-            //Console.WriteLine();
-            //Console.WriteLine();
-            //Console.WriteLine();
-            //Console.WriteLine();
-            //Console.WriteLine();
 
-            // TODO: seems not to be necessary - but where does the function get cleaned from memoizer registry??
+            // TODO: seems not to be necessary - but where does the function get cleared from memoizer registry?
+            // It doesn't - parameterized NUnit tests using the Value attribute are resetting the (lazy-loaded static) memoizer factory object
+            // But I don't know how or why... It is executed as it was a regular standalone NUnit test execution
+            // The other explanations is that is a bug/weakness in the MemoizerRegistry...
+
+            // Hmm, the next day... it wasn't so anymore - this was weird...
+
             // Clean-up: must remove memoized function from registry when doing several test method iterations
-            //reallySlowNetworkInvocation1c.UnMemoize();
+            this.reallySlowNetworkInvocation1c.UnMemoize();
         }
 
 
-
-
-
-        ///// <summary>
-        ///// Concurrent invocations of the memoizer (new TwoPhaseExceutor API version)
-        ///// </summary>
-        ////[Ignore("Temporary disabled...")]
-        //[Test]
-        //public void MultiThreadedNonMemoizedInvocation_NewAndEasyVersion(
-        //    //[Values(1, 2, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentTasks)
-        //    [Values(3)] int numberOfIterations,
-        //    [Values(4)] int numberOfConcurrentWorkerThreads)
-        //{
-        //    ////long startTime = DateTime.Now.Ticks;
-        //    //IMemoizer<string, long, string> myMemoizer = ReallySlowNetworkInvocation1a.CreateMemoizer();
-
-        //    ////Action<string, long> myConcurrentAction = (arg1, arg2) => memoizer.InvokeWith(arg1, arg2);
-        //    //Func<string, long, string> myConcurrentFunc = (arg1, arg2) => myMemoizer.InvokeWith(arg1, arg2);
-
-        //    //Func<string, long, string> myConcurrentFunc = (arg1, arg2) => reallySlowNetworkInvocation1a.Invoke(arg1, arg2);
-        //    //Func<string, long, string> myConcurrentFunc = (arg1, arg2) => ReallySlowNetworkInvocation1a.CreateMemoizer().InvokeWith(arg1, arg2);
-
-        //    TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext =
-        //        reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfIterations: numberOfIterations,
-        //                                                             numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads,
-        //                                                             instrumentation: true);
-        //    //TwoPhaseExecutionContextResultSet<string> twoPhaseExecutionContext = Execute(numberOfIterations, numberOfConcurrentTasks, "Jabadabadoo", 888L); // Hva med en slik en like greit...?
-        //    //TwoPhaseExecutionContext twoPhaseExecutionContext = myConcurrentFunc.Execute(NUMBER_OF_ITERATIONS).TimelyIterations.And(numberOfConcurrentTasks).SpcelyIterations;
-        //    TwoPhaseExecutionContextResultSet<string, long, string> twoPhaseExecutionContextResultSet = twoPhaseExecutionContext.Execute("Jabadabadoo", 888L); // Hva med en liste med parametre, forskjellige for hver concurrent thread
-
-        //    Assert.That(twoPhaseExecutionContextResultSet[0, 0].Result, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "Jabadabadoo" + 888L));
-        //    Assert.That(twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds, Is.InRange(NETWORK_RESPONSE_LATENCY_IN_MILLIS, numberOfIterations * NETWORK_RESPONSE_LATENCY_IN_MILLIS + 50));
-
-        //    Console.WriteLine("MultiThreadedMemoizedInvocation_Memoizer_NewAndEasyVersion: " + numberOfIterations + " rounds with " + numberOfConcurrentWorkerThreads + " concurrent, identical, non-memoized method invocations - took " + twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds + " ms");
-        //    //Console.WriteLine("MultiThreadedMemoizedInvocation_Memoizer_NewAndEasyVersion: " + numberOfIterations + " rounds with " + numberOfConcurrentTasks + " concurrent, identical, memoized method invocations...");
-        //}
-
-
-        ///// <summary>
-        ///// Concurrent invocations of the memoizer (new TwoPhaseExceutor API version)
-        ///// </summary>
-        ////[Ignore("Temporary disabled...")]
-        //[Test]
-        //public void MultiThreadedMemoizedInvocation_NewAndEasyVersion(
-        //    //[Values(1, 2, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentTasks)
-        //    [Values(3)] int numberOfIterations,
-        //    [Values(10)] int numberOfConcurrentWorkerThreads)
-        //{
-        //    ////long startTime = DateTime.Now.Ticks;
-        //    //IMemoizer<string, long, string> myMemoizer = ReallySlowNetworkInvocation1a.CreateMemoizer();
-
-        //    ////Action<string, long> myConcurrentAction = (arg1, arg2) => memoizer.InvokeWith(arg1, arg2);
-        //    //Func<string, long, string> myConcurrentFunc = (arg1, arg2) => myMemoizer.InvokeWith(arg1, arg2);
-
-        //    //Func<string, long, string> myConcurrentFunc = (arg1, arg2) => ReallySlowNetworkInvocation1a.CreateMemoizer().InvokeWith(arg1, arg2);
-        //    Func<string, long, string> myConcurrentFunc = (arg1, arg2) => ReallySlowNetworkInvocation1a.GetMemoizer().InvokeWith(arg1, arg2);
-        //    //Func<string, long, string> myConcurrentFunc = (arg1, arg2) => ReallySlowNetworkInvocation1a.CachedInvoke(arg1, arg2);
-
-        //    TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext = myConcurrentFunc.CreateExecutionContext(numberOfIterations, numberOfConcurrentWorkerThreads);
-        //    //TwoPhaseExecutionContextResultSet<string> twoPhaseExecutionContext = Execute(numberOfIterations, numberOfConcurrentTasks, "Jabadabadoo", 888L); // Hva med en slik en like greit...?
-        //    //TwoPhaseExecutionContext twoPhaseExecutionContext = myConcurrentFunc.Execute(NUMBER_OF_ITERATIONS).TimelyIterations.And(numberOfConcurrentTasks).SpcelyIterations;
-        //    TwoPhaseExecutionContextResultSet<string, long, string> twoPhaseExecutionContextResultSet = twoPhaseExecutionContext.Execute("Jabadabadoo", 888L); // Hva med en liste med parametre, forskjellige for hver concurrent thread
-
-        //    Assert.That(twoPhaseExecutionContextResultSet[0, 0].Result, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "Jabadabadoo" + 888L));
-        //    Assert.That(twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds, Is.InRange(NETWORK_RESPONSE_LATENCY_IN_MILLIS, NETWORK_RESPONSE_LATENCY_IN_MILLIS + 100));
-
-        //    Console.WriteLine("MultiThreadedMemoizedInvocation_Memoizer_NewAndEasyVersion: " + numberOfIterations + " rounds with " + numberOfConcurrentWorkerThreads + " concurrent, identical, non-memoized method invocations - took " + twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds + " ms");
-        //    //Console.WriteLine("MultiThreadedMemoizedInvocation_Memoizer_NewAndEasyVersion: " + numberOfIterations + " rounds with " + numberOfConcurrentTasks + " concurrent, identical, memoized method invocations...");
-        //}
-
-        ///// <summary>
-        ///// Concurrent invocations of the memoizer (new TwoPhaseExecutor API version)
-        ///// </summary>
-        ////[Ignore("Temporary disabled...")]
-        //[Test]
-        //public void MultiThreadedMemoizedInvocation_NewAndEasyVersion(
-        //    [Values(10, 30, 60/*, 100, 200, 400, 800, 1000, 1200*/)] int numberOfConcurrentWorkerThreads)
-        //{
-        //    Func<string, long, string> myConcurrentFunc = (arg1, arg2) => reallySlowNetworkInvocation1a.GetMemoizer().InvokeWith(arg1, arg2);
-
-        //    TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext = myConcurrentFunc.CreateExecutionContext(numberOfIterations: 1, numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads);
-        //    TwoPhaseExecutionContextResultSet<string, long, string> twoPhaseExecutionContextResultSet = twoPhaseExecutionContext.Execute("Jabadabadoo", 888L); // Hva med en liste med parametre, forskjellige for hver concurrent thread
-
-        //    Assert.That(twoPhaseExecutionContextResultSet[0, 1].Result, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "Jabadabadoo" + 888L));
-        //    Assert.That(twoPhaseExecutionContextResultSet[0, 3].Result, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "Jabadabadoo" + 888L));
-        //    Assert.That(twoPhaseExecutionContextResultSet[0, 6].Result, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "Jabadabadoo" + 888L));
-        //    Assert.That(twoPhaseExecutionContextResultSet[0, 9].Result, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "Jabadabadoo" + 888L));
-
-        //    Assert.That(twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds, Is.InRange(NETWORK_RESPONSE_LATENCY_IN_MILLIS, NETWORK_RESPONSE_LATENCY_IN_MILLIS + 100));
-
-        //    Console.WriteLine("MultiThreadedMemoizedInvocation_Memoizer_NewAndEasyVersion: 1 round with " + numberOfConcurrentWorkerThreads + " concurrent, identical, non-memoized method invocations - took " + twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds + " ms");
-
-        //    // Clean-up: must remove memoized function from registry when doing several test method iterations
-        //    reallySlowNetworkInvocation1a.UnMemoize();
-        //}
-
-
-
-
-        //// HIT: siste gjennomgang for push...
-
-
-
-
-        //class ClearCacheTask_Memoizer : AbstractTwoPhaseExecutorThread
-        //{
-        //    static int TASK_COUNTER;
-        //    readonly IMemoizer<string, long, string> memoizer;
-
-        //    public ClearCacheTask_Memoizer(Barrier barrier, IMemoizer<string, long, string> memoizer)
-        //        : base(barrier)
-        //    {
-        //        TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
-        //        ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);
-        //        this.memoizer = memoizer;
-        //        Action = () =>
-        //                     {
-        //                         ////while (barrier.ParticipantsRemaining > 5)
-        //                         ////{
-        //                         //if (Instrumentation)
-        //                         //    Console.WriteLine(this.GetType().Name + " #" + TaskNumber + " yielding...");
-        //                         //Thread.Yield();
-        //                         //Thread.Sleep(10);
-        //                         ////}
-
-        //                         //Thread.SpinWait(1000);
-
-        //                         //Thread.Yield();
-
-        //                         if (Instrumentation)
-        //                             Console.WriteLine(this.GetType().Name + " #" + TaskNumber + " clearing cache...");
-        //                         ((IClearable)this.memoizer).Clear();
-        //                     };
-
-        //        if (Instrumentation)
-        //            Console.WriteLine(this.GetType().Name + " #" + TaskNumber + " created... [(possible) barrier participant #" + ParticipantNumber + "]");
-        //    }
-        //}
-
-
-        ////        [Ignore("delebil...")]
-        ////        [Test, ExpectedException(typeof(FormatException), ExpectedMessage = "Hour and minute string must be given as HH:mm", MatchType = MessageMatch.Contains)]
-        ////        public void GetDateTimeFromHourAndMinuteString_ShouldFailIfStringParamIsNotOfCorrectFormat(
-        ////            [Values(null, "", "  ", "18:39:00", "1839", "18 39", "18'39", "18''39", "18,39", "18.39", "18;39", "18-39", "01.10.2010 18:39")] string hourMinuteString)
-        ////        {
-        //////            DateTimeHelper.GetDateTimeFromHourAndMinuteString(DateTime.Now, hourMinuteString);
-        ////        }
-
-        //class VeryExpensiveMemoizedServiceCallTask_Memoizer : AbstractTwoPhaseExecutorThread
-        //{
-        //    static int TASK_COUNTER;
-        //    public string Result { get; private set; }
-        //    readonly IMemoizer<string, long, string> memoizer;
-
-        //    internal VeryExpensiveMemoizedServiceCallTask_Memoizer(Barrier barrier, IMemoizer<string, long, string> memoizer, string stringArg, long longArg)
-        //        : base(barrier)
-        //    {
-        //        TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
-        //        ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);
-        //        this.memoizer = memoizer;
-        //        Action = () => this.Result = this.memoizer.InvokeWith(stringArg, longArg);
-
-        //        if (Instrumentation)
-        //            Console.WriteLine(this.GetType().Name + " #" + TaskNumber + " created... [(possible) barrier participant #" + ParticipantNumber + "]");
-        //    }
-        //}
-
-        ///// <summary>
-        ///// Concurrent invocation of the memoizer
-        ///// </summary>
-        ////[Ignore("Temporary disabled...")]
-        //[Test]
-        //public void MultiThreadedMemoizedInvocationWithClearing_Memoizer([Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentTasks)
-        //{
-        //    //for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
-        //    //{
-        //    //const int METHOD_NUMBER_OF_CONCURRENT_TASKS = 50;
-        //    long startTime = DateTime.Now.Ticks;
-        //    IMemoizer<string, long, string> memoizer = typicalDatabaseInvocation1a.CreateMemoizer();
-        //    // Arrange
-        //    TwoPhaseExecutor twoPhaseExecutor = new TwoPhaseExecutor(numberOfConcurrentTasks + 3); // + 3 clearing tasks
-        //    //twoPhaseExecutor.Instrumentation = true;
-        //    VeryExpensiveMemoizedServiceCallTask_Memoizer[] tasks = new VeryExpensiveMemoizedServiceCallTask_Memoizer[numberOfConcurrentTasks];
-
-        //    ClearCacheTask_Memoizer clearingTask1 = new ClearCacheTask_Memoizer(twoPhaseExecutor.Barrier, memoizer);
-        //    //clearingTask1.Instrumentation = true;
-
-        //    for (int j = 0; j < numberOfConcurrentTasks; ++j)
-        //    {
-        //        tasks[j] = new VeryExpensiveMemoizedServiceCallTask_Memoizer(twoPhaseExecutor.Barrier, memoizer, "MultiThreadedMemoizedInvocationWithClearing_Memoizer", 15L);
-        //        //tasks[j].Instrumentation = true;
-        //    }
-
-        //    ClearCacheTask_Memoizer clearingTask2 = new ClearCacheTask_Memoizer(twoPhaseExecutor.Barrier, memoizer);
-        //    //clearingTask2.Instrumentation = true;
-        //    ClearCacheTask_Memoizer clearingTask3 = new ClearCacheTask_Memoizer(twoPhaseExecutor.Barrier, memoizer);
-        //    //clearingTask3.Instrumentation = true;
-
-        //    // Act
-        //    clearingTask1.Start();
-
-        //    for (int j = 0; j < numberOfConcurrentTasks; ++j)
-        //        tasks[j].Start();
-
-        //    clearingTask2.Start();
-        //    clearingTask3.Start();
-        //    twoPhaseExecutor.Start();
-
-        //    // Assert
-        //    for (int j = 0; j < numberOfConcurrentTasks; ++j)
-        //        Assert.That(tasks[j].Result, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "MultiThreadedMemoizedInvocationWithClearing_Memoizer" + 15L));
-        //    //}
-        //    //long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
-        //    //Assert.That(durationInMilliseconds, Is.GreaterThan(METHOD_RESPONSE_LATENCY_IN_MILLIS * NUMBER_OF_ITERATIONS));// - 2000L)); // -2000 due to possible CLR optomizations
-        //    //Assert.That(durationInMilliseconds, Is.LessThan(METHOD_RESPONSE_LATENCY_IN_MILLIS * NUMBER_OF_ITERATIONS + METHOD_RESPONSE_LATENCY_IN_MILLIS));
-        //    //Console.WriteLine("MultiThreadedMemoizedInvocationWithClearing_Memoizer: " + NUMBER_OF_ITERATIONS + " * " + NUMBER_OF_CONCURRENT_TASKS + " concurrent, identical method invocations (latency: " + METHOD_RESPONSE_LATENCY_IN_MILLIS + " ms) took " + durationInMilliseconds + " ms");
-
-        //    long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
-
-        //    // The more threads, the more contention overhead, and the longer this test will take.
-        //    // Just a silly empiric hack emulating the CLR resource contention behaviour...
-        //    int threadContentionFactor = 1;
-        //    if (numberOfConcurrentTasks > 100)
-        //        threadContentionFactor += 2;
-        //    if (numberOfConcurrentTasks > 200)
-        //        threadContentionFactor += 2;
-        //    if (numberOfConcurrentTasks > 300)
-        //        threadContentionFactor += 2;
-        //    if (numberOfConcurrentTasks > 400)
-        //        threadContentionFactor += 2;
-        //    if (numberOfConcurrentTasks > 500)
-        //        threadContentionFactor += 2;
-        //    if (numberOfConcurrentTasks > 600)
-        //        threadContentionFactor += 2;
-        //    if (numberOfConcurrentTasks > 700)
-        //        threadContentionFactor += 2;
-        //    if (numberOfConcurrentTasks > 800)
-        //        threadContentionFactor += 3;
-        //    if (numberOfConcurrentTasks > 900)
-        //        threadContentionFactor += 3;
-        //    if (numberOfConcurrentTasks > 1000)
-        //        threadContentionFactor += 3;
-
-        //    int numberOfMemoizerElementsCleared = memoizer.NumberOfElementsCleared;
-        //    int numberOfMemoizerInvocations = memoizer.NumberOfTimesInvoked;
-        //    int numberOfMemoizerNoCachedExecutions = memoizer.NumberOfTimesNoCacheInvoked;
-
-        //    Assert.That(numberOfMemoizerInvocations, Is.GreaterThanOrEqualTo(numberOfMemoizerNoCachedExecutions));
-        //    Assert.That(numberOfMemoizerElementsCleared, Is.LessThanOrEqualTo(numberOfMemoizerNoCachedExecutions));
-
-        //    //int totalExpectedLatencyInMillis = DATABASE_RESPONSE_LATENCY_IN_MILLIS + (memoizer.NumberOfElementsCleared * DATABASE_RESPONSE_LATENCY_IN_MILLIS);
-        //    int minimumExpectedLatencyInMillis = DATABASE_RESPONSE_LATENCY_IN_MILLIS - 20; // Due to some CLR-magic from time to time...
-        //    //int maximumExpectedLatencyInMillis = (numberOfMemoizerNoCachedExecutions * DATABASE_RESPONSE_LATENCY_IN_MILLIS) + (DATABASE_RESPONSE_LATENCY_IN_MILLIS / 2);
-        //    int maximumExpectedLatencyInMillis = DATABASE_RESPONSE_LATENCY_IN_MILLIS + ((numberOfMemoizerNoCachedExecutions * DATABASE_RESPONSE_LATENCY_IN_MILLIS) * threadContentionFactor);
-
-        //    //Assert.That(durationInMilliseconds, Is.InRange(DATABASE_RESPONSE_LATENCY_IN_MILLIS, DATABASE_RESPONSE_LATENCY_IN_MILLIS+20L));
-        //    Console.WriteLine(
-        //        "MultiThreadedMemoizedInvocationWithClearing_Memoizer: " + numberOfConcurrentTasks + " concurrent, identical, memoized method invocations.");// +
-        //    ///*" " + NUMBER_OF_ITERATIONS + " iterations*/ " 1 iteration with " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms latency and " + numberOfMemoizerNoCachedExecutions + " function executions took " + durationInMilliseconds + " ms" +
-        //    //" (should take [" + minimumExpectedLatencyInMillis + " < " + durationInMilliseconds + " < " + maximumExpectedLatencyInMillis + "] ms).");
-        //    Console.WriteLine(
-        //        "MultiThreadedMemoizedInvocationWithClearing_Memoizer: " + // + numberOfConcurrentTasks + " concurrent, identical, memoized method invocations." +
-        //        /*" " + NUMBER_OF_ITERATIONS + " iterations*/ "1 iteration with " + DATABASE_RESPONSE_LATENCY_IN_MILLIS + " ms latency and " + numberOfMemoizerNoCachedExecutions + " function execution(s) took " + durationInMilliseconds + " ms" +
-        //        " (should take [" + minimumExpectedLatencyInMillis + " < " + durationInMilliseconds + " < " + maximumExpectedLatencyInMillis + "] ms) (threadContentionFactor=" + threadContentionFactor + ").");
-
-        //    Assert.That(durationInMilliseconds, Is.GreaterThan(minimumExpectedLatencyInMillis));
-        //    Assert.That(durationInMilliseconds, Is.LessThan(maximumExpectedLatencyInMillis));
-        //    //}
-        //}
-
-
-        // New version
+        //[Ignore("Temporary disabled...")]
         [Test]
-        public void MultiThreadedMemoizedInvocationWithClearing_Memoizer_NewVersion(
-            [Values(1, 4)] int numberOfConcurrentTasks)
+        public void MultiThreadedMemoizedInvocationWithClearing_Memoizer(
+            [Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads
+            //[Values(1)] int numberOfConcurrentWorkerThreads,
+            //[Values(1, 3)] int numberOfIterations
+            )
         {
+            //int NUMBER_OF_ITERATIONS = numberOfIterations;
+
             TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext1 =
-                reallySlowNetworkInvocation1d.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentTasks,
-                                                                     numberOfIterations: 1,
-                //concurrent: true,
-                memoize: true
-                //memoizerClearingTask: false,
-                //functionLatency: default(long),
-                //instrumentation: true
-                                                                     );
-
+                this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads,
+                                                                          numberOfIterations: NUMBER_OF_ITERATIONS,
+                                                                          memoize: true,
+                                                                          instrumentation: false);
             TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext2 =
-                reallySlowNetworkInvocation1d.CreateExecutionContext(/*numberOfConcurrentThreadsWitinhEachIteration:*/ 1
-                //numberOfIterations: 1, // N/A as it is merged into another TwoPhaseExecutionContext
-                //concurrent: true,
-                //memoize: false // N/A
-                //memoizerClearingTask: true // => 'memoize' arg is N/A, and 'functionLatency' arg is N/A
-                //functionLatency: default(long), // N/A
-                //instrumentation: true);
-                                                                     );
-            //TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext2 =
-            //    reallySlowNetworkInvocation1d.CreateExecutionContext(/*numberOfConcurrentThreadsWitinhEachIteration:*/ 1,
-            //    //numberOfIterations: 1,
-            //    //concurrent: true,
-            //    memoize: false, // N/A
-            //                                                         memoizerClearingTask: true // => 'memoize' arg is N/A, and 'functionLatency' arg is N/A
-            //    //functionLatency: default(long), // N/A
-            //    //instrumentation: true);
-            //                                                         );
+                this.reallySlowNetworkInvocation1d.CreateExecutionContext(
+                numberOfConcurrentThreadsWitinhEachIteration: 1,
+                numberOfIterations: 100, // N/A as it is merged into another TwoPhaseExecutionContext
+                concurrent: true,
+                memoize: true,
+                memoizerClearingTask: false,
+                functionLatency: default(long), // N/A as it is merged into another TwoPhaseExecutionContext
+                instrumentation: false);
 
-            //Action unMemoizerFunc = reallySlowNetworkInvocation1d.UnMemoize();
-
-            //TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext3 =
-            //    reallySlowNetworkInvocation1d.CreateExecutionContext(/*numberOfConcurrentThreadsWitinhEachIteration:*/ 1,
-            //    //numberOfIterations: 1,
-            //    //concurrent: true,
-            //    memoize: false, // N/A
-            //                                                         memoizerClearingTask: true // => 'memoize' arg is N/A, and 'functionLatency' arg is N/A
-            //    //functionLatency: default(long), // N/A
-            //    //instrumentation: true);
-            //                                                         );
-
-            //twoPhaseExecutionContext1.And(twoPhaseExecutionContext2).Test("Jabadabadoo", 888L);
             twoPhaseExecutionContext1.And(twoPhaseExecutionContext2).Test();
+
+            //twoPhaseExecutionContext1.Test();
+
+            // Clean-up: must remove memoized function from registry when doing several test method iterations
+            this.reallySlowNetworkInvocation1a.UnMemoize();
+            this.reallySlowNetworkInvocation1d.UnMemoize();
+
+            //Console.WriteLine("---");
         }
-
-
-
 
 
         static int FIBONACCI_INVOCATIONS;
@@ -873,6 +416,7 @@ namespace Memoizer.NET.Test
             });
 
 
+        [Ignore("Temporary disabled...")]
         [Test]
         public void FibonacciFunctionGetsCached()
         {
@@ -889,6 +433,7 @@ namespace Memoizer.NET.Test
         }
 
 
+        //[Ignore("Temporary disabled...")]
         [Test]
         public void FibonacciNumbers(
             [Values(40)] int numberOfFibonacciArguments)
@@ -899,7 +444,7 @@ namespace Memoizer.NET.Test
             Console.Write(fibonacci(numberOfFibonacciArguments));
             stopWatch.Stop();
             Assert.That(FIBONACCI_INVOCATIONS, Is.EqualTo(331160281));
-            Assert.That(stopWatch.DurationInMilliseconds, Is.GreaterThan(2000));
+            Assert.That(stopWatch.DurationInMilliseconds, Is.GreaterThan(1500));
             Console.WriteLine("Fibonacci function invoked " + FIBONACCI_INVOCATIONS + " times. Took " + stopWatch.DurationInTicks + " ticks | " + stopWatch.DurationInMilliseconds + " ms");
 
             Console.WriteLine();
@@ -916,7 +461,7 @@ namespace Memoizer.NET.Test
 
 
         [Test]
-        //[Ignore("Demo - activate on demand...")]
+        [Ignore("Demo - activate on demand...")]
         public void FibonacciSequence_NonMemoized(
         [Values(-1, 0, 1, 2, 3, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 39, 40, 41, 42)] int numberOfFibonacciArguments)
         {
@@ -934,7 +479,7 @@ namespace Memoizer.NET.Test
 
 
         [Test]
-        //[Ignore("Demo - activate on demand...")]
+        [Ignore("Demo - activate on demand...")]
         public void FibonacciSequence_StillNotMemoized(
         [Values(-1, 0, 1, 2, 3, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 39, 40, 41, 42)] int numberOfFibonacciArguments)
         {
@@ -952,7 +497,7 @@ namespace Memoizer.NET.Test
 
 
         [Test]
-        //[Ignore("Demo - activate on demand...")]
+        [Ignore("Demo - activate on demand...")]
         public void FibonacciSequence_Memoized(
         [Values(-1, 0, 1, 2, 3, 4, 8, 12, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 39, 40, 41, 42)] int numberOfFibonacciArguments)
         {

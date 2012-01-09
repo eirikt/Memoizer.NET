@@ -266,10 +266,6 @@ namespace Memoizer.NET
         }
     }
 
-
-
-
-
     #region New TwoPhaseExecutor API
     public class ActionTwoPhaseExecutorThread<TParam1> : AbstractTwoPhaseExecutorThread
     {
@@ -298,8 +294,6 @@ namespace Memoizer.NET
         public bool IsMemoizerClearingThread { get; private set; }
 
         internal FuncTwoPhaseExecutorThread(Func<TParam1, TParam2, TResult> function,
-            //TParam1 arg1 = default(TParam1),
-            //TParam2 arg2 = default(TParam2),
                                             Barrier barrier = default(Barrier),
                                             bool isMemoizerClearing = false,
                                             bool instrumentation = false)
@@ -310,15 +304,18 @@ namespace Memoizer.NET
             TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
             ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);
             if (IsMemoizerClearingThread)
-                Action = () => this.function.UnMemoize();//GetMemoizer().Clear();
+            {
+                if (Arg1 != null && Arg1.Equals(default(TParam1)) || Arg2 != null && Arg2.Equals(default(TParam2)))
+                    Action = () => this.function.RemoveFromCache(Arg1, Arg2);
+                else
+                    Action = () => this.function.UnMemoize();
+            }
             else
                 Action = () => Result = this.function.Invoke(Arg1, Arg2);
+
             if (Instrumentation) { Console.WriteLine(GetType().Name + " #" + TaskNumber + " created... [(possible) barrier participant #" + ParticipantNumber + "]"); }
         }
     }
-
-
-
 
 
     public static partial class FuncExtensionMethods
@@ -348,27 +345,19 @@ namespace Memoizer.NET
 
     public class TwoPhaseExecutionContext<TParam1, TParam2, TResult>
     {
-        //readonly Func<TParam1, TParam2, TResult> functionToBeExecuted;
-        //readonly IEnumerable<Tuple<Func<TParam1, TParam2, TResult>, Int32>> functionsToBeExecuted;
-        //ICollection<Tuple<Func<TParam1, TParam2, TResult>, Int32>> functionsToBeExecuted;
-
         // TODO: rewrite to proper internal class
         readonly List<Tuple<int, Func<TParam1, TParam2, TResult>, bool, bool, long, bool>> functionsToBeExecuted;
 
         readonly int numberOfIterations;
-        //int numberOfConcurrentThreadsWitinhEachIteration;
 
+        // TODO: ...and get rid of these, I guess
         readonly bool concurrent;
         readonly bool memoize;
-        readonly bool isMemoizerClearingTask;
         readonly bool instrumentation;
 
-        TwoPhaseExecutor twoPhaseExecutor;// = new TwoPhaseExecutor(this.numberOfConcurrentThreadsWitinhEachIteration, this.instrumentation);
+        TwoPhaseExecutor twoPhaseExecutor;
 
-        //readonly FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>[] workerThreads;// = new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>[twoPhaseExecutor.NumberOfParticipants];
         IList<FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>> workerThreads;
-        //            for (int j = 0; j < twoPhaseExecutor.NumberOfParticipants; ++j)
-        //              if (this.memoizerClearingTask)
 
         internal TwoPhaseExecutionContext(Func<TParam1, TParam2, TResult> functionToBeExecuted,
                                          int numberOfConcurrentThreadsWitinhEachIteration,
@@ -382,41 +371,23 @@ namespace Memoizer.NET
             if (numberOfIterations < 0) { throw new ArgumentException("Number-of-iteration parameter ('numberOfIterations') cannot be a negative number"); }
             if (numberOfConcurrentThreadsWitinhEachIteration < 0) { throw new ArgumentException("Number-of-worker-threads parameter ('numberOfConcurrentThreadsWitinhEachIteration') cannot be a negative number"); }
 
-            //this.functionToBeExecuted = functionToBeExecuted;
             this.functionsToBeExecuted = new List<Tuple<int, Func<TParam1, TParam2, TResult>, bool, bool, long, bool>>
             {
                 new Tuple<int, Func<TParam1, TParam2, TResult>, bool, bool, long, bool>
                     //                     1                                2               3                4                            5                     6
                     (numberOfConcurrentThreadsWitinhEachIteration, functionToBeExecuted, memoize, isMemoizerClearingTask, functionLatencyInMilliseconds, instrumentation)
             };
-            //this.functionsToBeExecuted = new List<Tuple<Func<TParam1, TParam2, TResult>, Int32>>();
 
             this.numberOfIterations = numberOfIterations;
-            //this.numberOfConcurrentThreadsWitinhEachIteration = numberOfConcurrentThreadsWitinhEachIteration;
 
             this.concurrent = concurrent;
             this.memoize = memoize;
-            this.isMemoizerClearingTask = isMemoizerClearingTask;
             LatencyInMilliseconds = functionLatencyInMilliseconds;
             this.instrumentation = instrumentation;
-
-            //this.twoPhaseExecutor = new TwoPhaseExecutor(numberOfConcurrentThreadsWitinhEachIteration, this.instrumentation);
-
-            //this.workerThreads = new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>[this.twoPhaseExecutor.NumberOfParticipatingWorkerThreads];
-            //for (int j = 0; j < this.twoPhaseExecutor.NumberOfParticipatingWorkerThreads; ++j)
-            //    if (this.memoizerClearingTask)
-            //        this.workerThreads[j] = new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>(function: this.functionToBeExecuted, barrier: twoPhaseExecutor.Barrier, memoizerClearing: true, instrumentation: this.instrumentation);
-            //    else
-            //        if (IsMemoized)
-            //            this.workerThreads[j] = new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>(function: this.functionToBeExecuted.CachedInvoke/*, arg1, arg2*/, barrier: twoPhaseExecutor.Barrier, instrumentation: this.instrumentation);
-            //        else
-            //            this.workerThreads[j] = new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>(function: this.functionToBeExecuted/*, arg1, arg2*/, barrier: twoPhaseExecutor.Barrier, instrumentation: this.instrumentation);
         }
 
         internal int NumberOfIterations { get { return this.numberOfIterations; } }
 
-        //internal int NumberOfConcurrentWorkerThreads { get { return this.numberOfConcurrentThreadsWitinhEachIteration; } }
-        //internal int NumberOfConcurrentWorkerThreads { get { return this.twoPhaseExecutor.NumberOfParticipatingWorkerThreads; } }
         internal int NumberOfConcurrentWorkerThreads { get { return this.functionsToBeExecuted.Aggregate(0, (current, tuple) => current + tuple.Item1); } }
 
         internal long LatencyInMilliseconds { get; private set; }
@@ -425,19 +396,12 @@ namespace Memoizer.NET
         internal bool IsMemoized { get { return this.memoize; } }
         internal bool IsInstrumented { get { return this.instrumentation; } }
 
-        bool isMergedWithOneOrMoreThreadOnlyContexts;
-        internal bool IsMergedWithOneOrMoreThreadOnlyContexts
-        {
-            get { return this.isMergedWithOneOrMoreThreadOnlyContexts; }
-            set { this.isMergedWithOneOrMoreThreadOnlyContexts = value; /*this.twoPhaseExecutor.IsMerged = this.isMerged;*/ }
-        }
-        //internal bool IsMergingOverheadAppliedAlready { get; private set; }
-
+        internal bool IsMergedWithOneOrMoreSingleThreadContexts { get; set; }
 
         /// <summary>
         /// Just some empirically calculated contention overhead...
         /// </summary>
-        internal long CalculateOverheadInMillisecondsFor(/*int numberOfConcurrentWorkerThreads*/)
+        internal long CalculateOverheadInMillisecondsFor()
         {
             double threadContentionFactor;
             if (NumberOfConcurrentWorkerThreads == 1)
@@ -454,12 +418,7 @@ namespace Memoizer.NET
 
             if (NumberOfConcurrentWorkerThreads > 1)
             {
-                //if (this.IsMemoized)
-                //{
-                //    // Extra overhead for memoized functions (always using 1 as number of iterations)
-                //    return Convert.ToInt64(NumberOfConcurrentWorkerThreads * threadContentionFactor);// * 0.75d);
-                //}
-                if (/*this.twoPhaseExecutor.*/IsMergedWithOneOrMoreThreadOnlyContexts)
+                if (IsMergedWithOneOrMoreSingleThreadContexts)
                 {
                     // Extra overhead for merged context (multiple functions)
                     return Convert.ToInt64(NumberOfConcurrentWorkerThreads * threadContentionFactor + 50d);
@@ -471,26 +430,8 @@ namespace Memoizer.NET
 
         public TwoPhaseExecutionContext<TParam1, TParam2, TResult> And(TwoPhaseExecutionContext<TParam1, TParam2, TResult> anotherTwoPhaseExecutionContext)
         {
-            //Barrier thisBarrier = this.twoPhaseExecutor.Barrier;
-            //thisBarrier.AddParticipants(anotherTwoPhaseExecutionContext.workerThreads.Length);
-            //foreach (var workerThread in anotherTwoPhaseExecutionContext.workerThreads)
-            //{
-            //    workerThread.Barrier.Dispose();
-            //    workerThread.Barrier = thisBarrier;
-            //}
-            //int totalNumberOfWorkerThreads = this.workerThreads.Length + anotherTwoPhaseExecutionContext.workerThreads.Length;
-            //FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>[] mergedWorkerThreads = new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>[totalNumberOfWorkerThreads];
-            //Array.Copy(this.workerThreads, 0, mergedWorkerThreads, 0, this.workerThreads.Length);
-            //Array.Copy(anotherTwoPhaseExecutionContext.workerThreads, 0, mergedWorkerThreads, this.workerThreads.Length, anotherTwoPhaseExecutionContext.workerThreads.Length);
-            //this.workerThreads = mergedWorkerThreads;
-            ////this.twoPhaseExecutor.IsMerged = true;
-            /// 
-            // TODO: sjekk om det er snakk om 1-tråders TwoPhaseExecutionContext'er - det er da det må legges til overhead - ikke fordi de er merged...
             if (this.NumberOfConcurrentWorkerThreads == 1 || anotherTwoPhaseExecutionContext.NumberOfConcurrentWorkerThreads == 1)
-            {
-                this.IsMergedWithOneOrMoreThreadOnlyContexts = true;
-            }
-            //this.functionToBeExecuted = functionToBeExecuted;
+                this.IsMergedWithOneOrMoreSingleThreadContexts = true;
 
             this.functionsToBeExecuted.AddRange(anotherTwoPhaseExecutionContext.functionsToBeExecuted);
 
@@ -498,13 +439,78 @@ namespace Memoizer.NET
         }
 
 
+        // TODO: automatic arguments
+        public void Test()
+        {
+            TestUsingArguments(default(TParam1), default(TParam2));
+        }
+
+
+        // TODO: automatic arguments
+        public void TestUsingRandomArguments(ISet<TParam1> arg1Set, ISet<TParam2> arg2Set) { throw new NotImplementedException(); }
+
+
+        [Obsolete("Use one of the two above")]
+        public void TestUsingArguments(TParam1 arg1, TParam2 arg2)
+        {
+            // Execute context
+            TwoPhaseExecutionContextResultSet<TParam1, TParam2, TResult> twoPhaseExecutionContextResultSet = Execute(arg1, arg2);
+
+            // Write report
+            Console.WriteLine(twoPhaseExecutionContextResultSet.GetReport());
+
+            // Assert latency (everything in milliseconds)
+            double minimumLatency = this.numberOfIterations * LatencyInMilliseconds;
+            if (memoize) { minimumLatency = 1 * LatencyInMilliseconds; }
+
+            long duration = twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds;
+
+            long calculatedOverhead = CalculateOverheadInMillisecondsFor();
+
+            double maximumLatency = minimumLatency + calculatedOverhead;
+
+            if (duration < minimumLatency)
+                throw new ApplicationException("Latency violation...");
+            if (duration > maximumLatency)
+                throw new ApplicationException("Latency violation...");
+
+            // Assert results
+            for (int i = 0; i < this.numberOfIterations; ++i)
+            {
+                for (int j = 0; j < this.twoPhaseExecutor.NumberOfParticipatingWorkerThreads; ++j)
+                {
+                    TResult result = twoPhaseExecutionContextResultSet[i, j].Result;
+                    if (typeof(TResult) == typeof(String))
+                    {
+                        try
+                        {
+                            if (twoPhaseExecutionContextResultSet[i, j].IsMemoizerClearingThread) { continue; }
+
+                            if (arg1 == null) { if (default(TParam1) == null) { continue; } }
+                            else { if (arg1.Equals(default(TParam1))) { continue; } }
+
+                            if (arg2 == null) { if (default(TParam2) == null) { continue; } }
+                            else { if (arg2.Equals(default(TParam2))) { continue; } }
+
+                            if (!((result as string).Contains(arg1.ToString()) && (result as string).Contains(arg2.ToString())))
+                                throw new ApplicationException("Result violation...");
+                        }
+                        catch (Exception) { throw new ApplicationException("Internal casting..."); }
+                    }
+                    else
+                        throw new ApplicationException("Only String type results are supported ...so far");
+                }
+            }
+        }
+
+
         public TwoPhaseExecutionContextResultSet<TParam1, TParam2, TResult> Execute(TParam1 arg1, TParam2 arg2)
         {
             if (LatencyInMilliseconds == default(long))
                 // First, dry-running all functions to measure approx. latency... the slowest one of them that is
-                foreach (Tuple<int, Func<TParam1, TParam2, TResult>, bool, bool, long, bool> tuple in functionsToBeExecuted)
+                foreach (Tuple<int, Func<TParam1, TParam2, TResult>, bool, bool, long, bool> function in functionsToBeExecuted)
                 {
-                    long latency = tuple.Item5;
+                    long latency = function.Item5;
                     if (latency == default(long))
                     {
                         const int iterations = 4;
@@ -513,7 +519,7 @@ namespace Memoizer.NET
                         for (int i = 0; i < iterations; ++i)
                         {
                             stopWatch.Start();
-                            tuple.Item2.Invoke(default(TParam1), default(TParam2));
+                            function.Item2.Invoke(default(TParam1), default(TParam2));
                             accumulatedLatencyMeasurement += stopWatch.DurationInMilliseconds;
                         }
                         long meanLatencyMeasurement = accumulatedLatencyMeasurement / iterations;
@@ -536,13 +542,19 @@ namespace Memoizer.NET
                 foreach (Tuple<int, Func<TParam1, TParam2, TResult>, bool, bool, long, bool> tuple in functionsToBeExecuted)
                     for (int j = 0; j < tuple.Item1; ++j)
                         if (tuple.Item4)
-                            this.workerThreads.Add(new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>(function: tuple.Item2, barrier: twoPhaseExecutor.Barrier, isMemoizerClearing: true, instrumentation: tuple.Item6));
+                            this.workerThreads.Add(new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>(function: tuple.Item2,
+                                                                                                             barrier: twoPhaseExecutor.Barrier,
+                                                                                                             isMemoizerClearing: true,
+                                                                                                             instrumentation: tuple.Item6));
                         else
                             if (tuple.Item3)
-                                this.workerThreads.Add(new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>(function: tuple.Item2.CachedInvoke, barrier: twoPhaseExecutor.Barrier, instrumentation: tuple.Item6));
+                                this.workerThreads.Add(new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>(function: tuple.Item2.CachedInvoke,
+                                                                                                                 barrier: twoPhaseExecutor.Barrier,
+                                                                                                                 instrumentation: tuple.Item6));
                             else
-                                this.workerThreads.Add(new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>(function: tuple.Item2, barrier: twoPhaseExecutor.Barrier, instrumentation: tuple.Item6));
-
+                                this.workerThreads.Add(new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>(function: tuple.Item2,
+                                                                                                                 barrier: twoPhaseExecutor.Barrier,
+                                                                                                                 instrumentation: tuple.Item6));
                 for (int j = 0; j < NumberOfConcurrentWorkerThreads; ++j)
                 {
                     workerThreads[j].Arg1 = arg1;
@@ -561,82 +573,6 @@ namespace Memoizer.NET
 
             return twoPhaseExecutionContextResultSet;
         }
-
-
-        // TODO: automatic arguments
-        public void Test()
-        {
-            TestUsingArguments(default(TParam1), default(TParam2));
-        }
-
-
-        // TODO: automatic arguments
-        public void TestUsingRandomArguments(ISet<TParam1> arg1Set, ISet<TParam2> arg2Set) { throw new NotImplementedException(); }
-
-
-        [Obsolete("Use one of the two above")]
-        public void TestUsingArguments(TParam1 arg1, TParam2 arg2)
-        {
-            // Execute context
-            TwoPhaseExecutionContextResultSet<TParam1, TParam2, TResult> twoPhaseExecutionContextResultSet = Execute(arg1, arg2);
-
-
-            // Write report
-            Console.WriteLine(twoPhaseExecutionContextResultSet.GetReport());
-
-
-            // Assert latency (everything in milliseconds)
-            double minimumLatency = this.numberOfIterations * LatencyInMilliseconds;
-            if (memoize) { minimumLatency = 1 * LatencyInMilliseconds; }
-
-            long duration = twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds;
-
-            long calculatedOverhead = CalculateOverheadInMillisecondsFor();
-
-            double maximumLatency = minimumLatency + calculatedOverhead;
-
-            if (duration < minimumLatency)
-                throw new Exception("Latency violation...");
-            if (duration > maximumLatency)
-                throw new Exception("Latency violation...");
-
-
-            // Assert results
-            for (int i = 0; i < this.numberOfIterations; ++i)
-            {
-                for (int j = 0; j < this.twoPhaseExecutor.NumberOfParticipatingWorkerThreads; ++j)
-                {
-                    TResult result = twoPhaseExecutionContextResultSet[i, j].Result;
-                    if (typeof(TResult) == typeof(String))
-                    {
-                        try
-                        {
-                            if (twoPhaseExecutionContextResultSet[i, j].IsMemoizerClearingThread) { continue; }
-
-                            if (arg1 == null) { if (default(TParam1) == null) { continue; } }
-                            else { if (arg1.Equals(default(TParam1))) { continue; } }
-
-                            if (arg2 == null) { if (default(TParam2) == null) { continue; } }
-                            else { if (arg2.Equals(default(TParam2))) { continue; } }
-
-                            if (!((result as string).Contains(arg1.ToString()) && (result as string).Contains(arg2.ToString())))
-                            {
-                                throw new Exception("Result violation...");
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            throw new Exception("Internal casting...");
-                        }
-                    }
-                    else
-                    {
-                        throw new Exception("Only String type results are supported ...so far");
-
-                    }
-                }
-            }
-        }
     }
 
 
@@ -649,13 +585,7 @@ namespace Memoizer.NET
             this.funcTwoPhaseExecutorThreads = new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>[numberOfParticipatingWorkerThreads];
         }
 
-        internal FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>[] WorkerThread
-        {
-            get
-            {
-                return this.funcTwoPhaseExecutorThreads;
-            }
-        }
+        internal FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>[] WorkerThread { get { return this.funcTwoPhaseExecutorThreads; } }
     }
 
 
@@ -673,10 +603,7 @@ namespace Memoizer.NET
             this.StopWatch = new StopWatch();
         }
 
-        internal TwoPhaseExecutionContextResult<TParam1, TParam2, TResult>[] ExecutionResult
-        {
-            get { return this.twoPhaseExecutionContextResults; }
-        }
+        internal TwoPhaseExecutionContextResult<TParam1, TParam2, TResult>[] ExecutionResult { get { return this.twoPhaseExecutionContextResults; } }
 
         public FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult> this[int iterationIndex, int concurrentThreadIndex]
         {
@@ -739,7 +666,7 @@ namespace Memoizer.NET
 
             reportBuilder.Append(")");
             if (this.twoPhaseExecutionContext.NumberOfConcurrentWorkerThreads == 1) reportBuilder.Append(" (extra 1-thread-only latency expectation penalty added...)");
-            if (this.twoPhaseExecutionContext.IsMergedWithOneOrMoreThreadOnlyContexts) reportBuilder.Append(" (extra 1-thread-only latency expectation penalty added...)");
+            if (this.twoPhaseExecutionContext.IsMergedWithOneOrMoreSingleThreadContexts) reportBuilder.Append(" (extra 1-thread-only latency expectation penalty added...)");
 
             return reportBuilder.ToString();
         }
