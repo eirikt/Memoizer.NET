@@ -50,11 +50,10 @@ namespace Memoizer.NET
         internal static int RemoveRegistryMemoizersHavingFunction<T>(object functionToUnMemoize, Memoizer<MemoizerConfiguration, T> memoizerRegistry) where T : IDisposable
         //internal static int RemoveRegistryMemoizersHavingFunction<T>(object functionToUnMemoize, Memoizer<MemoizerConfiguration, T> memoizerRegistry) where T : IMemoizer ...would have been nice
         {
-            int numberOfMemoizersRemovedInTotal;
+            int numberOfMemoizersRemovedInTotal = 0;
             if (MEMOIZER_REGISTRY_INSTRUMENTATION)
             {
                 Interlocked.Increment(ref numberOfTimesInvoked);
-                numberOfMemoizersRemovedInTotal = 0;
             }
             IEnumerable<string> memoizerKeyList = FindMemoizerKeysInRegistryHavingFunction(functionToUnMemoize, memoizerRegistry);
             foreach (var memoizerKey in memoizerKeyList)
@@ -85,11 +84,11 @@ namespace Memoizer.NET
                     }
                 }
             }
-            if (numberOfMemoizersRemovedInTotal != memoizerKeyList.Count())
-                throw new InvalidOperationException("Number of cached functions: " + memoizerKeyList.Count() + ", number of items removed from cache: " + numberOfMemoizersRemovedInTotal);
-
             if (MEMOIZER_REGISTRY_INSTRUMENTATION)
             {
+                if (numberOfMemoizersRemovedInTotal != memoizerKeyList.Count())
+                    throw new InvalidOperationException("Number of cached functions: " + memoizerKeyList.Count() + ", number of items removed from cache: " + numberOfMemoizersRemovedInTotal);
+
                 Console.WriteLine("RemoveRegistryMemoizersHavingFunction() invoked " + numberOfTimesInvoked + " times...");
             }
             return numberOfMemoizersRemovedInTotal;
