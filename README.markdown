@@ -68,11 +68,12 @@ Now, the `fibonacci` function can be invoked as a regular C# function, but order
 
 ### Working with an IMemoizer
 Obtaining the `IMemoizer` object:
+
 ```c#
 IMemoizer memoizedFunc = myExpensiveFunction.GetMemoizer():
 ```
-
 Or with an expiration policy:
+
 ```c#
 IMemoizer memoizedFunc = myExpensiveFunction.CacheFor(30).Minutes.GetMemoizer();
 ```
