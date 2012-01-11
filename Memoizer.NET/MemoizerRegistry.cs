@@ -52,11 +52,10 @@ namespace Memoizer.NET
         {
             //lock (memoizerRegistry)
             //{
-            int numberOfMemoizersRemovedInTotal;
+            int numberOfMemoizersRemovedInTotal = 0;
             if (MEMOIZER_REGISTRY_INSTRUMENTATION)
             {
                 Interlocked.Increment(ref numberOfTimesInvoked);
-                numberOfMemoizersRemovedInTotal = 0;
             }
             IEnumerable<string> memoizerKeyList = FindMemoizerKeysInRegistryHavingFunction(functionToUnMemoize, memoizerRegistry);
             foreach (var memoizerKey in memoizerKeyList)
@@ -72,10 +71,9 @@ namespace Memoizer.NET
                     //}
                     memoizer.Dispose();
                     memoizerRegistry.cache.Remove(memoizerKey);
+                    ++numberOfMemoizersRemovedInTotal;
                     if (MEMOIZER_REGISTRY_INSTRUMENTATION)
                     {
-                        ++numberOfMemoizersRemovedInTotal;
-
                         // TODO: ...
                         //Console.Write("memoizer [key=" + memoizerKey + "] removed - contaning " + numbersOfItems + " function invocation argument permutation items...");
                         Console.Write("Memoizer [key=" + memoizerKey + "] removed!");
@@ -93,21 +91,12 @@ namespace Memoizer.NET
                                 Console.Write(" [Memoizer registry still contains " + memoizerRegistry.cache.GetCount() + " memoizer configurations]");
                                 break;
                         }
-                        //if (memoizerRegistry.cache.GetCount() == 0)
-                        //    Console.WriteLine(" (memoizer registry is empty)");
-                        //else
-                        //    if (memoizerRegistry.cache.GetCount() == 1)
-                        //        Console.WriteLine(" (memoizer registry still contains " + memoizerRegistry.cache.GetCount() + " memoizer configuration)");
-                        //    else
-                        //        Console.WriteLine(" (memoizer registry still contains " + memoizerRegistry.cache.GetCount() + " memoizer configurations)");
                     }
                 }
                 else
                 {
                     if (MEMOIZER_REGISTRY_INSTRUMENTATION)
-                    {
                         Console.Write("Memoizer [key=" + memoizerKey + "] does not exist");
-                    }
                 }
             }
             if (MEMOIZER_REGISTRY_INSTRUMENTATION)
