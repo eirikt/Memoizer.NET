@@ -337,65 +337,109 @@ namespace Memoizer.NET.Test
             [Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads,
             [Values(1, 3)] int numberOfIterations)
         {
-            int NUMBER_OF_ITERATIONS = numberOfIterations;
+            try
+            {
+                int NUMBER_OF_ITERATIONS = numberOfIterations;
 
-            // Not memoized func
-            this.reallySlowNetworkInvocation1b
-                .CreateExecutionContext(numberOfConcurrentWorkerThreads, NUMBER_OF_ITERATIONS, instrumentation: false)
-                .TestUsingArguments("MultiThreadedMemoizedInvocation_NonMemoized", 191L);
+                // Not memoized func
+                this.reallySlowNetworkInvocation1b
+                    .CreateExecutionContext(numberOfConcurrentWorkerThreads, NUMBER_OF_ITERATIONS, instrumentation: false)
+                    .TestUsingArguments("MultiThreadedMemoizedInvocation_NonMemoized", 191L);
 
-            // Memoized func
-            this.reallySlowNetworkInvocation1c
-                .CreateExecutionContext(numberOfConcurrentWorkerThreads, NUMBER_OF_ITERATIONS, memoize: true, instrumentation: false)
-                .TestUsingArguments("MultiThreadedMemoizedInvocation_Memoized", 192L);
+                // Memoized func
+                this.reallySlowNetworkInvocation1c
+                    .CreateExecutionContext(numberOfConcurrentWorkerThreads, NUMBER_OF_ITERATIONS, memoize: true, instrumentation: false)
+                    //.TestUsingArguments("MultiThreadedMemoizedInvocation_Memoized", 192L);
+                    .Test();
+            }
+            finally
+            {
+                // TODO: seems not to be necessary - but where does the function get cleared from memoizer registry?
+                // It doesn't - parameterized NUnit tests using the Value attribute are resetting the (lazy-loaded static) memoizer factory object
+                // But I don't know how or why... It is executed as it was a regular standalone NUnit test execution
+                // The other explanations is that is a bug/weakness in the MemoizerRegistry...
+
+                // Hmm, the next day... it wasn't so anymore - this was weird...
+
+                // Clean-up: must remove memoized function from registry when doing several test method iterations
+                this.reallySlowNetworkInvocation1c.UnMemoize();
+            }
+        }
 
 
-            // TODO: seems not to be necessary - but where does the function get cleared from memoizer registry?
-            // It doesn't - parameterized NUnit tests using the Value attribute are resetting the (lazy-loaded static) memoizer factory object
-            // But I don't know how or why... It is executed as it was a regular standalone NUnit test execution
-            // The other explanations is that is a bug/weakness in the MemoizerRegistry...
+        //[Ignore("Temporary disabled...")]
+        [Test]
+        public void MultiThreadedMemoizedInvocation_SeveralDifferentInvocations_Memoizer(
+            [Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads
+            //[Values(1,10,100)] int numberOfConcurrentWorkerThreads
+            //[Values(1, 3)] int numberOfIterations
+            )
+        {
+            try
+            {
+                //int NUMBER_OF_ITERATIONS = numberOfIterations;
 
-            // Hmm, the next day... it wasn't so anymore - this was weird...
+                TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext1 =
+                    this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads,
+                                                                              numberOfIterations: NUMBER_OF_ITERATIONS,
+                                                                              memoize: true,
+                                                                              instrumentation: false);
+                TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext2 =
+                    this.reallySlowNetworkInvocation1d.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 1,
+                                                                              numberOfIterations: 100, // N/A as it is merged into another TwoPhaseExecutionContext
+                                                                              concurrent: true,
+                                                                              memoize: true,
+                                                                              memoizerClearingTask: false,
+                                                                              functionLatency: default(long), // N/A as it is merged into another TwoPhaseExecutionContext
+                                                                              instrumentation: false);
+                twoPhaseExecutionContext1.And(twoPhaseExecutionContext2).Test();
+            }
+            finally
+            {
+                // Clean-up: must remove memoized function from registry when doing several test method iterations
+                this.reallySlowNetworkInvocation1a.UnMemoize();
+                this.reallySlowNetworkInvocation1d.UnMemoize();
 
-            // Clean-up: must remove memoized function from registry when doing several test method iterations
-            this.reallySlowNetworkInvocation1c.UnMemoize();
+                //Console.WriteLine("---");
+            }
         }
 
 
         //[Ignore("Temporary disabled...")]
         [Test]
         public void MultiThreadedMemoizedInvocationWithClearing_Memoizer(
-            [Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads
-            //[Values(1)] int numberOfConcurrentWorkerThreads,
-            //[Values(1, 3)] int numberOfIterations
+            //[Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads
+            [Values(1, 100)] int numberOfConcurrentWorkerThreads,
+            [Values(1, 3)] int numberOfIterations
             )
         {
-            //int NUMBER_OF_ITERATIONS = numberOfIterations;
+            try
+            {
+                int NUMBER_OF_ITERATIONS = numberOfIterations;
 
-            TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext1 =
-                this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads,
-                                                                          numberOfIterations: NUMBER_OF_ITERATIONS,
-                                                                          memoize: true,
-                                                                          instrumentation: false);
-            TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext2 =
-                this.reallySlowNetworkInvocation1d.CreateExecutionContext(
-                numberOfConcurrentThreadsWitinhEachIteration: 1,
-                numberOfIterations: 100, // N/A as it is merged into another TwoPhaseExecutionContext
-                concurrent: true,
-                memoize: true,
-                memoizerClearingTask: false,
-                functionLatency: default(long), // N/A as it is merged into another TwoPhaseExecutionContext
-                instrumentation: false);
+                TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext1 =
+                    this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads,
+                                                                              numberOfIterations: NUMBER_OF_ITERATIONS,
+                                                                              memoize: true,
+                                                                              instrumentation: false);
+                TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext2 =
+                    this.reallySlowNetworkInvocation1d.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 1,
+                                                                              numberOfIterations: 100, // N/A as it is merged into another TwoPhaseExecutionContext
+                                                                              concurrent: true,
+                                                                              memoize: true,
+                                                                              memoizerClearingTask: true,
+                                                                              functionLatency: default(long), // N/A as it is merged into another TwoPhaseExecutionContext
+                                                                              instrumentation: true);
+                twoPhaseExecutionContext1.And(twoPhaseExecutionContext2).Test();
+            }
+            finally
+            {
+                // Clean-up: must remove memoized function from registry when doing several test method iterations
+                this.reallySlowNetworkInvocation1a.UnMemoize();
+                //this.reallySlowNetworkInvocation1d.UnMemoize();
 
-            twoPhaseExecutionContext1.And(twoPhaseExecutionContext2).Test();
-
-            //twoPhaseExecutionContext1.Test();
-
-            // Clean-up: must remove memoized function from registry when doing several test method iterations
-            this.reallySlowNetworkInvocation1a.UnMemoize();
-            this.reallySlowNetworkInvocation1d.UnMemoize();
-
-            //Console.WriteLine("---");
+                //Console.WriteLine("---");
+            }
         }
 
 
