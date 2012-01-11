@@ -50,10 +50,13 @@ namespace Memoizer.NET
         internal static int RemoveRegistryMemoizersHavingFunction<T>(object functionToUnMemoize, Memoizer<MemoizerConfiguration, T> memoizerRegistry) where T : IDisposable
         //internal static int RemoveRegistryMemoizersHavingFunction<T>(object functionToUnMemoize, Memoizer<MemoizerConfiguration, T> memoizerRegistry) where T : IMemoizer ...would have been nice
         {
-            int numberOfMemoizersRemovedInTotal = 0;
+            //lock (memoizerRegistry)
+            //{
+            int numberOfMemoizersRemovedInTotal;
             if (MEMOIZER_REGISTRY_INSTRUMENTATION)
             {
                 Interlocked.Increment(ref numberOfTimesInvoked);
+                numberOfMemoizersRemovedInTotal = 0;
             }
             IEnumerable<string> memoizerKeyList = FindMemoizerKeysInRegistryHavingFunction(functionToUnMemoize, memoizerRegistry);
             foreach (var memoizerKey in memoizerKeyList)
@@ -62,7 +65,7 @@ namespace Memoizer.NET
                 IDisposable memoizer = cacheValueTask.Result;
                 if (memoizerRegistry.cache.Contains(memoizerKey))
                 {
-                    // TODO: use reflection for now...
+                    // TODO: get this data (using reflection for now)...
                     //if (MEMOIZER_REGISTRY_INSTRUMENTATION)
                     //{
                     //    int numbersOfItems = memoizer.GetCount();
@@ -72,15 +75,38 @@ namespace Memoizer.NET
                     if (MEMOIZER_REGISTRY_INSTRUMENTATION)
                     {
                         ++numberOfMemoizersRemovedInTotal;
+
+                        // TODO: ...
                         //Console.Write("memoizer [key=" + memoizerKey + "] removed - contaning " + numbersOfItems + " function invocation argument permutation items...");
-                        Console.Write("memoizer [key=" + memoizerKey + "] removed");
-                        if (memoizerRegistry.cache.GetCount() == 0)
-                            Console.WriteLine(" (memoizer registry is empty)");
-                        else
-                            if (memoizerRegistry.cache.GetCount() == 1)
-                                Console.WriteLine(" (memoizer registry still contains " + memoizerRegistry.cache.GetCount() + " memoizer configuration)");
-                            else
-                                Console.WriteLine(" (memoizer registry still contains " + memoizerRegistry.cache.GetCount() + " memoizer configurations)");
+                        Console.Write("Memoizer [key=" + memoizerKey + "] removed!");
+
+                        long memoizerRegistryCount = memoizerRegistry.cache.GetCount();
+                        switch (memoizerRegistryCount)
+                        {
+                            case 0:
+                                Console.Write(" [Memoizer registry is empty]");
+                                break;
+                            case 1:
+                                Console.Write(" [Memoizer registry still contains " + memoizerRegistry.cache.GetCount() + " memoizer configuration]");
+                                break;
+                            default:
+                                Console.Write(" [Memoizer registry still contains " + memoizerRegistry.cache.GetCount() + " memoizer configurations]");
+                                break;
+                        }
+                        //if (memoizerRegistry.cache.GetCount() == 0)
+                        //    Console.WriteLine(" (memoizer registry is empty)");
+                        //else
+                        //    if (memoizerRegistry.cache.GetCount() == 1)
+                        //        Console.WriteLine(" (memoizer registry still contains " + memoizerRegistry.cache.GetCount() + " memoizer configuration)");
+                        //    else
+                        //        Console.WriteLine(" (memoizer registry still contains " + memoizerRegistry.cache.GetCount() + " memoizer configurations)");
+                    }
+                }
+                else
+                {
+                    if (MEMOIZER_REGISTRY_INSTRUMENTATION)
+                    {
+                        Console.Write("Memoizer [key=" + memoizerKey + "] does not exist");
                     }
                 }
             }
@@ -89,9 +115,11 @@ namespace Memoizer.NET
                 if (numberOfMemoizersRemovedInTotal != memoizerKeyList.Count())
                     throw new InvalidOperationException("Number of cached functions: " + memoizerKeyList.Count() + ", number of items removed from cache: " + numberOfMemoizersRemovedInTotal);
 
-                Console.WriteLine("RemoveRegistryMemoizersHavingFunction() invoked " + numberOfTimesInvoked + " times...");
+                Console.WriteLine(" [RemoveRegistryMemoizersHavingFunction() invocation #" + numberOfTimesInvoked + "]");
             }
+
             return numberOfMemoizersRemovedInTotal;
+            //}
         }
     }
     #endregion
