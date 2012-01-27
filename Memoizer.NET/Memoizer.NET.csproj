@@ -38,6 +38,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="FuncExtensionMethods.cs" />
+    <Compile Include="HashHelper.cs" />
     <Compile Include="Memoizer.cs" />
     <Compile Include="MemoizerConfiguration.cs" />
     <Compile Include="MemoizerFactory.cs" />

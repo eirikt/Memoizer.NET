@@ -46,32 +46,40 @@ namespace Memoizer.NET.Test
         static string Concatinate(string arg1, string arg2, string arg3) { return arg1 + arg2 + arg3; }
 
 
+        static int ReallySlowNetworkStaticInvocation_INVOCATION_COUNTER;
         static internal string ReallySlowNetworkStaticInvocation(string stringArg, long longArg)
         {
             //Console.WriteLine("TypicalNetworkInvocation invoked...");
             Thread.Sleep(NETWORK_RESPONSE_LATENCY_IN_MILLIS);
             //Console.WriteLine("TypicalNetworkInvocation returns...");
+            Interlocked.Increment(ref ReallySlowNetworkStaticInvocation_INVOCATION_COUNTER);
             return Concatinate(METHOD_RESPONSE_ELEMENT, stringArg, Convert.ToString(longArg));
         }
 
+        static int reallySlowNetworkInvocation1a_INVOCATION_COUNTER;
         internal Func<string, long, string> reallySlowNetworkInvocation1a =
            new Func<string, long, string>(delegate(string stringArg, long longArg)
            {
                //return ReallySlowNetworkStaticInvocation(stringArg, longArg);
 
                Thread.Sleep(NETWORK_RESPONSE_LATENCY_IN_MILLIS);
+               Interlocked.Increment(ref reallySlowNetworkInvocation1a_INVOCATION_COUNTER);
                return Concatinate(METHOD_RESPONSE_ELEMENT, stringArg, Convert.ToString(longArg));
            });
 
+        static int reallySlowNetworkInvocation1b_INVOCATION_COUNTER;
         internal Func<string, long, string> reallySlowNetworkInvocation1b =
            (delegate(string stringArg, long longArg)
            {
+               Interlocked.Increment(ref reallySlowNetworkInvocation1b_INVOCATION_COUNTER);
                return ReallySlowNetworkStaticInvocation(stringArg, longArg);
            });
 
+        static int reallySlowNetworkInvocation1c_INVOCATION_COUNTER;
         internal Func<string, long, string> reallySlowNetworkInvocation1c =
             (stringArg, longArg) =>
             {
+                Interlocked.Increment(ref reallySlowNetworkInvocation1c_INVOCATION_COUNTER);
                 return ReallySlowNetworkStaticInvocation(stringArg, longArg);
             };
 
@@ -164,19 +172,30 @@ namespace Memoizer.NET.Test
         }
 
 
+        ////[Ignore("Temporary disabled...")]
+        //[Test]
+        //public void ShouldCreateAHashForDelegates()
+        //{
+        //    Assert.That(MemoizerHelper.CreateParameterHash(40L), Is.EqualTo(MemoizerHelper.CreateParameterHash(40L)));
+        //    //Assert.That(MemoizerHelper.CreateParameterHash(slow500Square), Is.EqualTo(MemoizerHelper.CreateParameterHash(slow500Square)));
+        //    //Assert.That(MemoizerHelper.CreateParameterHash(slow1000Square), Is.EqualTo(MemoizerHelper.CreateParameterHash(slow1000Square)));
+        //    //Assert.That(MemoizerHelper.CreateParameterHash(slow500Square), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(slow1000Square)));
+        //    //Assert.That(MemoizerHelper.CreateParameterHash(slow1000Square), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(slow500Square))); 
+        //    Assert.That(MemoizerHelper.CreateFunctionHash(slow500Square), Is.EqualTo(MemoizerHelper.CreateFunctionHash(slow500Square)));
+        //    Assert.That(MemoizerHelper.CreateFunctionHash(slow1000Square), Is.EqualTo(MemoizerHelper.CreateFunctionHash(slow1000Square)));
+        //    Assert.That(MemoizerHelper.CreateFunctionHash(slow500Square), Is.Not.EqualTo(MemoizerHelper.CreateFunctionHash(slow1000Square)));
+        //    Assert.That(MemoizerHelper.CreateFunctionHash(slow1000Square), Is.Not.EqualTo(MemoizerHelper.CreateFunctionHash(slow500Square)));
+        //}
+
+
         //[Ignore("Temporary disabled...")]
         [Test]
-        public void ShouldCreateAHashForDelegates()
+        public void ShouldHashFunctionHandles()
         {
-            Assert.That(MemoizerHelper.CreateParameterHash(40L), Is.EqualTo(MemoizerHelper.CreateParameterHash(40L)));
-            //Assert.That(MemoizerHelper.CreateParameterHash(slow500Square), Is.EqualTo(MemoizerHelper.CreateParameterHash(slow500Square)));
-            //Assert.That(MemoizerHelper.CreateParameterHash(slow1000Square), Is.EqualTo(MemoizerHelper.CreateParameterHash(slow1000Square)));
-            //Assert.That(MemoizerHelper.CreateParameterHash(slow500Square), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(slow1000Square)));
-            //Assert.That(MemoizerHelper.CreateParameterHash(slow1000Square), Is.Not.EqualTo(MemoizerHelper.CreateParameterHash(slow500Square))); 
-            Assert.That(MemoizerHelper.CreateFunctionHash(slow500Square), Is.EqualTo(MemoizerHelper.CreateFunctionHash(slow500Square)));
-            Assert.That(MemoizerHelper.CreateFunctionHash(slow1000Square), Is.EqualTo(MemoizerHelper.CreateFunctionHash(slow1000Square)));
-            Assert.That(MemoizerHelper.CreateFunctionHash(slow500Square), Is.Not.EqualTo(MemoizerHelper.CreateFunctionHash(slow1000Square)));
-            Assert.That(MemoizerHelper.CreateFunctionHash(slow1000Square), Is.Not.EqualTo(MemoizerHelper.CreateFunctionHash(slow500Square)));
+            Assert.That(HashHelper.CreateFunctionHash(slow500Square), Is.EqualTo(HashHelper.CreateFunctionHash(slow500Square)));
+            Assert.That(HashHelper.CreateFunctionHash(slow1000Square), Is.EqualTo(HashHelper.CreateFunctionHash(slow1000Square)));
+            Assert.That(HashHelper.CreateFunctionHash(slow500Square), Is.Not.EqualTo(HashHelper.CreateFunctionHash(slow1000Square)));
+            Assert.That(HashHelper.CreateFunctionHash(slow1000Square), Is.Not.EqualTo(HashHelper.CreateFunctionHash(slow500Square)));
         }
 
         // TODO: test hashing complex objects!
@@ -194,11 +213,13 @@ namespace Memoizer.NET.Test
 
             long startTime = DateTime.Now.Ticks;
             for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
+            {
                 for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
                 {
                     var retVal = ReallySlowNetworkInvocation3("SingleThreadedDirectInvocation", 13L);
                     Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "SingleThreadedDirectInvocation" + 13L));
                 }
+            }
             long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
             Assert.That(durationInMilliseconds, Is.GreaterThanOrEqualTo(NUMBER_OF_ITERATIONS * NETWORK_RESPONSE_LATENCY_IN_MILLIS));
             Console.WriteLine(
@@ -212,26 +233,16 @@ namespace Memoizer.NET.Test
         [Test]
         public void MultiThreadedDirectInvocation()
         {
-            this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: NUMBER_OF_CONCURRENT_TASKS,
-                                                                      numberOfIterations: NUMBER_OF_ITERATIONS
-                //concurrent: true,
-                //memoize: false
-                //memoizerClearingTask: false,
-                //functionLatency: default(long),
-                //instrumentation: true
-                                                                      )
-                //.TestUsingArguments("MultiThreadedDirectInvocation", 15L);
-            .Test();
+            this.reallySlowNetworkInvocation1a.CreateExecutionContext(NUMBER_OF_CONCURRENT_TASKS, NUMBER_OF_ITERATIONS).Test();
         }
         #endregion
 
         #region GoetzMemoryCacheMemoizer, a.k.a. THE Memoizer
-        Func<string, string> veryExpensiveNullInvocationFunc3 = s =>
+        readonly Func<string, string> veryExpensiveNullInvocationFunc3 = (string s) =>
         {
             Thread.Sleep(NETWORK_RESPONSE_LATENCY_IN_MILLIS);
             return null;
         };
-
 
         //[Ignore("Temporary disabled...")]
         [Test]
@@ -266,16 +277,19 @@ namespace Memoizer.NET.Test
         /// Sequential invocations of the memoizer
         /// </summary>
         //[Ignore("Temporary disabled...")]
+        // TODO: include in TwoPhaseExecutor (one way or the other...)?
         [Test]
         public void SingleThreadedMemoizedDirectInvocation_Memoizer()
         {
             long startTime = DateTime.Now.Ticks;
             for (int i = 0; i < NUMBER_OF_ITERATIONS; ++i)
+            {
                 for (int j = 0; j < NUMBER_OF_CONCURRENT_TASKS; ++j)
                 {
                     var retVal = reallySlowNetworkInvocation1d.CachedInvoke("SingleThreadedMemoizedDirectInvocation_Memoizer", 14L);
                     Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "SingleThreadedMemoizedDirectInvocation_Memoizer" + 14L));
                 }
+            }
             long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
             Assert.That(durationInMilliseconds, Is.InRange(NETWORK_RESPONSE_LATENCY_IN_MILLIS, NETWORK_RESPONSE_LATENCY_IN_MILLIS + 100));
             Console.WriteLine(
@@ -300,7 +314,7 @@ namespace Memoizer.NET.Test
             Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer" + 15L));
             long durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
             Assert.That(durationInMilliseconds, Is.InRange(NETWORK_RESPONSE_LATENCY_IN_MILLIS, NETWORK_RESPONSE_LATENCY_IN_MILLIS + 50L));
-            Console.WriteLine("SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer: first non-memoized method invocation with latency " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take >= " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + ")");
+            Console.WriteLine("SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer: first non-memoized method invocation with latency " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take >= " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms)");
 
             // Memoized function within time span, should use cached value
             startTime = DateTime.Now.Ticks;
@@ -316,7 +330,7 @@ namespace Memoizer.NET.Test
             Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer" + 16L));
             durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
             Assert.That(durationInMilliseconds, Is.InRange(NETWORK_RESPONSE_LATENCY_IN_MILLIS, NETWORK_RESPONSE_LATENCY_IN_MILLIS + 50L));
-            Console.WriteLine("SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer: another first non-memoized method invocation with latency " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take >= " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + ")");
+            Console.WriteLine("SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer: another first non-memoized method invocation with latency " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take >= " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms)");
 
             Console.WriteLine("SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer: waiting for memoizer cache item evictions ...");
             Thread.Sleep(NETWORK_RESPONSE_LATENCY_IN_MILLIS * 3);
@@ -327,30 +341,43 @@ namespace Memoizer.NET.Test
             Assert.That(retVal, Is.EqualTo(METHOD_RESPONSE_ELEMENT + "SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer" + 15L));
             durationInMilliseconds = (DateTime.Now.Ticks - startTime) / TimeSpan.TicksPerMillisecond;
             Assert.That(durationInMilliseconds, Is.InRange(NETWORK_RESPONSE_LATENCY_IN_MILLIS, NETWORK_RESPONSE_LATENCY_IN_MILLIS + 50L));
-            Console.WriteLine("SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer: third memoized (but evicted) method invocation with latency " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take >= " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + ")");
+            Console.WriteLine("SingleThreadedMemoizedDirectInvocationWithPolicy_Memoizer: third memoized (but evicted) method invocation with latency " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms took " + durationInMilliseconds + " ms (should take >= " + NETWORK_RESPONSE_LATENCY_IN_MILLIS + " ms)");
         }
 
 
         //[Ignore("Temporary disabled...")]
         [Test]
         public void MultiThreadedMemoizedInvocation_Memoizer(
-            [Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads,
-            [Values(1, 3)] int numberOfIterations)
+            [Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads
+            //,[Values(1,3)] int numberOfIterations
+            )
         {
             try
             {
-                int NUMBER_OF_ITERATIONS = numberOfIterations;
+                Interlocked.Exchange(ref reallySlowNetworkInvocation1b_INVOCATION_COUNTER, 0);
+
+                //Console.WriteLine(reallySlowNetworkInvocation1c_INVOCATION_COUNTER);
+                Interlocked.Exchange(ref reallySlowNetworkInvocation1c_INVOCATION_COUNTER, 0);
+                //Console.WriteLine(reallySlowNetworkInvocation1c_INVOCATION_COUNTER);
+
+                //int NUMBER_OF_ITERATIONS = numberOfIterations;
 
                 // Not memoized func
                 this.reallySlowNetworkInvocation1b
-                    .CreateExecutionContext(numberOfConcurrentWorkerThreads, NUMBER_OF_ITERATIONS, instrumentation: false)
+                    .CreateExecutionContext(numberOfConcurrentWorkerThreads, NUMBER_OF_ITERATIONS)
                     .TestUsingArguments("MultiThreadedMemoizedInvocation_NonMemoized", 191L);
 
                 // Memoized func
                 this.reallySlowNetworkInvocation1c
-                    .CreateExecutionContext(numberOfConcurrentWorkerThreads, NUMBER_OF_ITERATIONS, memoize: true, instrumentation: false)
-                    //.TestUsingArguments("MultiThreadedMemoizedInvocation_Memoized", 192L);
-                    .Test();
+                    .CreateExecutionContext(numberOfConcurrentWorkerThreads, NUMBER_OF_ITERATIONS, memoize: true)
+                    .TestUsingArguments("MultiThreadedMemoizedInvocation_Memoized", 192L);
+
+                //Console.WriteLine("reallySlowNetworkInvocation1c_INVOCATION_COUNTER: " + reallySlowNetworkInvocation1c_INVOCATION_COUNTER);
+                //Console.WriteLine("NUMBER_OF_ITERATIONS: " + NUMBER_OF_ITERATIONS);
+                //Console.WriteLine("TwoPhaseExecutionContext.NUMBER_OF_WARM_UP_ITERATIONS: " + TwoPhaseExecutionContext.NUMBER_OF_WARM_UP_ITERATIONS);
+
+                Assert.That(reallySlowNetworkInvocation1b_INVOCATION_COUNTER, Is.EqualTo((numberOfConcurrentWorkerThreads * NUMBER_OF_ITERATIONS) + TwoPhaseExecutionContext.NUMBER_OF_WARM_UP_ITERATIONS));
+                Assert.That(reallySlowNetworkInvocation1c_INVOCATION_COUNTER, Is.EqualTo(1 + TwoPhaseExecutionContext.NUMBER_OF_WARM_UP_ITERATIONS));
             }
             finally
             {
@@ -362,6 +389,7 @@ namespace Memoizer.NET.Test
                 // Hmm, the next day... it wasn't so anymore - this was weird...
 
                 // Clean-up: must remove memoized function from registry when doing several test method iterations
+                //this.reallySlowNetworkInvocation1b.UnMemoize();
                 this.reallySlowNetworkInvocation1c.UnMemoize();
             }
         }
@@ -369,10 +397,105 @@ namespace Memoizer.NET.Test
 
         //[Ignore("Temporary disabled...")]
         [Test]
-        public void MultiThreadedMemoizedInvocation_SeveralDifferentInvocations_Memoizer(
+        public void MultiThreadedMemoizedInvocation_DifferentInvocations_Conjunction_1(
             [Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads
-            //[Values(1,10,100)] int numberOfConcurrentWorkerThreads
-            //[Values(1, 3)] int numberOfIterations
+            //[Values(1,10)] int numberOfConcurrentWorkerThreads
+            //,[Values(1, 3)] int numberOfIterations
+            )
+        {
+            try
+            {
+                //int NUMBER_OF_ITERATIONS = numberOfIterations;
+
+                Interlocked.Exchange(ref reallySlowNetworkInvocation1a_INVOCATION_COUNTER, 0);
+                //Interlocked.Exchange(ref reallySlowNetworkInvocation1d_INVOCATION_COUNTER, 0);
+
+                TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext1 =
+                    this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads,
+                                                                              numberOfIterations: NUMBER_OF_ITERATIONS,
+                                                                              memoize: true,
+                                                                              instrumentation: false);
+
+                TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext2 =
+                    this.reallySlowNetworkInvocation1d.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 1,
+                                                                              numberOfIterations: 100, // N/A as it is merged into another TwoPhaseExecutionContext
+                                                                              concurrent: false, // Not implemented / N/A only 'concurrent: true is supported so far
+                                                                              memoize: true,
+                                                                              memoizerClearingTask: false,
+                                                                              functionLatency: 500,
+                                                                              instrumentation: false);
+
+                TwoPhaseExecutionContext<string, long, string> mergedTwoPhaseExecutionContext = twoPhaseExecutionContext1.And(twoPhaseExecutionContext2);
+                mergedTwoPhaseExecutionContext.Test();
+
+                Assert.That(reallySlowNetworkInvocation1a_INVOCATION_COUNTER, Is.EqualTo(twoPhaseExecutionContext1.GetExpectedFunctionInvocationCountFor(reallySlowNetworkInvocation1a)));
+                Assert.That(reallySlowNetworkInvocation1a_INVOCATION_COUNTER, Is.EqualTo(mergedTwoPhaseExecutionContext.GetExpectedFunctionInvocationCountFor(reallySlowNetworkInvocation1a))); // The same TwoPhaseExecutionContext
+                //Assert.That(reallySlowNetworkInvocation1d_INVOCATION_COUNTER, Is.EqualTo(mergedTwoPhaseExecutionContext.ExpectedFunctionInvocationCount));
+            }
+            finally
+            {
+                // Clean-up: must remove memoized function from registry when doing several test method iterations
+                this.reallySlowNetworkInvocation1a.UnMemoize();
+                this.reallySlowNetworkInvocation1d.UnMemoize();
+            }
+        }
+
+
+        
+        //[Ignore("Temporary disabled...")]
+        [Test]
+        public void MultiThreadedMemoizedInvocation_DifferentInvocations_Conjunction_2(
+            //[Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads
+            [Values(1,20)] int numberOfConcurrentWorkerThreads
+            //,[Values(2)] int numberOfIterations
+            )
+        {
+            try
+            {
+                //int NUMBER_OF_ITERATIONS = numberOfIterations;
+
+                Interlocked.Exchange(ref reallySlowNetworkInvocation1a_INVOCATION_COUNTER, 0);
+                //Interlocked.Exchange(ref reallySlowNetworkInvocation1d_INVOCATION_COUNTER, 0);
+
+                TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext1 =
+                    this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads,
+                                                                              numberOfIterations: NUMBER_OF_ITERATIONS,
+                                                                              memoize: true,
+                                                                              instrumentation: false);
+
+                TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext2 =
+                    this.reallySlowNetworkInvocation1d.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 1,
+                                                                              numberOfIterations: 100, // N/A as it is merged into another TwoPhaseExecutionContext
+                                                                              concurrent: false, // Not implemented / N/A only 'concurrent: true is supported so far
+                                                                              memoize: false,
+                                                                              memoizerClearingTask: false,
+                                                                              functionLatency: default(long), // N/A as it is merged into another TwoPhaseExecutionContext
+                                                                              instrumentation: false);
+
+                /*TwoPhaseExecutionContext<string, long, string> mergedTwoPhaseExecutionContext = */twoPhaseExecutionContext1.And(twoPhaseExecutionContext2);
+                //mergedTwoPhaseExecutionContext.Test();
+                twoPhaseExecutionContext1.Test();
+
+                Assert.That(reallySlowNetworkInvocation1a_INVOCATION_COUNTER, Is.EqualTo(twoPhaseExecutionContext1.GetExpectedFunctionInvocationCountFor(this.reallySlowNetworkInvocation1a)));
+                //Assert.That(reallySlowNetworkInvocation1a_INVOCATION_COUNTER, Is.EqualTo(twoPhaseExecutionContext1.ExpectedFunctionInvocationCount));
+                ////Assert.That(reallySlowNetworkInvocation1a_INVOCATION_COUNTER, Is.EqualTo(mergedTwoPhaseExecutionContext.ExpectedFunctionInvocationCount));
+                ////Assert.That(reallySlowNetworkInvocation1d_INVOCATION_COUNTER, Is.EqualTo(mergedTwoPhaseExecutionContext.ExpectedFunctionInvocationCount));
+            }
+            finally
+            {
+                // Clean-up: must remove memoized function from registry when doing several test method iterations
+                this.reallySlowNetworkInvocation1a.UnMemoize();
+                //this.reallySlowNetworkInvocation1d.UnMemoize();
+            }
+        }
+
+
+        //[Ignore("Temporary disabled...")]
+        [Test]
+        public void MultiThreadedMemoizedInvocationWithClearing_Memoizer(
+            //[Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads
+            [Values(1, 3)] int numberOfConcurrentWorkerThreads
+            //,[Values(1, 3)] int numberOfIterations
             )
         {
             try
@@ -384,30 +507,31 @@ namespace Memoizer.NET.Test
                                                                               numberOfIterations: NUMBER_OF_ITERATIONS,
                                                                               memoize: true,
                                                                               instrumentation: false);
+
                 TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext2 =
                     this.reallySlowNetworkInvocation1d.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 1,
                                                                               numberOfIterations: 100, // N/A as it is merged into another TwoPhaseExecutionContext
-                                                                              concurrent: true,
-                                                                              memoize: true,
-                                                                              memoizerClearingTask: false,
-                                                                              functionLatency: default(long), // N/A as it is merged into another TwoPhaseExecutionContext
-                                                                              instrumentation: false);
+                                                                              concurrent: true, // N/A only 'concurrent: true is supported so far
+                                                                              memoize: true, // N/A ignored/overrided by 'memoizerClearingTask: true'
+                                                                              memoizerClearingTask: true,
+                                                                              functionLatency: default(long), 
+                                                                              instrumentation: true);
+                
                 twoPhaseExecutionContext1.And(twoPhaseExecutionContext2).Test();
             }
             finally
             {
-                // Clean-up: must remove memoized function from registry when doing several test method iterations
-                this.reallySlowNetworkInvocation1a.UnMemoize();
-                this.reallySlowNetworkInvocation1d.UnMemoize();
-
-                //Console.WriteLine("---");
+                //// Clean-up: must remove memoized function from registry when doing several test method iterations
+                //this.reallySlowNetworkInvocation1a.UnMemoize();
+                ////this.reallySlowNetworkInvocation1d.UnMemoize();
             }
         }
 
 
+        // TODO: ...
         //[Ignore("Temporary disabled...")]
         [Test]
-        public void MultiThreadedMemoizedInvocationWithClearing_Memoizer(
+        public void MultiThreadedMemoizedInvocationWithClearing2_Memoizer(
             //[Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads
             [Values(1, 100)] int numberOfConcurrentWorkerThreads,
             [Values(1, 3)] int numberOfIterations
@@ -422,14 +546,22 @@ namespace Memoizer.NET.Test
                                                                               numberOfIterations: NUMBER_OF_ITERATIONS,
                                                                               memoize: true,
                                                                               instrumentation: false);
+
                 TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext2 =
-                    this.reallySlowNetworkInvocation1d.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 1,
-                                                                              numberOfIterations: 100, // N/A as it is merged into another TwoPhaseExecutionContext
-                                                                              concurrent: true,
-                                                                              memoize: true,
-                                                                              memoizerClearingTask: true,
-                                                                              functionLatency: default(long), // N/A as it is merged into another TwoPhaseExecutionContext
-                                                                              instrumentation: true);
+                    this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads,
+                                                                              numberOfIterations: NUMBER_OF_ITERATIONS,
+                                                                              memoize: false,
+                                                                              instrumentation: false);
+
+                Func<string, long, string> reallySlowNetworkInvocation1a_cacheClearing =
+                    new Func<string, long, string>(delegate(string stringArg, long longArg)
+                        {
+                            //return ReallySlowNetworkStaticInvocation(stringArg, longArg);
+
+                            Thread.Sleep(NETWORK_RESPONSE_LATENCY_IN_MILLIS);
+                            return Concatinate(METHOD_RESPONSE_ELEMENT, stringArg, Convert.ToString(longArg));
+                        });
+
                 twoPhaseExecutionContext1.And(twoPhaseExecutionContext2).Test();
             }
             finally
@@ -437,8 +569,6 @@ namespace Memoizer.NET.Test
                 // Clean-up: must remove memoized function from registry when doing several test method iterations
                 this.reallySlowNetworkInvocation1a.UnMemoize();
                 //this.reallySlowNetworkInvocation1d.UnMemoize();
-
-                //Console.WriteLine("---");
             }
         }
 
@@ -458,24 +588,6 @@ namespace Memoizer.NET.Test
                 if (arg <= 1) { return arg; }
                 return fibonacci_memoized.CachedInvoke(arg - 1) + fibonacci_memoized.CachedInvoke(arg - 2);
             });
-
-
-        [Ignore("Temporary disabled...")]
-        [Test]
-        public void FibonacciFunctionGetsCached()
-        {
-            //Assert.That(MemoizerHelper.CreateMemoizerHash(fibonacci.Memoize()), Is.EqualTo(MemoizerHelper.CreateMemoizerHash(fibonacci.Memoize())));
-            //Assert.That(MemoizerHelper.CreateMemoizerHash(memoizedFibonacci.Memoize()), Is.EqualTo(MemoizerHelper.CreateMemoizerHash(memoizedFibonacci.Memoize())));
-            //Assert.That(MemoizerHelper.CreateMemoizerHash(fibonacci.Memoize()), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerHash(memoizedFibonacci.Memoize())));
-            //Assert.That(MemoizerHelper.CreateMemoizerHash(memoizedFibonacci.Memoize()), Is.Not.EqualTo(MemoizerHelper.CreateMemoizerHash(fibonacci.Memoize())));
-
-            // TODO: use reflection
-            //Assert.That(fibonacci.Memoize().MemoizerConfiguration, Is.EqualTo(fibonacci.Memoize().MemoizerConfiguration));
-            //Assert.That(memoizedFibonacci.Memoize().MemoizerConfiguration, Is.EqualTo(memoizedFibonacci.Memoize().MemoizerConfiguration));
-            //Assert.That(fibonacci.Memoize().MemoizerConfiguration, Is.Not.EqualTo(memoizedFibonacci.Memoize().MemoizerConfiguration));
-            //Assert.That(memoizedFibonacci.Memoize().MemoizerConfiguration, Is.Not.EqualTo(fibonacci.Memoize().MemoizerConfiguration));
-        }
-
 
         //[Ignore("Temporary disabled...")]
         [Test]

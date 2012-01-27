@@ -286,11 +286,12 @@ namespace Memoizer.NET
             this.IsShared = shared;
         }
 
-        // Only for verbose lazy-loaded memoizer^2
+        // For lazy-loaded memoizer registry memoizers
         internal Memoizer(Func<TParam1, TResult> functionToBeMemoized)
         {
             this.functionToBeMemoized = functionToBeMemoized;
-            this.cache = new MemoryCache(MemoizerHelper.CreateFunctionHash(this.functionToBeMemoized).ToString());
+            //this.cache = new MemoryCache(MemoizerHelper.CreateFunctionHash(this.functionToBeMemoized).ToString());
+            this.cache = new MemoryCache(HashHelper.CreateFunctionHash(this.functionToBeMemoized).ToString());
         }
 
         protected override Func<TResult> GetFunctionClosure(params object[] args)

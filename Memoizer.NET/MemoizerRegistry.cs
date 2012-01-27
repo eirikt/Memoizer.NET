@@ -29,7 +29,8 @@ namespace Memoizer.NET
                 string funcIdPartOfMemoizerConfigurationHashCode = keyValuePair.Key.PadLeft(10, '0').Substring(0, 5);
 
                 bool firstTime = false;
-                long funcId_long = MemoizerHelper.GetObjectId(function, ref firstTime);
+                //long funcId_long = MemoizerHelper.GetObjectId(function, ref firstTime);
+                long funcId_long = HashHelper.GetObjectId(function, ref firstTime);
                 if (funcId_long > 21474) { throw new InvalidOperationException("Memoizer.NET only supports 21474 different Func references at the moment..."); }
                 string funcIdPartOfFunctionToLookFor = funcId_long.ToString().PadLeft(5, '0');
 
@@ -53,10 +54,8 @@ namespace Memoizer.NET
             //lock (memoizerRegistry)
             //{
             int numberOfMemoizersRemovedInTotal = 0;
-            if (MEMOIZER_REGISTRY_INSTRUMENTATION)
-            {
-                Interlocked.Increment(ref numberOfTimesInvoked);
-            }
+            if (MEMOIZER_REGISTRY_INSTRUMENTATION) { Interlocked.Increment(ref numberOfTimesInvoked); }
+
             IEnumerable<string> memoizerKeyList = FindMemoizerKeysInRegistryHavingFunction(functionToUnMemoize, memoizerRegistry);
             foreach (var memoizerKey in memoizerKeyList)
             {
@@ -64,7 +63,7 @@ namespace Memoizer.NET
                 IDisposable memoizer = cacheValueTask.Result;
                 if (memoizerRegistry.cache.Contains(memoizerKey))
                 {
-                    // TODO: get this data (using reflection for now)...
+                    // TODO: get this data (using reflection, for now)...
                     //if (MEMOIZER_REGISTRY_INSTRUMENTATION)
                     //{
                     //    int numbersOfItems = memoizer.GetCount();
@@ -76,7 +75,7 @@ namespace Memoizer.NET
                     {
                         // TODO: ...
                         //Console.Write("memoizer [key=" + memoizerKey + "] removed - contaning " + numbersOfItems + " function invocation argument permutation items...");
-                        Console.Write("Memoizer [key=" + memoizerKey + "] removed!");
+                        Console.Write("Memoizer.NET.MemoizerRegistry: Memoizer [key=" + memoizerKey + "] removed!");
 
                         long memoizerRegistryCount = memoizerRegistry.cache.GetCount();
                         switch (memoizerRegistryCount)
@@ -96,7 +95,7 @@ namespace Memoizer.NET
                 else
                 {
                     if (MEMOIZER_REGISTRY_INSTRUMENTATION)
-                        Console.Write("Memoizer [key=" + memoizerKey + "] does not exist");
+                        Console.Write("Memoizer.NET.MemoizerRegistry: Memoizer [key=" + memoizerKey + "] does not exist");
                 }
             }
             if (MEMOIZER_REGISTRY_INSTRUMENTATION)

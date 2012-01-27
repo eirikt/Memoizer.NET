@@ -36,7 +36,8 @@ namespace Memoizer.NET
         {
             Function = function;
             bool firstTime = false;
-            this.FunctionId = (Int32)MemoizerHelper.GetObjectId(Function, ref firstTime);
+            //this.FunctionId = (Int32)MemoizerHelper.GetObjectId(Function, ref firstTime);
+            this.FunctionId = (Int32)HashHelper.GetObjectId(Function, ref firstTime);
             ExpirationType = expirationType;
             ExpirationValue = expirationValue;
             ExpirationTimeUnit = expirationTimeUnit;
@@ -60,9 +61,12 @@ namespace Memoizer.NET
             if (FunctionId > 21474) { throw new InvalidOperationException("Memoizer.NET only supports 21474 different Func references at the moment..."); }
             string funcId = FunctionId.ToString();
 
-            int expirationConfigHash = MemoizerHelper.PRIMES[15] + ExpirationType.GetHashCode();
-            expirationConfigHash = expirationConfigHash * MemoizerHelper.PRIMES[11] + ExpirationValue.GetHashCode();
-            expirationConfigHash = expirationConfigHash * MemoizerHelper.PRIMES[7] + ExpirationTimeUnit.GetHashCode();
+            //int expirationConfigHash = MemoizerHelper.PRIMES[15] + ExpirationType.GetHashCode();
+            //expirationConfigHash = expirationConfigHash * MemoizerHelper.PRIMES[11] + ExpirationValue.GetHashCode();
+            //expirationConfigHash = expirationConfigHash * MemoizerHelper.PRIMES[7] + ExpirationTimeUnit.GetHashCode();
+            int expirationConfigHash = HashHelper.PRIMES[15] + ExpirationType.GetHashCode();
+            expirationConfigHash = expirationConfigHash * HashHelper.PRIMES[11] + ExpirationValue.GetHashCode();
+            expirationConfigHash = expirationConfigHash * HashHelper.PRIMES[7] + ExpirationTimeUnit.GetHashCode();
 
             expirationConfigHash = expirationConfigHash % 83648;
 
