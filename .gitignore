@@ -30,3 +30,7 @@ obj/
 _ReSharper*/
 *.ReSharper.user
 *.csproj.ReSharper
+#Ignore TeamCity stuff
+*.TeamCity.user
+#Ignore FxCop stuff
+*.FxCop
