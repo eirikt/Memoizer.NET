@@ -87,6 +87,10 @@ namespace Memoizer.NET
         #endregion
 
         #region UnMemoize() [remove all memoizers using this particular Func from memoizer^2 registry]
+        public static void DynamicUnMemoize(this object functionToUnMemoize)
+        {
+            MemoizerRegistryHelper.RemoveRegistryMemoizersHavingFunction(functionToUnMemoize, MemoizerRegistry.LAZY_MEMOIZER_REGISTRY.Value);
+        }
         public static void UnMemoize<TResult>(this Func<TResult> functionToUnMemoize)
         {
             MemoizerRegistryHelper.RemoveRegistryMemoizersHavingFunction(functionToUnMemoize, MemoizerRegistry<TResult>.LAZY_MEMOIZER_REGISTRY.Value);
@@ -98,6 +102,7 @@ namespace Memoizer.NET
         public static void UnMemoize<TParam1, TParam2, TResult>(this Func<TParam1, TParam2, TResult> functionToUnMemoize)
         {
             MemoizerRegistryHelper.RemoveRegistryMemoizersHavingFunction(functionToUnMemoize, MemoizerRegistry<TParam1, TParam2, TResult>.LAZY_MEMOIZER_REGISTRY.Value);
+            DynamicUnMemoize(functionToUnMemoize);
         }
         public static void UnMemoize<TParam1, TParam2, TParam3, TResult>(this Func<TParam1, TParam2, TParam3, TResult> functionToUnMemoize)
         {
@@ -133,6 +138,10 @@ namespace Memoizer.NET
         #endregion
 
         #region CachedInvoke(TParam... args)
+        public static dynamic DynamicCachedInvoke(this object functionToBeMemoized, dynamic[] args)
+        {
+            return new MemoizerFactory(functionToBeMemoized).GetMemoizer().InvokeWith(args);
+        }
         public static TResult CachedInvoke<TResult>(this Func<TResult> functionToBeMemoized)
         {
             return new MemoizerFactory<TResult>(functionToBeMemoized).GetMemoizer().Invoke();

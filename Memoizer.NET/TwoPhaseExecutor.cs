@@ -159,7 +159,14 @@ namespace Memoizer.NET
         /// If set to <code>true</code>, info will be written to console.
         /// Default is <code>false</code>.
         /// </summary>
-        public bool Instrumentation { get; set; }
+        public bool Instrumented { get; set; }
+
+        /// <summary>
+        /// Explicit tag for recognizing this particular thread when instrumenting execution.
+        /// </summary>
+        public string Tag { get; set; }
+
+        public bool IsTagged { get { return !string.IsNullOrEmpty(Tag); } }
 
         public string ThreadInfo
         {
@@ -174,11 +181,8 @@ namespace Memoizer.NET
         // The System.Threading.ThreadStart delegate 
         void GetPhasedAction()
         {
-            if (Instrumentation) { Console.WriteLine("Memoizer.NET.TwoPhaseExecutor.Barrier participating task #" + ParticipantNumber + ": Arriving at 1st barrier rendevouz... [" + Barrier.GetInfo() + "]"); }
-            try
-            {
-                Barrier.SignalAndWait(Timeout.Infinite);
-            }
+            if (Instrumented) { Console.WriteLine("Memoizer.NET.TwoPhaseExecutor.Barrier participating thread #" + ParticipantNumber + ": Arriving at 1st barrier rendevouz... [" + Barrier.GetInfo() + "]"); }
+            try { Barrier.SignalAndWait(Timeout.Infinite); }
             catch (ThreadAbortException e)
             {
                 Console.WriteLine(e);
@@ -188,11 +192,8 @@ namespace Memoizer.NET
             ExecutionIndex = Interlocked.Increment(ref EXECUTION_INDEX_COUNTER);
             Action.Invoke();
 
-            if (Instrumentation) { Console.WriteLine("Memoizer.NET.TwoPhaseExecutor.Barrier participating task #" + ParticipantNumber + ": Arriving at 2nd barrier rendevouz... [" + Barrier.GetInfo() + "]"); }
-            try
-            {
-                Barrier.SignalAndWait(Timeout.Infinite);
-            }
+            if (Instrumented) { Console.WriteLine("Memoizer.NET.TwoPhaseExecutor.Barrier participating thread #" + ParticipantNumber + ": Arriving at 2nd barrier rendevouz... [" + Barrier.GetInfo() + "]"); }
+            try { Barrier.SignalAndWait(Timeout.Infinite); }
             catch (ThreadAbortException e)
             {
                 Console.WriteLine(e);
@@ -206,16 +207,17 @@ namespace Memoizer.NET
             //this.thread = null;
         }
 
-        protected AbstractTwoPhaseExecutorThread(Barrier sharedBarrier, bool instrumentation = false)
+        protected AbstractTwoPhaseExecutorThread(Barrier sharedBarrier, bool instrumentation = false, string tag = null)
         {
             Barrier = sharedBarrier;
-            Instrumentation = instrumentation;
+            Instrumented = instrumentation;
+            Tag = tag;
             this.thread = new Thread(GetPhasedAction);
         }
 
         public void Start()
         {
-            if (Instrumentation) { Console.WriteLine("Memoizer.NET.TwoPhaseExecutor.Barrier participating task #" + ParticipantNumber + " thread state: " + this.thread.ThreadState); }
+            if (Instrumented) { Console.WriteLine("Memoizer.NET.TwoPhaseExecutor.Barrier participating thread #" + ParticipantNumber + " thread state: " + this.thread.ThreadState); }
             //if (this.thread.ThreadState == ThreadState.Running)
             //{
             //    this.thread.Abort();
@@ -235,7 +237,7 @@ namespace Memoizer.NET
             //    this.thread = new Thread(GetPhasedAction);
             //}
             this.thread.Start();
-            if (Instrumentation) { Console.WriteLine("Memoizer.NET.TwoPhaseExecutor.Barrier participating task #" + ParticipantNumber + " thread state: " + this.thread.ThreadState); }
+            if (Instrumented) { Console.WriteLine("Memoizer.NET.TwoPhaseExecutor.Barrier participating thread #" + ParticipantNumber + " thread state: " + this.thread.ThreadState); }
         }
     }
 
@@ -254,7 +256,7 @@ namespace Memoizer.NET
             TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
             ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);
             Action = () => Console.WriteLine("Barrier participant #" + ParticipantNumber + " [invocation #" + ExecutionIndex + "] [" + ThreadInfo + "]");
-            if (Instrumentation) { Console.WriteLine(GetType().Namespace + "." + GetType().Name + " #" + TaskNumber + " created... [(Possible) TwoPhaseExecutor.Barrier participant #" + ParticipantNumber + "]"); }
+            if (Instrumented) { Console.WriteLine(GetType().Namespace + "." + GetType().Name + " #" + TaskNumber + " created... [(Possible) TwoPhaseExecutor.Barrier participant #" + ParticipantNumber + "]"); }
         }
     }
 
@@ -269,7 +271,7 @@ namespace Memoizer.NET
             TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
             ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);
             Action = () => action.Invoke(arg1);
-            if (Instrumentation) { Console.WriteLine(GetType().Namespace + "." + GetType().Name + " #" + TaskNumber + " created... [(Possible) TwoPhaseExecutor.Barrier participant #" + ParticipantNumber + "]"); }
+            if (Instrumented) { Console.WriteLine(GetType().Namespace + "." + GetType().Name + " #" + TaskNumber + " created... [(Possible) TwoPhaseExecutor.Barrier participant #" + ParticipantNumber + "]"); }
         }
     }
 
@@ -287,24 +289,70 @@ namespace Memoizer.NET
         internal FuncTwoPhaseExecutorThread(Func<TParam1, TParam2, TResult> function,
                                             Barrier barrier = default(Barrier),
                                             bool isMemoizerClearing = false,
-                                            bool instrumentation = false)
-            : base(barrier, instrumentation)
+                                            bool instrumentation = false,
+                                            string tag = null)
+            : base(barrier, instrumentation, tag)
         {
             this.function = function;
             IsMemoizerClearingThread = isMemoizerClearing;
             TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
             ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);
-            if (IsMemoizerClearingThread)
-            {
-                if (Arg1 != null && Arg1.Equals(default(TParam1)) || Arg2 != null && Arg2.Equals(default(TParam2)))
-                    Action = () => this.function.RemoveFromCache(Arg1, Arg2);
-                else
-                    Action = () => this.function.UnMemoize();
-            }
-            else
-                Action = () => Result = this.function.Invoke(Arg1, Arg2);
 
-            if (Instrumentation) { Console.WriteLine(GetType().Namespace + "." + GetType().Name + " #" + TaskNumber + " created... [(Possible) TwoPhaseExecutor.Barrier participant #" + ParticipantNumber + "]"); }
+            // Don't know about this...
+            //if (IsMemoizerClearingThread)
+            //{
+            //    if (Arg1 != null && Arg1.Equals(default(TParam1)) || Arg2 != null && Arg2.Equals(default(TParam2)))
+            //        Action = () => this.function.RemoveFromCache(Arg1, Arg2);
+            //    else
+            //        Action = () => this.function.UnMemoize();
+            //}
+            //else
+            Action = () => Result = this.function.Invoke(Arg1, Arg2);
+
+            if (Instrumented)
+                if (IsTagged)
+                    Console.WriteLine(GetType().Namespace + "." + GetType().Name + " #" + TaskNumber + " ['" + Tag + "'] created... [(Possible) TwoPhaseExecutor.Barrier participant #" + ParticipantNumber + "]");
+                else
+                    Console.WriteLine(GetType().Namespace + "." + GetType().Name + " #" + TaskNumber + " created... [(Possible) TwoPhaseExecutor.Barrier participant #" + ParticipantNumber + "]");
+        }
+    }
+
+
+    // TODO: Feasable...??
+    public class DynamicTwoPhaseExecutorThread : AbstractTwoPhaseExecutorThread
+    {
+        static int TASK_COUNTER;
+        readonly dynamic invocable;
+
+        public dynamic Result { get; private set; }
+        public dynamic[] Args { get; set; }
+        public bool IsMemoizerClearingThread { get; private set; }
+
+        internal DynamicTwoPhaseExecutorThread(dynamic invocable,
+                                               Barrier barrier = default(Barrier),
+                                               bool isMemoizerClearing = false,
+                                               bool instrumentation = false,
+                                               string tag = null)
+            : base(barrier, instrumentation, tag)
+        {
+            this.invocable = invocable;
+            IsMemoizerClearingThread = isMemoizerClearing;
+            TaskNumber = Interlocked.Increment(ref TASK_COUNTER);
+            ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);
+
+            Action = () => Result = this.invocable.DynamicInvoke(Args);
+            //Action = () => Result = this.invocable.CachedInvoke(Args);
+            //Action = () => Result = new MemoizerFactory(this.invocable).GetMemoizer().InvokeWith(Args);
+
+            //var functionToBeExecuted = function.Value.FunctionToBeExecuted;
+            //dynamic functionToBeExecuted = function.Value.FunctionToBeExecuted;
+            //var memFunctionToBeExecuted = 
+
+            if (Instrumented)
+                if (IsTagged)
+                    Console.WriteLine(GetType().Namespace + "." + GetType().Name + " #" + TaskNumber + " ['" + Tag + "'] created... [(Possible) TwoPhaseExecutor.Barrier participant #" + ParticipantNumber + "]");
+                else
+                    Console.WriteLine(GetType().Namespace + "." + GetType().Name + " #" + TaskNumber + " created... [(Possible) TwoPhaseExecutor.Barrier participant #" + ParticipantNumber + "]");
         }
     }
 
@@ -317,10 +365,11 @@ namespace Memoizer.NET
             int numberOfIterations = 1,
             bool concurrent = true,
             bool memoize = false,
-            bool memoizerClearingTask = false,
+            bool memoizerClearing = false,
             bool idempotentFunction = true,
             long functionLatency = default(long),
-            bool instrumentation = false)
+            bool instrumentation = false,
+            string tag = null)
         {
             return new TwoPhaseExecutionContext<TParam1, TParam2, TResult>(
                 functionToBeMemoized,
@@ -328,10 +377,11 @@ namespace Memoizer.NET
                 numberOfIterations,
                 concurrent,
                 memoize,
-                memoizerClearingTask,
+                memoizerClearing,
                 idempotentFunction,
                 functionLatency,
-                instrumentation);
+                instrumentation,
+                tag);
         }
     }
 
@@ -353,17 +403,26 @@ namespace Memoizer.NET
         {
             internal int NumberOfConcurrentThreadsWitinhEachIteration { get; set; }
             //internal T FunctionToBeExecuted { get; set; }
-            internal object FunctionToBeExecuted { get; set; }
+            internal dynamic FunctionToBeExecuted { get; set; }
+            internal Type FunctionToBeExecutedType { get; set; }
             internal bool IsMemoized { get; set; }
             internal bool IsMemoizerClearingTask { get; set; }
             internal long LatencyInMilliseconds { get; set; }
             internal bool Instrumentation { get; set; }
+            internal string Tag { get; set; }
+
             public override string ToString()
             {
                 StringBuilder stringBuilder = new StringBuilder();
                 stringBuilder.Append("[");
+                if (!string.IsNullOrEmpty(Tag))
+                {
+                    stringBuilder.Append("#");
+                    stringBuilder.Append(Tag);
+                    stringBuilder.Append(": ");
+                }
                 stringBuilder.Append(NumberOfConcurrentThreadsWitinhEachIteration);
-                stringBuilder.Append(" conc. threads, ");
+                stringBuilder.Append(" concurrent threads, ");
                 if (IsMemoizerClearingTask)
                     stringBuilder.Append("mem-clearing");
                 else
@@ -395,43 +454,40 @@ namespace Memoizer.NET
 
         TwoPhaseExecutor twoPhaseExecutor;
 
-        IList<FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>> workerThreads;
+        //IList<FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>> workerThreads;
+        IList<DynamicTwoPhaseExecutorThread> workerThreads;
 
 
         internal TwoPhaseExecutionContext(Func<TParam1, TParam2, TResult> functionToBeExecuted,
-                                         int numberOfConcurrentThreadsWitinhEachIteration,
-                                         int numberOfIterations,
-                                         bool concurrent,
-                                         bool memoize,
-                                         bool isMemoizerClearingTask,
-                                         bool idempotentFunction,
-                                         long functionLatencyInMilliseconds,
-                                         bool instrumentation)
+                                          int numberOfConcurrentThreadsWitinhEachIteration,
+                                          int numberOfIterations,
+                                          bool concurrent,
+                                          bool memoize,
+                                          bool isMemoizerClearing,
+                                          bool idempotentFunction,
+                                          long functionLatencyInMilliseconds,
+                                          bool instrumentation,
+                                          string tag)
         {
             if (numberOfIterations < 0) { throw new ArgumentException("Number-of-iteration parameter ('numberOfIterations') cannot be a negative number"); }
             if (numberOfConcurrentThreadsWitinhEachIteration < 0) { throw new ArgumentException("Number-of-worker-threads parameter ('numberOfConcurrentThreadsWitinhEachIteration') cannot be a negative number"); }
 
-            //this.functionsToBeExecuted = new List<FunctionExecutionContext>(1);
-            //FunctionExecutionContext functionExecutionContext = new FunctionExecutionContext();
-            //functionExecutionContext.NumberOfConcurrentThreadsWitinhEachIteration = numberOfConcurrentThreadsWitinhEachIteration;
-            //functionExecutionContext.FunctionToBeExecuted = functionToBeExecuted;
-            //functionExecutionContext.IsMemoized = memoize;
-            //functionExecutionContext.IsMemoizerClearingTask = isMemoizerClearingTask;
-            //functionExecutionContext.LatencyInMilliseconds = functionLatencyInMilliseconds;
-            //functionExecutionContext.Instrumentation = instrumentation;
-            //this.functionsToBeExecuted.Add(functionExecutionContext);
-            this.functionsToBeExecuted = new Dictionary<long, FunctionExecutionContext>(1);
-            FunctionExecutionContext functionExecutionContext = new FunctionExecutionContext();
-            functionExecutionContext.NumberOfConcurrentThreadsWitinhEachIteration = numberOfConcurrentThreadsWitinhEachIteration;
-            functionExecutionContext.FunctionToBeExecuted = functionToBeExecuted;
-            functionExecutionContext.IsMemoized = memoize;
-            functionExecutionContext.IsMemoizerClearingTask = isMemoizerClearingTask;
-            functionExecutionContext.LatencyInMilliseconds = functionLatencyInMilliseconds;
-            functionExecutionContext.Instrumentation = instrumentation;
-
+            FunctionExecutionContext functionExecutionContext =
+                new FunctionExecutionContext
+                {
+                    NumberOfConcurrentThreadsWitinhEachIteration = numberOfConcurrentThreadsWitinhEachIteration,
+                    FunctionToBeExecuted = functionToBeExecuted,
+                    FunctionToBeExecutedType = functionToBeExecuted.GetType(),
+                    IsMemoized = memoize,
+                    IsMemoizerClearingTask = isMemoizerClearing,
+                    LatencyInMilliseconds = functionLatencyInMilliseconds,
+                    Instrumentation = instrumentation,
+                    Tag = tag
+                };
+            this.functionsToBeExecuted =
+                new Dictionary<long, FunctionExecutionContext>(1) { { HashHelper.CreateFunctionHash(functionToBeExecuted), functionExecutionContext } };
             //this.functionsToBeExecuted.Add(functionToBeExecuted, functionExecutionContext);
             //this.functionsToBeExecuted.Add(MemoizerHelper.CreateFunctionHash(functionToBeExecuted), functionExecutionContext);
-            this.functionsToBeExecuted.Add(HashHelper.CreateFunctionHash(functionToBeExecuted), functionExecutionContext);
 
             this.numberOfIterations = numberOfIterations;
 
@@ -544,9 +600,9 @@ namespace Memoizer.NET
             //if (this.NumberOfConcurrentWorkerThreads == 1 || anotherTwoPhaseExecutionContext.NumberOfConcurrentWorkerThreads == 1)
             //    this.IsMergedWithOneOrMoreSingleThreadContexts = true;
 
-            foreach (var VARIABLE in anotherTwoPhaseExecutionContext.functionsToBeExecuted)
+            foreach (var functionToBeExecuted in anotherTwoPhaseExecutionContext.functionsToBeExecuted)
             {
-                this.functionsToBeExecuted.Add(VARIABLE.Key, VARIABLE.Value);
+                this.functionsToBeExecuted.Add(functionToBeExecuted.Key, functionToBeExecuted.Value);
             }
 
             if (!anotherTwoPhaseExecutionContext.isIdempotentContext)
@@ -574,19 +630,6 @@ namespace Memoizer.NET
             Console.WriteLine(twoPhaseExecutionContextResultSet.GetReport());
 
             // Assert latency (everything in milliseconds)
-            //double minimumLatency = this.numberOfIterations * LatencyInMilliseconds;
-            //if (memoize) { minimumLatency = 1 * LatencyInMilliseconds; }
-
-            //long duration = twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds;
-
-            //long calculatedOverhead = CalculateOverheadInMillisecondsFor();
-
-            //double maximumLatency = minimumLatency + calculatedOverhead;
-
-            //if (duration < minimumLatency)
-            //    throw new ApplicationException("Latency violation...");
-            //if (duration > maximumLatency)
-            //    throw new ApplicationException("Latency violation...");
             long duration = twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds;
             if (duration > MaximumExpectedLatencyInMilliseconds)
                 throw new ApplicationException("Memoizer.NET.TwoPhaseExecutor: Latency violation! [to slow...]");
@@ -682,28 +725,51 @@ namespace Memoizer.NET
             {
                 this.twoPhaseExecutor = new TwoPhaseExecutor(NumberOfConcurrentWorkerThreads, this.instrumentation);
 
-                this.workerThreads = new List<FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>>(NumberOfConcurrentWorkerThreads);
+                //this.workerThreads = new List<FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>>(NumberOfConcurrentWorkerThreads);
+                this.workerThreads = new List<DynamicTwoPhaseExecutorThread>(NumberOfConcurrentWorkerThreads);
 
                 foreach (var function in functionsToBeExecuted)
                     for (int j = 0; j < function.Value.NumberOfConcurrentThreadsWitinhEachIteration; ++j)
-                        if (function.Value.IsMemoizerClearingTask)
-                            this.workerThreads.Add(new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>(function: ((Func<TParam1, TParam2, TResult>)function.Value.FunctionToBeExecuted),
-                                                                                                             barrier: twoPhaseExecutor.Barrier,
-                                                                                                             isMemoizerClearing: true,
-                                                                                                             instrumentation: function.Value.Instrumentation));
+                        //if (function.Value.IsMemoizerClearingTask)
+                        //    this.workerThreads.Add(new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>(function: ((Func<TParam1, TParam2, TResult>)function.Value.FunctionToBeExecuted),
+                        //                                                                                     barrier: twoPhaseExecutor.Barrier,
+                        //                                                                                     isMemoizerClearing: true,
+                        //                                                                                     instrumentation: function.Value.Instrumentation,
+                        //                                                                                     tag: function.Value.Tag));
+                        //else
+                        if (function.Value.IsMemoized)
+                        {
+                            //this.workerThreads.Add(new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>(function: ((Func<TParam1, TParam2, TResult>)function.Value.FunctionToBeExecuted).CachedInvoke,
+                            //                                                                                 barrier: twoPhaseExecutor.Barrier,
+                            //                                                                                 instrumentation: function.Value.Instrumentation,
+                            //                                                                                 tag: function.Value.Tag));
+                            var functionToBeExecuted = function.Value.FunctionToBeExecuted;
+                            //dynamic functionToBeExecuted = function.Value.FunctionToBeExecuted;
+                            //var memFunctionToBeExecuted = new MemoizerFactory(functionToBeExecuted).GetMemoizer().InvokeWith(new object[] { arg1, arg2 });
+                            //var act = new Action(new MemoizerFactory(functionToBeExecuted).GetMemoizer().InvokeWith(new object[]{arg1,arg2}));
+                            Func<dynamic, dynamic, dynamic> act = new Func<dynamic, dynamic, dynamic>(delegate(dynamic arg11, dynamic arg22)
+                            {
+                                return new MemoizerFactory(functionToBeExecuted).GetMemoizer().InvokeWith(new object[] { arg11, arg22 });
+                            });
+                            this.workerThreads.Add(new DynamicTwoPhaseExecutorThread(invocable: act,//functionToBeExecuted.DynamicCachedInvoke,
+                                                                                     barrier: twoPhaseExecutor.Barrier,
+                                                                                     instrumentation: function.Value.Instrumentation,
+                                                                                     tag: function.Value.Tag));
+                        }
                         else
-                            if (function.Value.IsMemoized)
-                                this.workerThreads.Add(new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>(function: ((Func<TParam1, TParam2, TResult>)function.Value.FunctionToBeExecuted).CachedInvoke,
-                                                                                                                 barrier: twoPhaseExecutor.Barrier,
-                                                                                                                 instrumentation: function.Value.Instrumentation));
-                            else
-                                this.workerThreads.Add(new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>(function: ((Func<TParam1, TParam2, TResult>)function.Value.FunctionToBeExecuted),
-                                                                                                                 barrier: twoPhaseExecutor.Barrier,
-                                                                                                                 instrumentation: function.Value.Instrumentation));
+                            //this.workerThreads.Add(new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>(function: ((Func<TParam1, TParam2, TResult>)function.Value.FunctionToBeExecuted),
+                            //                                                                                 barrier: twoPhaseExecutor.Barrier,
+                            //                                                                                 instrumentation: function.Value.Instrumentation,
+                            //                                                                                 tag: function.Value.Tag));
+                            this.workerThreads.Add(new DynamicTwoPhaseExecutorThread(invocable: function.Value.FunctionToBeExecuted,
+                                                                                     barrier: twoPhaseExecutor.Barrier,
+                                                                                     instrumentation: function.Value.Instrumentation,
+                                                                                     tag: function.Value.Tag));
                 for (int j = 0; j < NumberOfConcurrentWorkerThreads; ++j)
                 {
-                    workerThreads[j].Arg1 = arg1;
-                    workerThreads[j].Arg2 = arg2;
+                    //workerThreads[j].Arg1 = arg1;
+                    //workerThreads[j].Arg2 = arg2;
+                    workerThreads[j].Args = new dynamic[] { arg1, arg2 };
                     workerThreads[j].Start();
                 }
                 twoPhaseExecutor.Start();
@@ -734,14 +800,17 @@ namespace Memoizer.NET
 
     public class TwoPhaseExecutionContextResult<TParam1, TParam2, TResult>
     {
-        readonly FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>[] funcTwoPhaseExecutorThreads;
+        //readonly FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>[] funcTwoPhaseExecutorThreads;
+        readonly DynamicTwoPhaseExecutorThread[] funcTwoPhaseExecutorThreads;
 
         internal TwoPhaseExecutionContextResult(int numberOfParticipatingWorkerThreads)
         {
-            this.funcTwoPhaseExecutorThreads = new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>[numberOfParticipatingWorkerThreads];
+            //this.funcTwoPhaseExecutorThreads = new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>[numberOfParticipatingWorkerThreads];
+            this.funcTwoPhaseExecutorThreads = new DynamicTwoPhaseExecutorThread[numberOfParticipatingWorkerThreads];
         }
 
-        internal FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>[] WorkerThread { get { return this.funcTwoPhaseExecutorThreads; } }
+        //internal FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>[] WorkerThread { get { return this.funcTwoPhaseExecutorThreads; } }
+        internal DynamicTwoPhaseExecutorThread[] WorkerThread { get { return this.funcTwoPhaseExecutorThreads; } }
     }
 
 
@@ -761,7 +830,8 @@ namespace Memoizer.NET
 
         internal TwoPhaseExecutionContextResult<TParam1, TParam2, TResult>[] ExecutionResult { get { return this.twoPhaseExecutionContextResults; } }
 
-        public FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult> this[int iterationIndex, int concurrentThreadIndex]
+        //public FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult> this[int iterationIndex, int concurrentThreadIndex]
+        public DynamicTwoPhaseExecutorThread this[int iterationIndex, int concurrentThreadIndex]
         {
             get
             {
@@ -774,7 +844,8 @@ namespace Memoizer.NET
 
                 TwoPhaseExecutionContextResult<TParam1, TParam2, TResult> twoPhaseExecutionContextResult = this.twoPhaseExecutionContextResults[iterationIndex];
 
-                FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>[] funcTwoPhaseExecutorThreads = twoPhaseExecutionContextResult.WorkerThread;
+                //FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>[] funcTwoPhaseExecutorThreads = twoPhaseExecutionContextResult.WorkerThread;
+                DynamicTwoPhaseExecutorThread[] funcTwoPhaseExecutorThreads = twoPhaseExecutionContextResult.WorkerThread;
                 if (funcTwoPhaseExecutorThreads == null || funcTwoPhaseExecutorThreads.Length < 1)
                     throw new Exception("No FuncTwoPhaseExecutorThreads (worker threads) are available");
                 if (concurrentThreadIndex > funcTwoPhaseExecutorThreads.Length - 1 && funcTwoPhaseExecutorThreads.Length == 1)
@@ -788,40 +859,11 @@ namespace Memoizer.NET
 
         public string GetReport()
         {
-            //bool isConcurrentExecution = this.twoPhaseExecutionContext.IsConcurrent;
-
             StringBuilder reportBuilder = new StringBuilder();
-
             reportBuilder.Append(this.twoPhaseExecutionContext.NumberOfIterations);
             reportBuilder.Append(this.twoPhaseExecutionContext.NumberOfIterations == 1 ? " round " : " rounds of ");
-            //reportBuilder.Append("of " + this.twoPhaseExecutionContext.NumberOfConcurrentWorkerThreads + " ");
-
-            //reportBuilder.Append(this.twoPhaseExecutionContext.IsConcurrent ? "concurrent" : "sequential");
-
-            //reportBuilder.Append(this.twoPhaseExecutionContext.IsMemoized ? ", memoized" : ", non-memoized");
-            ////reportBuilder.Append(", identical method invocations ");
-            //reportBuilder.Append(" method invocations");
             reportBuilder.Append(this.twoPhaseExecutionContext.FunctionListing);
-
             reportBuilder.Append(" having approx. " + this.twoPhaseExecutionContext.LatencyListing + " ms latency - took " + this.StopWatch.DurationInMilliseconds + " ms | " + this.StopWatch.DurationInTicks + " ticks");
-
-            //reportBuilder.Append(" (should take ");
-
-            //if (this.twoPhaseExecutionContext.IsMemoized)
-            //    reportBuilder.Append(1 * this.twoPhaseExecutionContext.LatencyInMilliseconds);
-            //else
-            //    reportBuilder.Append(this.twoPhaseExecutionContext.NumberOfIterations * this.twoPhaseExecutionContext.LatencyInMilliseconds);
-
-            //reportBuilder.Append(" <= ");
-            //reportBuilder.Append(StopWatch.DurationInMilliseconds);
-            //reportBuilder.Append(" <= ");
-
-            //if (this.twoPhaseExecutionContext.IsMemoized)
-            //    reportBuilder.Append((1 * this.twoPhaseExecutionContext.LatencyInMilliseconds) + this.twoPhaseExecutionContext.CalculateOverheadInMillisecondsFor());//this.twoPhaseExecutionContext.NumberOfConcurrentWorkerThreads)));
-            //else
-            //    reportBuilder.Append(((this.twoPhaseExecutionContext.NumberOfIterations * this.twoPhaseExecutionContext.LatencyInMilliseconds) + this.twoPhaseExecutionContext.CalculateOverheadInMillisecondsFor()));//this.twoPhaseExecutionContext.NumberOfConcurrentWorkerThreads)));
-
-            //reportBuilder.Append(" ms)");
             reportBuilder.Append(" (should take ");
             reportBuilder.Append(this.twoPhaseExecutionContext.MinimumExpextedLatencyInMilliseconds);
             reportBuilder.Append(" <= ");
@@ -829,10 +871,8 @@ namespace Memoizer.NET
             reportBuilder.Append(" <= ");
             reportBuilder.Append(this.twoPhaseExecutionContext.MaximumExpectedLatencyInMilliseconds);
             reportBuilder.Append(" ms)");
-
             if (this.twoPhaseExecutionContext.NumberOfConcurrentWorkerThreads == 1) reportBuilder.Append(" (extra 1-thread-only latency expectation penalty added...)");
             if (this.twoPhaseExecutionContext.IsMergedWithOneOrMoreSingleThreadContexts) reportBuilder.Append(" (extra 1-thread-only latency expectation penalty added...)");
-
             return reportBuilder.ToString();
         }
     }

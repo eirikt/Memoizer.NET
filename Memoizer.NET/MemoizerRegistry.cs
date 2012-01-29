@@ -112,6 +112,17 @@ namespace Memoizer.NET
     }
     #endregion
 
+    #region MemoizerRegistry (dynamic)
+    static class MemoizerRegistry
+    {
+        internal static readonly Lazy<Memoizer<MemoizerConfiguration, Memoizer>> LAZY_MEMOIZER_REGISTRY =
+           new Lazy<Memoizer<MemoizerConfiguration, Memoizer>>(
+               () => new Memoizer<MemoizerConfiguration, Memoizer>(
+                   memoizerConfig => new Memoizer(memoizerConfig)),
+                   LazyThreadSafetyMode.PublicationOnly);
+    }
+    #endregion
+
     #region MemoizerRegistry<TResult>
     static class MemoizerRegistry<TResult>
     {
@@ -175,9 +186,9 @@ namespace Memoizer.NET
             new Lazy<Memoizer<MemoizerConfiguration, Memoizer<TParam1, TParam2, TResult>>>(
                 () => new Memoizer<MemoizerConfiguration, Memoizer<TParam1, TParam2, TResult>>(
                     memoizerConfig => new Memoizer<TParam1, TParam2, TResult>(memoizerConfig)),
-            //isThreadSafe: typeof(IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TParam2, TResult>>) is IThreadSafe); // System.InvalidOperationException: ValueFactory attempted to access the Value property of this instance.
-            //LazyThreadSafetyMode.None); // System.InvalidOperationException: ValueFactory attempted to access the Value property of this instance.
-            //LazyThreadSafetyMode.ExecutionAndPublication); // OK
+                    //isThreadSafe: typeof(IMemoizer<MemoizerConfiguration, IMemoizer<TParam1, TParam2, TResult>>) is IThreadSafe); // System.InvalidOperationException: ValueFactory attempted to access the Value property of this instance.
+                    //LazyThreadSafetyMode.None); // System.InvalidOperationException: ValueFactory attempted to access the Value property of this instance.
+                    //LazyThreadSafetyMode.ExecutionAndPublication); // OK
                     LazyThreadSafetyMode.PublicationOnly); // OK
 
         internal static void RemoveCachedElementsFromRegistryMemoizersHavingFunction(Func<TParam1, TParam2, TResult> memoizedFunction, TParam1 arg1, TParam2 arg2)
@@ -188,6 +199,7 @@ namespace Memoizer.NET
                 Task<Memoizer<TParam1, TParam2, TResult>> cacheValueTask = (Task<Memoizer<TParam1, TParam2, TResult>>)LAZY_MEMOIZER_REGISTRY.Value.cache.Get(memoizerKey);
                 IMemoizer<TParam1, TParam2, TResult> memoizer = cacheValueTask.Result;
                 memoizer.Remove(arg1, arg2);
+                Console.WriteLine("Removed from cache: " + arg1 + ", " + arg2);
             }
         }
     }

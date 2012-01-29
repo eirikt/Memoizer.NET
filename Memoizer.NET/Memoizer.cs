@@ -49,6 +49,10 @@ namespace Memoizer.NET
         int NumberOfTimesCleared { get; }
         int NumberOfElementsCleared { get; }
     }
+    public interface IMemoizer : IThreadSafe, IDisposable, IClearable, IManageableMemoizer
+    {
+        dynamic InvokeWith(dynamic[] param);
+    }
     public interface IMemoizer<out TResult> : IThreadSafe, IDisposable, IClearable, IManageableMemoizer
     {
         TResult Invoke();
@@ -202,6 +206,72 @@ namespace Memoizer.NET
 
             return cachedValue;
         }
+    }
+
+
+    internal class Memoizer : IMemoizer
+    {
+        readonly dynamic functionToBeMemoized;
+        readonly CacheItemPolicy cacheItemPolicy;
+        readonly string key;
+
+
+        public Memoizer(MemoizerConfiguration memoizerConfig) : this(memoizerConfig, shared: true) { }
+
+        public Memoizer(MemoizerConfiguration memoizerConfig, bool shared)
+        {
+            this.functionToBeMemoized = memoizerConfig.Function;
+            this.cacheItemPolicy = CacheItemPolicyFactory.CreateCacheItemPolicy(memoizerConfig.ExpirationType, memoizerConfig.ExpirationValue, memoizerConfig.ExpirationTimeUnit);
+            this.key = memoizerConfig.GetHashCode().ToString();
+        }
+
+
+        static readonly object @NOARG_MEMOIZER_LOCK = new Object();
+
+        public dynamic InvokeWith(dynamic[] param)
+        {
+            // Seems to work, but ugh...
+            lock (@NOARG_MEMOIZER_LOCK)
+            {
+                dynamic val = MemoryCache.Default.Get(this.key);
+                //if (val.Equals(default(TResult)))
+                if (val == null)
+                    MemoryCache.Default.Set(new CacheItem(this.key, this.functionToBeMemoized.DynamicInvoke(param)), this.cacheItemPolicy);
+            }
+            return MemoryCache.Default.GetCacheItem(this.key).Value;
+
+            // TODO: does not work... why?
+            //CacheItem taskCacheItem = MemoryCache.Default.GetCacheItem(this.key);
+            //if (taskCacheItem == null)
+            //{
+            //    CacheItem newCacheItem = new CacheItem(this.key, new Task<TResult>(() => this.functionToBeMemoized()));
+
+            //    // The 'AddOrGetExisting' method is atomic: If a cached value for the key exists, the existing cached value is returned; otherwise null is returned as value property
+            //    taskCacheItem = MemoryCache.Default.AddOrGetExisting(newCacheItem, this.cacheItemPolicy);
+            //    if (taskCacheItem.Value == null)
+            //    {
+            //        taskCacheItem.Value = newCacheItem.Value;
+
+            //        // The 'Start' method is idempotent
+            //        ((Task<TResult>)taskCacheItem.Value).Start();
+            //    }
+            //}
+
+            //// The 'Result' property blocks until a value is available
+            //return ((Task<TResult>)taskCacheItem.Value).Result;
+        }
+
+        public void Dispose() { MemoryCache.Default.Remove(key); }
+
+        public void Clear() { Dispose(); }
+
+        public int NumberOfTimesInvoked { get { throw new NotImplementedException(); } }
+
+        public int NumberOfTimesNoCacheInvoked { get { throw new NotImplementedException(); } }
+
+        public int NumberOfTimesCleared { get { throw new NotImplementedException(); } }
+
+        public int NumberOfElementsCleared { get { throw new NotImplementedException(); } }
     }
 
 

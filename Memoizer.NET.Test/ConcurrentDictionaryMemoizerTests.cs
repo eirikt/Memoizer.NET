@@ -83,7 +83,7 @@ namespace Memoizer.NET.Test
                 ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);
                 this.memoizer = memoizer;
                 Action = () => this.Result = this.memoizer.Invoke(MemoizerTests.ReallySlowNetworkStaticInvocation, stringArg, longArg);
-                if (Instrumentation)
+                if (Instrumented)
                     Console.WriteLine(this.GetType().Name + " #" + TaskNumber + " created... [(possible) barrier participant #" + ParticipantNumber + "]");
             }
         }

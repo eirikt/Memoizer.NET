@@ -62,7 +62,7 @@ namespace Memoizer.NET.Test
                 ParticipantNumber = Interlocked.Increment(ref PARTICIPANT_COUNTER);
                 Action = () => Console.WriteLine("Barrier participant #" + ParticipantNumber + " [invocation #" + ExecutionIndex + "] [" + ThreadInfo + "]");
 
-                if (Instrumentation)
+                if (Instrumented)
                     Console.WriteLine(this.GetType().Name + " #" + TaskNumber + " created... [(possible) barrier participant #" + ParticipantNumber + "]");
             }
         }

@@ -423,7 +423,7 @@ namespace Memoizer.NET
         }
     }
 
-
+    
     public class MemoizerFactory_AwaitingExpirationUnit<TParam1, TParam2, TParam3, TParam4, TResult>
     {
         readonly ExpirationType expirationType = ExpirationType.Relative;
@@ -451,6 +451,68 @@ namespace Memoizer.NET
         public MemoizerFactory<TParam1, TParam2, TParam3, TParam4, TResult> Minutes { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Minutes); } }
         public MemoizerFactory<TParam1, TParam2, TParam3, TParam4, TResult> Hours { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Hours); } }
         public MemoizerFactory<TParam1, TParam2, TParam3, TParam4, TResult> Days { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Days); } }
+    }
+    #endregion
+
+    #region MemoizerFactory (dynamic)
+    public class MemoizerFactory
+    {
+
+        readonly dynamic function;
+        internal dynamic Function { get { return this.function; } }
+
+        internal ExpirationType ExpirationType { get; set; }
+        internal int ExpirationValue { get; set; }
+        internal TimeUnit ExpirationTimeUnit { get; set; }
+
+        Action<String> loggerMethod;
+        internal Action<String> LoggerAction { get { return this.loggerMethod; } }
+
+        MemoizerConfiguration MemoizerConfiguration { get { return new MemoizerConfiguration(this.function, this.ExpirationType, this.ExpirationValue, this.ExpirationTimeUnit, this.loggerMethod); } }
+        internal MemoizerFactory(dynamic functionToBeMemoized) { this.function = functionToBeMemoized; }
+        public MemoizerFactory_AwaitingExpirationUnit KeepItemsCachedFor(int cacheExpirationValue) { return new MemoizerFactory_AwaitingExpirationUnit(cacheExpirationValue, this); }
+        public MemoizerFactory InstrumentWith(Action<String> loggerMethod)
+        {
+            this.loggerMethod = loggerMethod;
+            return this;
+        }
+        public IMemoizer CreateMemoizer() { return GetMemoizer(false); }
+        public IMemoizer GetMemoizer(bool cacheAndShareMemoizerInstance = true)
+        {
+            return cacheAndShareMemoizerInstance
+                ? MemoizerRegistry.LAZY_MEMOIZER_REGISTRY.Value.InvokeWith(this.MemoizerConfiguration)
+                : new Memoizer(this.MemoizerConfiguration);
+        }
+    }
+
+
+    public class MemoizerFactory_AwaitingExpirationUnit
+    {
+        readonly ExpirationType expirationType = ExpirationType.Relative;
+        readonly int expirationValue;
+
+        readonly MemoizerFactory memoizerFactory;
+
+        public MemoizerFactory_AwaitingExpirationUnit(int expirationValue, MemoizerFactory memoizerFactory)
+        {
+            this.expirationValue = expirationValue;
+            this.memoizerFactory = memoizerFactory;
+        }
+
+        MemoizerFactory ConfigureCacheItemPolicyWithTimeUnit(TimeUnit timeUnit)
+        {
+            this.memoizerFactory.ExpirationType = this.expirationType;
+            this.memoizerFactory.ExpirationValue = this.expirationValue;
+            this.memoizerFactory.ExpirationTimeUnit = timeUnit;
+
+            return this.memoizerFactory;
+        }
+
+        public MemoizerFactory Milliseconds { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Milliseconds); } }
+        public MemoizerFactory Seconds { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Seconds); } }
+        public MemoizerFactory Minutes { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Minutes); } }
+        public MemoizerFactory Hours { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Hours); } }
+        public MemoizerFactory Days { get { return ConfigureCacheItemPolicyWithTimeUnit(TimeUnit.Days); } }
     }
     #endregion
 }

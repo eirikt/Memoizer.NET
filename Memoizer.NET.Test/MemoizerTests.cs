@@ -348,7 +348,8 @@ namespace Memoizer.NET.Test
         //[Ignore("Temporary disabled...")]
         [Test]
         public void MultiThreadedMemoizedInvocation_Memoizer(
-            [Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads
+            //[Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads
+            [Values(1, 3)] int numberOfConcurrentWorkerThreads
             //,[Values(1,3)] int numberOfIterations
             )
         {
@@ -398,8 +399,8 @@ namespace Memoizer.NET.Test
         //[Ignore("Temporary disabled...")]
         [Test]
         public void MultiThreadedMemoizedInvocation_DifferentInvocations_Conjunction_1(
-            [Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads
-            //[Values(1,10)] int numberOfConcurrentWorkerThreads
+            //[Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads
+            [Values(1)] int numberOfConcurrentWorkerThreads
             //,[Values(1, 3)] int numberOfIterations
             )
         {
@@ -421,7 +422,7 @@ namespace Memoizer.NET.Test
                                                                               numberOfIterations: 100, // N/A as it is merged into another TwoPhaseExecutionContext
                                                                               concurrent: false, // Not implemented / N/A only 'concurrent: true is supported so far
                                                                               memoize: true,
-                                                                              memoizerClearingTask: false,
+                                                                              memoizerClearing: false,
                                                                               functionLatency: 500,
                                                                               instrumentation: false);
 
@@ -441,12 +442,12 @@ namespace Memoizer.NET.Test
         }
 
 
-        
+
         //[Ignore("Temporary disabled...")]
         [Test]
         public void MultiThreadedMemoizedInvocation_DifferentInvocations_Conjunction_2(
             //[Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads
-            [Values(1,20)] int numberOfConcurrentWorkerThreads
+            [Values(1, 20)] int numberOfConcurrentWorkerThreads
             //,[Values(2)] int numberOfIterations
             )
         {
@@ -468,11 +469,12 @@ namespace Memoizer.NET.Test
                                                                               numberOfIterations: 100, // N/A as it is merged into another TwoPhaseExecutionContext
                                                                               concurrent: false, // Not implemented / N/A only 'concurrent: true is supported so far
                                                                               memoize: false,
-                                                                              memoizerClearingTask: false,
+                                                                              memoizerClearing: false,
                                                                               functionLatency: default(long), // N/A as it is merged into another TwoPhaseExecutionContext
                                                                               instrumentation: false);
 
-                /*TwoPhaseExecutionContext<string, long, string> mergedTwoPhaseExecutionContext = */twoPhaseExecutionContext1.And(twoPhaseExecutionContext2);
+                /*TwoPhaseExecutionContext<string, long, string> mergedTwoPhaseExecutionContext = */
+                twoPhaseExecutionContext1.And(twoPhaseExecutionContext2);
                 //mergedTwoPhaseExecutionContext.Test();
                 twoPhaseExecutionContext1.Test();
 
@@ -490,41 +492,58 @@ namespace Memoizer.NET.Test
         }
 
 
-        //[Ignore("Temporary disabled...")]
+        [Ignore("Don't know if this is the way to go...")]
         [Test]
-        public void MultiThreadedMemoizedInvocationWithClearing_Memoizer(
+        public void MultiThreadedMemoizedInvocationUsingEmbeddedMemoizerClearing_Memoizer(
             //[Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads
-            [Values(1, 3)] int numberOfConcurrentWorkerThreads
+            [Values(2)] int numberOfConcurrentWorkerThreads
             //,[Values(1, 3)] int numberOfIterations
             )
         {
-            try
-            {
-                //int NUMBER_OF_ITERATIONS = numberOfIterations;
+            Console.WriteLine();
+            Console.WriteLine();
+            //try
+            //{
+            //int NUMBER_OF_ITERATIONS = numberOfIterations;
 
-                TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext1 =
-                    this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads,
-                                                                              numberOfIterations: NUMBER_OF_ITERATIONS,
-                                                                              memoize: true,
-                                                                              instrumentation: false);
+            //TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext1 =
+            //    this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads,
+            //                                                              numberOfIterations: NUMBER_OF_ITERATIONS,
+            //                                                              memoize: true,
+            //                                                              instrumentation: true);
 
-                TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext2 =
-                    this.reallySlowNetworkInvocation1d.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 1,
-                                                                              numberOfIterations: 100, // N/A as it is merged into another TwoPhaseExecutionContext
-                                                                              concurrent: true, // N/A only 'concurrent: true is supported so far
-                                                                              memoize: true, // N/A ignored/overrided by 'memoizerClearingTask: true'
-                                                                              memoizerClearingTask: true,
-                                                                              functionLatency: default(long), 
-                                                                              instrumentation: true);
-                
-                twoPhaseExecutionContext1.And(twoPhaseExecutionContext2).Test();
-            }
-            finally
-            {
-                //// Clean-up: must remove memoized function from registry when doing several test method iterations
-                //this.reallySlowNetworkInvocation1a.UnMemoize();
-                ////this.reallySlowNetworkInvocation1d.UnMemoize();
-            }
+            //TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext2 =
+            //    this.reallySlowNetworkInvocation1d.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 1,
+            //                                                              numberOfIterations: 100, // N/A as it is merged into another TwoPhaseExecutionContext
+            //                                                              concurrent: true, // N/A only 'concurrent: true is supported so far
+            //                                                              memoize: true, // N/A ignored/overrided by 'memoizerClearingTask: true'
+            //                                                              memoizerClearingTask: true,
+            //                                                              functionLatency: 0,
+            //                                                              instrumentation: true);
+
+            //twoPhaseExecutionContext1.And(twoPhaseExecutionContext2).Test();
+            this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads,
+                                                                      numberOfIterations: NUMBER_OF_ITERATIONS,
+                                                                      memoize: true,
+                                                                      instrumentation: true)
+
+            .And(this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 1,
+                                                                           numberOfIterations: 100, // N/A as it is merged into another TwoPhaseExecutionContext
+                                                                           concurrent: true, // N/A only 'concurrent: true is supported so far
+                                                                           memoize: true, // N/A ignored/overrided by 'memoizerClearingTask: true'
+                                                                           memoizerClearing: true,
+                                                                           functionLatency: 0,
+                                                                           instrumentation: true,
+                                                                           tag: "mem-clearing"))
+            .TestUsingArguments("lkjlkjlkjlj", 3456);
+
+            //}
+            //finally
+            //{
+            //    // Clean-up: must remove memoized function from registry when doing several test method iterations
+            //    this.reallySlowNetworkInvocation1a.UnMemoize();
+            //    //this.reallySlowNetworkInvocation1d.UnMemoize();
+            //}
         }
 
 
@@ -546,23 +565,13 @@ namespace Memoizer.NET.Test
                                                                               numberOfIterations: NUMBER_OF_ITERATIONS,
                                                                               memoize: true,
                                                                               instrumentation: false);
+                Action reallySlowNetworkInvocation1a_cacheClearing =
+                    () => this.reallySlowNetworkInvocation1a.RemoveFromCache<string, long, string>("yo", 13);
 
-                TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext2 =
-                    this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads,
-                                                                              numberOfIterations: NUMBER_OF_ITERATIONS,
-                                                                              memoize: false,
-                                                                              instrumentation: false);
+                //TwoPhaseExecutionContext twoPhaseExecutionContext2 =
+                //    reallySlowNetworkInvocation1a_cacheClearing.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 1))
 
-                Func<string, long, string> reallySlowNetworkInvocation1a_cacheClearing =
-                    new Func<string, long, string>(delegate(string stringArg, long longArg)
-                        {
-                            //return ReallySlowNetworkStaticInvocation(stringArg, longArg);
-
-                            Thread.Sleep(NETWORK_RESPONSE_LATENCY_IN_MILLIS);
-                            return Concatinate(METHOD_RESPONSE_ELEMENT, stringArg, Convert.ToString(longArg));
-                        });
-
-                twoPhaseExecutionContext1.And(twoPhaseExecutionContext2).Test();
+                //twoPhaseExecutionContext1.And(twoPhaseExecutionContext2).TestUsingArguments("yo", 13);
             }
             finally
             {
