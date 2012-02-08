@@ -1,22 +1,22 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" DefaultTargets="Settings;Clean;Build;Test" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0" DefaultTargets="Settings;Clean;Build;Test" >
 
   <ItemGroup>
     <ProjectReferences Include="Memoizer.Net\Memoizer.Net.csproj"/>
     <TestProjectReferences Include="Memoizer.Net.Test\Memoizer.Net.Test.csproj"/>
   </ItemGroup>
-  
+
   <Target Name="RunDefaultTargetsForAllProjects">
     <MSBuild Projects="@(ProjectReferences)" StopOnFirstFailure="true" ContinueOnError="false"/>
     <MSBuild Projects="@(TestProjectReferences)" StopOnFirstFailure="true" ContinueOnError="false"/>
   </Target>
-  
+
   <Target Name="Default">
     <MSBuild Projects="@(ProjectReferences)" StopOnFirstFailure="true" ContinueOnError="false"/>
     <MSBuild Projects="@(TestProjectReferences)" StopOnFirstFailure="true" ContinueOnError="false"/>
   </Target>
-  
-   <Target Name="Settings">
+
+  <Target Name="Settings">
     <Message Text="Target 'Settings' invoked..."/>
 
     <Message Text="Program Files path         : $(ProgramFiles)" />
@@ -34,7 +34,7 @@
 
     <MSBuild Projects="@(ProjectReferences)" Targets="Settings"/>
     <MSBuild Projects="@(TestProjectReferences)" Targets="Settings"/>
-	
+
     <Message Text="Target 'Settings' completed!"/>
   </Target>
 
