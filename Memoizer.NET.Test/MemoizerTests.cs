@@ -48,7 +48,7 @@ namespace Memoizer.NET.Test
 
 
         static int ReallySlowNetworkStaticInvocation_INVOCATION_COUNTER;
-        static internal string ReallySlowNetworkStaticInvocation(string stringArg, long longArg)
+        internal static string ReallySlowNetworkStaticInvocation(string stringArg, long longArg)
         {
             //Console.WriteLine("TypicalNetworkInvocation invoked...");
             Thread.Sleep(NETWORK_RESPONSE_LATENCY_IN_MILLIS);
@@ -237,7 +237,42 @@ namespace Memoizer.NET.Test
         [Test]
         public void MultiThreadedDirectInvocation()
         {
-            this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: NUMBER_OF_CONCURRENT_TASKS, numberOfIterations: NUMBER_OF_ITERATIONS).Test();
+            // Original test
+            //this.reallySlowNetworkInvocation1a.CreateExecutionContext(threads: NUMBER_OF_CONCURRENT_TASKS, iterations: NUMBER_OF_ITERATIONS).Test();
+
+            TwoPhaseExecutionContext t =
+                this.reallySlowNetworkInvocation1a.CreateExecutionContext(iterations: NUMBER_OF_ITERATIONS,
+                                                                          threads: NUMBER_OF_CONCURRENT_TASKS
+                                                                          //args: new dynamic[] { "yo", 876876 },
+                                                                          //memoize: false,
+                                                                          //instrumentation: false
+                                                                          //tag: "#1"
+                                                                          );
+
+            //TwoPhaseExecutionContext t = this.reallySlowNetworkInvocation1a.CreateExecutionContext(threads: NUMBER_OF_CONCURRENT_TASKS, 
+            //                                                                                     iterations: NUMBER_OF_ITERATIONS);
+            t.Execute(/*report:true*/);
+
+            //// Inject expected execution state, and verify execution
+            //IDictionary<string, object> results = new Dictionary<string, object>
+            //{
+            //    { HashHelper.CreateFunctionHash(this.reallySlowNetworkInvocation1a, "yoyo", 1313), "VeryExpensiveMethodResponseForyoyo1313" }, 
+            //    { HashHelper.CreateFunctionHash(this.reallySlowNetworkInvocation1a, "yo", 13), "VeryExpensiveMethodResponseForyo13" }
+            //};
+
+            //IDictionary<string, long> functionInvocationCounts = new Dictionary<string, long>
+            //{
+            //    { HashHelper.CreateFunctionHash(this.reallySlowNetworkInvocation1a), reallySlowNetworkInvocation1a_INVOCATION_COUNTER }
+            //};
+
+            t.Verify(//report: true,
+                     //listResults: false,
+                     //expectedResults: null,
+                     //expectedMinimumLatency: 0L,
+                     //expectedMaximumLatency: t.NumberOfIterations * NETWORK_RESPONSE_LATENCY_IN_MILLIS + 100
+                     //actualFunctionInvocationCounts: functionInvocationCounts // For memoizer testing mostly...
+                     );
+
         }
         #endregion
 
@@ -354,7 +389,7 @@ namespace Memoizer.NET.Test
         public void MultiThreadedMemoizedInvocation_Memoizer(
             //[Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads
             [Values(1, 3)] int numberOfConcurrentWorkerThreads
-            //,[Values(1,3)] int numberOfIterations
+            //,[Values(1,3)] int iterations
             )
         {
             try
@@ -365,17 +400,17 @@ namespace Memoizer.NET.Test
                 Interlocked.Exchange(ref reallySlowNetworkInvocation1c_INVOCATION_COUNTER, 0);
                 //Console.WriteLine(reallySlowNetworkInvocation1c_INVOCATION_COUNTER);
 
-                //int NUMBER_OF_ITERATIONS = numberOfIterations;
+                //int NUMBER_OF_ITERATIONS = iterations;
 
-                // Not memoized func
-                this.reallySlowNetworkInvocation1b
-                    .CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads, numberOfIterations: NUMBER_OF_ITERATIONS)
-                    .TestUsingArguments("MultiThreadedMemoizedInvocation_NonMemoized", 191L);
+                //// Not memoized func
+                //this.reallySlowNetworkInvocation1b
+                //    .CreateExecutionContext(threads: numberOfConcurrentWorkerThreads, iterations: NUMBER_OF_ITERATIONS)
+                //    .TestUsingArguments("MultiThreadedMemoizedInvocation_NonMemoized", 191L);
 
-                // Memoized func
-                this.reallySlowNetworkInvocation1c
-                    .CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads, numberOfIterations: NUMBER_OF_ITERATIONS, memoize: true)
-                    .TestUsingArguments("MultiThreadedMemoizedInvocation_Memoized", 192L);
+                //// Memoized func
+                //this.reallySlowNetworkInvocation1c
+                //    .CreateExecutionContext(threads: numberOfConcurrentWorkerThreads, iterations: NUMBER_OF_ITERATIONS, memoize: true)
+                //    .TestUsingArguments("MultiThreadedMemoizedInvocation_Memoized", 192L);
 
                 //Console.WriteLine("reallySlowNetworkInvocation1c_INVOCATION_COUNTER: " + reallySlowNetworkInvocation1c_INVOCATION_COUNTER);
                 //Console.WriteLine("NUMBER_OF_ITERATIONS: " + NUMBER_OF_ITERATIONS);
@@ -405,33 +440,33 @@ namespace Memoizer.NET.Test
         public void MultiThreadedMemoizedInvocation_DifferentInvocations_Conjunction_1(
             //[Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads
             [Values(1)] int numberOfConcurrentWorkerThreads
-            //,[Values(1, 3)] int numberOfIterations
+            //,[Values(1, 3)] int iterations
             )
         {
             try
             {
-                //int NUMBER_OF_ITERATIONS = numberOfIterations;
+                //int NUMBER_OF_ITERATIONS = iterations;
 
                 Interlocked.Exchange(ref reallySlowNetworkInvocation1a_INVOCATION_COUNTER, 0);
                 //Interlocked.Exchange(ref reallySlowNetworkInvocation1d_INVOCATION_COUNTER, 0);
 
                 TwoPhaseExecutionContext twoPhaseExecutionContext1 =
-                    this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads,
-                                                                              numberOfIterations: NUMBER_OF_ITERATIONS,
+                    this.reallySlowNetworkInvocation1a.CreateExecutionContext(iterations: numberOfConcurrentWorkerThreads,
+                                                                              threads: NUMBER_OF_ITERATIONS,
                                                                               memoize: true,
                                                                               instrumentation: false);
 
                 TwoPhaseExecutionContext twoPhaseExecutionContext2 =
-                    this.reallySlowNetworkInvocation1d.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 1,
-                                                                              numberOfIterations: 100, // N/A as it is merged into another TwoPhaseExecutionContext
+                    this.reallySlowNetworkInvocation1d.CreateExecutionContext(threads: 1,
+                                                                              iterations: 100, // N/A as it is merged into another TwoPhaseExecutionContext
                                                                               concurrent: false, // Not implemented / N/A only 'concurrent: true is supported so far
                                                                               memoize: true,
-                                                                              memoizerClearing: false,
+                    //memoizerClearing: false,
                                                                               functionLatency: 500,
                                                                               instrumentation: false);
 
                 TwoPhaseExecutionContext mergedTwoPhaseExecutionContext = twoPhaseExecutionContext1.And(twoPhaseExecutionContext2);
-                mergedTwoPhaseExecutionContext.Test();
+                //mergedTwoPhaseExecutionContext.Test();
 
                 Assert.That(reallySlowNetworkInvocation1a_INVOCATION_COUNTER, Is.EqualTo(twoPhaseExecutionContext1.GetExpectedFunctionInvocationCountFor(reallySlowNetworkInvocation1a)));
                 Assert.That(reallySlowNetworkInvocation1a_INVOCATION_COUNTER, Is.EqualTo(mergedTwoPhaseExecutionContext.GetExpectedFunctionInvocationCountFor(reallySlowNetworkInvocation1a))); // The same TwoPhaseExecutionContext
@@ -452,35 +487,35 @@ namespace Memoizer.NET.Test
         public void MultiThreadedMemoizedInvocation_DifferentInvocations_Conjunction_2(
             //[Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads
             [Values(1, 20)] int numberOfConcurrentWorkerThreads
-            //,[Values(2)] int numberOfIterations
+            //,[Values(2)] int iterations
             )
         {
             try
             {
-                //int NUMBER_OF_ITERATIONS = numberOfIterations;
+                //int NUMBER_OF_ITERATIONS = iterations;
 
                 Interlocked.Exchange(ref reallySlowNetworkInvocation1a_INVOCATION_COUNTER, 0);
                 //Interlocked.Exchange(ref reallySlowNetworkInvocation1d_INVOCATION_COUNTER, 0);
 
                 TwoPhaseExecutionContext twoPhaseExecutionContext1 =
-                    this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads,
-                                                                              numberOfIterations: NUMBER_OF_ITERATIONS,
+                    this.reallySlowNetworkInvocation1a.CreateExecutionContext(threads: numberOfConcurrentWorkerThreads,
+                                                                              iterations: NUMBER_OF_ITERATIONS,
                                                                               memoize: true,
                                                                               instrumentation: false);
 
                 TwoPhaseExecutionContext twoPhaseExecutionContext2 =
-                    this.reallySlowNetworkInvocation1d.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 1,
-                                                                              numberOfIterations: 100, // N/A as it is merged into another TwoPhaseExecutionContext
+                    this.reallySlowNetworkInvocation1d.CreateExecutionContext(threads: 1,
+                                                                              iterations: 100, // N/A as it is merged into another TwoPhaseExecutionContext
                                                                               concurrent: false, // Not implemented / N/A only 'concurrent: true is supported so far
                                                                               memoize: false,
-                                                                              memoizerClearing: false,
+                    //memoizerClearing: false,
                                                                               functionLatency: default(long), // N/A as it is merged into another TwoPhaseExecutionContext
                                                                               instrumentation: false);
 
                 /*TwoPhaseExecutionContext<string, long, string> mergedTwoPhaseExecutionContext = */
                 twoPhaseExecutionContext1.And(twoPhaseExecutionContext2);
                 //mergedTwoPhaseExecutionContext.Test();
-                twoPhaseExecutionContext1.Test();
+                //twoPhaseExecutionContext1.Test();
 
                 Assert.That(reallySlowNetworkInvocation1a_INVOCATION_COUNTER, Is.EqualTo(twoPhaseExecutionContext1.GetExpectedFunctionInvocationCountFor(this.reallySlowNetworkInvocation1a)));
                 //Assert.That(reallySlowNetworkInvocation1a_INVOCATION_COUNTER, Is.EqualTo(twoPhaseExecutionContext1.ExpectedFunctionInvocationCount));
@@ -501,24 +536,24 @@ namespace Memoizer.NET.Test
         public void MultiThreadedMemoizedInvocationUsingEmbeddedMemoizerClearing_Memoizer(
             //[Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads
             [Values(2)] int numberOfConcurrentWorkerThreads
-            //,[Values(1, 3)] int numberOfIterations
+            //,[Values(1, 3)] int iterations
             )
         {
             Console.WriteLine();
             Console.WriteLine();
             //try
             //{
-            //int NUMBER_OF_ITERATIONS = numberOfIterations;
+            //int NUMBER_OF_ITERATIONS = iterations;
 
             //TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext1 =
-            //    this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads,
-            //                                                              numberOfIterations: NUMBER_OF_ITERATIONS,
+            //    this.reallySlowNetworkInvocation1a.CreateExecutionContext(threads: numberOfConcurrentWorkerThreads,
+            //                                                              iterations: NUMBER_OF_ITERATIONS,
             //                                                              memoize: true,
             //                                                              instrumentation: true);
 
             //TwoPhaseExecutionContext<string, long, string> twoPhaseExecutionContext2 =
-            //    this.reallySlowNetworkInvocation1d.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 1,
-            //                                                              numberOfIterations: 100, // N/A as it is merged into another TwoPhaseExecutionContext
+            //    this.reallySlowNetworkInvocation1d.CreateExecutionContext(threads: 1,
+            //                                                              iterations: 100, // N/A as it is merged into another TwoPhaseExecutionContext
             //                                                              concurrent: true, // N/A only 'concurrent: true is supported so far
             //                                                              memoize: true, // N/A ignored/overrided by 'memoizerClearingTask: true'
             //                                                              memoizerClearingTask: true,
@@ -526,20 +561,21 @@ namespace Memoizer.NET.Test
             //                                                              instrumentation: true);
 
             //twoPhaseExecutionContext1.And(twoPhaseExecutionContext2).Test();
-            this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads,
-                                                                      numberOfIterations: NUMBER_OF_ITERATIONS,
+            this.reallySlowNetworkInvocation1a.CreateExecutionContext(threads: numberOfConcurrentWorkerThreads,
+                                                                      iterations: NUMBER_OF_ITERATIONS,
                                                                       memoize: true,
                                                                       instrumentation: true)
 
-            .And(this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 1,
-                                                                           numberOfIterations: 100, // N/A as it is merged into another TwoPhaseExecutionContext
-                                                                           concurrent: true, // N/A only 'concurrent: true is supported so far
-                                                                           memoize: true, // N/A ignored/overrided by 'memoizerClearingTask: true'
-                                                                           memoizerClearing: true,
-                                                                           functionLatency: 0,
-                                                                           instrumentation: true,
-                                                                           tag: "mem-clearing"))
-            .TestUsingArguments("lkjlkjlkjlj", 3456);
+                .And(this.reallySlowNetworkInvocation1a.CreateExecutionContext(threads: 1,
+                                                                               iterations: 100, // N/A as it is merged into another TwoPhaseExecutionContext
+                                                                               concurrent: true, // N/A only 'concurrent: true is supported so far
+                                                                               memoize: true, // N/A ignored/overrided by 'memoizerClearingTask: true'
+                //memoizerClearing: true,
+                                                                               functionLatency: 0,
+                                                                               instrumentation: true,
+                                                                               tag: "mem-clearing"))
+                                                                               ;
+            //.TestUsingArguments("lkjlkjlkjlj", 3456);
 
             //}
             //finally
@@ -557,23 +593,23 @@ namespace Memoizer.NET.Test
         public void MultiThreadedMemoizedInvocationWithClearing2_Memoizer(
             //[Values(1, 2, 4, 10, 30, 60, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads
             [Values(1, 100)] int numberOfConcurrentWorkerThreads,
-            [Values(1, 3)] int numberOfIterations
+            [Values(1, 3)] int iterations
             )
         {
             try
             {
-                int NUMBER_OF_ITERATIONS = numberOfIterations;
+                int NUMBER_OF_ITERATIONS = iterations;
 
                 TwoPhaseExecutionContext twoPhaseExecutionContext1 =
-                    this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: numberOfConcurrentWorkerThreads,
-                                                                              numberOfIterations: NUMBER_OF_ITERATIONS,
+                    this.reallySlowNetworkInvocation1a.CreateExecutionContext(threads: numberOfConcurrentWorkerThreads,
+                                                                              iterations: NUMBER_OF_ITERATIONS,
                                                                               memoize: true,
                                                                               instrumentation: false);
                 Action reallySlowNetworkInvocation1a_cacheClearing =
                     () => this.reallySlowNetworkInvocation1a.RemoveFromCache<string, long, string>("yo", 13);
 
                 //TwoPhaseExecutionContext twoPhaseExecutionContext2 =
-                //    reallySlowNetworkInvocation1a_cacheClearing.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 1))
+                //    reallySlowNetworkInvocation1a_cacheClearing.CreateExecutionContext(threads: 1))
 
                 //twoPhaseExecutionContext1.And(twoPhaseExecutionContext2).TestUsingArguments("yo", 13);
             }
@@ -592,7 +628,7 @@ namespace Memoizer.NET.Test
         //[Test, ExpectedException(typeof(ArgumentException), ExpectedMessage = "An item with the same key has already been added.", MatchType = MessageMatch.Exact)]
         public void EqualTwoPhaseExecutionContextShouldNotBeAccepted()
         {
-            TwoPhaseExecutionContext twoPhaseExecutionContext = this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 1, args: new dynamic[] { "yo", 13 }, memoize: true, instrumentation: true);
+            TwoPhaseExecutionContext twoPhaseExecutionContext = this.reallySlowNetworkInvocation1a.CreateExecutionContext(threads: 1, args: new dynamic[] { "yo", 13 }, memoize: true, instrumentation: true);
             twoPhaseExecutionContext.And(twoPhaseExecutionContext).Having(iterations: 1);
         }
 
@@ -601,13 +637,13 @@ namespace Memoizer.NET.Test
         [Test]
         public void EqualTwoPhaseExecutionContextShouldReplaceOneAnotherWhenAddingTogetherContexts()
         {
-            TwoPhaseExecutionContext twoPhaseExecutionContext = this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 1, args: new dynamic[] { "yo", 13 }, memoize: true, instrumentation: true);
+            TwoPhaseExecutionContext twoPhaseExecutionContext = this.reallySlowNetworkInvocation1a.CreateExecutionContext(threads: 1, args: new dynamic[] { "yo", 13 }, memoize: true, instrumentation: true);
             twoPhaseExecutionContext.And(twoPhaseExecutionContext).Having(iterations: 1);
         }
 
 
         // TODO: Target test :-)
-        // TODO: Rename 'numberOfConcurrentThreadsWitinhEachIteration' to 'threads' ?
+        // TODO: Rename 'threads' to 'threads' ?
         // TODO: Rename 'idempotentFunction' to 'idempotent' ?
         [Test]
         public void TestTarget()
@@ -623,19 +659,19 @@ namespace Memoizer.NET.Test
 
             // Arrange context
             //TwoPhaseExecutionContextResultSet testResult =
-            //this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 100, args: new dynamic[] { "yo", 13 }, memoize: true, idempotentFunction: true)
-            //    .And(this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 90, args: new dynamic[] { "yoyo", 1313 }, memoize: true, idempotentFunction: true))
-            //    .And(this.reallySlowNetworkInvocation1b.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 10, args: new dynamic[] { "yo", 13 }, memoize: true, idempotentFunction: true))
-            //    .And(this.reallySlowNetworkInvocation1b.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 4, args: new dynamic[] { "yoyo", 1313 }, memoize: false, idempotentFunction: true))
+            //this.reallySlowNetworkInvocation1a.CreateExecutionContext(threads: 100, args: new dynamic[] { "yo", 13 }, memoize: true, idempotentFunction: true)
+            //    .And(this.reallySlowNetworkInvocation1a.CreateExecutionContext(threads: 90, args: new dynamic[] { "yoyo", 1313 }, memoize: true, idempotentFunction: true))
+            //    .And(this.reallySlowNetworkInvocation1b.CreateExecutionContext(threads: 10, args: new dynamic[] { "yo", 13 }, memoize: true, idempotentFunction: true))
+            //    .And(this.reallySlowNetworkInvocation1b.CreateExecutionContext(threads: 4, args: new dynamic[] { "yoyo", 1313 }, memoize: false, idempotentFunction: true))
 
             TwoPhaseExecutionContext twoPhaseExecutionContext1 =
-                this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 4,
+                this.reallySlowNetworkInvocation1a.CreateExecutionContext(threads: 4,
                                                                           args: new dynamic[] { "yo", 13 },
                                                                           memoize: true,
                                                                           instrumentation: false,
                                                                           tag: "#1");
             TwoPhaseExecutionContext twoPhaseExecutionContext2 =
-                this.reallySlowNetworkInvocation1a.CreateExecutionContext(numberOfConcurrentThreadsWitinhEachIteration: 3,
+                this.reallySlowNetworkInvocation1a.CreateExecutionContext(threads: 3,
                                                                           args: new dynamic[] { "yoyo", 1313 },
                                                                           memoize: false,
                                                                           functionLatency: NETWORK_RESPONSE_LATENCY_IN_MILLIS + 100,
@@ -651,22 +687,23 @@ namespace Memoizer.NET.Test
             twoPhaseExecutionContext = twoPhaseExecutionContext.Execute(report: true);
 
             // Inject expected execution state, and verify execution
-            IDictionary<string, object> results = new Dictionary<string, object>();
-            results.Add(HashHelper.CreateFunctionHash(this.reallySlowNetworkInvocation1a, "yoyo", 1313), "VeryExpensiveMethodResponseForyoyo1313");
-            results.Add(HashHelper.CreateFunctionHash(this.reallySlowNetworkInvocation1a, "yo", 13), "VeryExpensiveMethodResponseForyo13");
+            IDictionary<string, object> results = new Dictionary<string, object>
+            {
+                { HashHelper.CreateFunctionHash(this.reallySlowNetworkInvocation1a, "yoyo", 1313), "VeryExpensiveMethodResponseForyoyo1313" }, 
+                { HashHelper.CreateFunctionHash(this.reallySlowNetworkInvocation1a, "yo", 13), "VeryExpensiveMethodResponseForyo13" }
+            };
 
-            IDictionary<string, long> functionInvocationCounts = new Dictionary<string, long>();
-            functionInvocationCounts.Add(HashHelper.CreateFunctionHash(this.reallySlowNetworkInvocation1a), reallySlowNetworkInvocation1a_INVOCATION_COUNTER);
+            IDictionary<string, long> functionInvocationCounts = new Dictionary<string, long>
+            {
+                { HashHelper.CreateFunctionHash(this.reallySlowNetworkInvocation1a), reallySlowNetworkInvocation1a_INVOCATION_COUNTER }
+            };
 
-            /*string report =*/
             twoPhaseExecutionContext.Verify(expectedResults: results,
                                             expectedMinimumLatency: 0L,
                                             expectedMaximumLatency: twoPhaseExecutionContext.NumberOfIterations * NETWORK_RESPONSE_LATENCY_IN_MILLIS + 100,
                                             actualFunctionInvocationCounts: functionInvocationCounts // For memoizer testing mostly...
                                             );
-            // Have a look
-            //Console.WriteLine(report);
-            
+
 
             //TwoPhaseExecutionContext twoPhaseExecutionContext = twoPhaseExecutionContext1.And(twoPhaseExecutionContext2).Having(iterations: 1);
             ////TwoPhaseExecutionContext twoPhaseExecutionContext = twoPhaseExecutionContext2.And(twoPhaseExecutionContext1).Having(iterations: 1);
