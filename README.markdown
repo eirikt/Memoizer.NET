@@ -86,7 +86,7 @@ You can also bypass the memoizer registry entirely by using `CreateMemoizer()` i
 `IMemoizer<TParam, TResult>` instances have methods like:
 
 ```c#
- TResult InvokeWith(TParam param)
+TResult InvokeWith(TParam param)
     void Remove(TParam param)
     void Clear()
 ```
@@ -94,11 +94,37 @@ You can also bypass the memoizer registry entirely by using `CreateMemoizer()` i
 ...in addition to some methods for instrumentation.
 
 
-## Memoizer.NET.TwoPhaseExecutor
-A class for synchronized execution of an arbitrary number of worker/task threads. All participating worker/task threads must derive from the `Memoizer.Net.AbstractTwoPhaseExecutorThread` class.
+## Memoizer.NET.PhasedExecutor
+A class for synchronized execution of an arbitrary number of worker threads.
 
 ### Usage
-See the `Memoizer.NET.Test.MemoizerTests` class for usage examples. In v0.7 a mini DSL/builder for easy `Memoizer.Net.TwoPhaseExecutor` usage will be included. Right now the API is rather cumbersome/sucks...
+As with the memoizer the bootstrap mechanism is `Func` or `Action` extension mmethods.
+
+```c#
+Action<long> myThreadSafeAction = ...
+
+PhasedExecutionContext context = myThreadSafeAction.CreateExecutionContext(threads: 100);
+context.Execute();
+
+// Inject expected results
+IDictionary<string, long> results = new Dictionary<string, long>
+{
+    { HashHelper.CreateFunctionHash(myThreadSafeAction), "VeryExpensiveMethodResponseForyoyo1313" }, 
+    { HashHelper.CreateFunctionHash(myThreadSafeAction), "VeryExpensiveMethodResponseForyo13" }
+            };
+
+            IDictionary<string, long> functionInvocationCounts = new Dictionary<string, long>
+            {
+                { HashHelper.CreateFunctionHash(memoizerTests.reallySlowNetworkInvocation1a), MemoizerTests.reallySlowNetworkInvocation1a_INVOCATION_COUNTER }
+            };
+
+            twoPhaseExecutionContext.Verify(expectedResults: results,
+                                            expectedMinimumLatency: 0L,
+                                            expectedMaximumLatency: twoPhaseExecutionContext.NumberOfIterations * MemoizerTests.NETWORK_RESPONSE_LATENCY_IN_MILLIS + 100,
+                                            actualFunctionInvocationCounts: functionInvocationCounts // For memoizer testing mostly...
+                                            );
+
+```
 
 
 ## Building the solution *

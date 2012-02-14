@@ -52,7 +52,7 @@ namespace Memoizer.NET
         public TwoPhaseExecutor(int numberOfParticipants, bool instrumentation = false)
         {
             if (numberOfParticipants < 0) { throw new ArgumentException("Number of participating worker threads cannot be less than zero"); }
-            if (numberOfParticipants < 1) { Console.WriteLine("No worker threads are attending..."); }
+            //if (numberOfParticipants < 1) { Console.WriteLine("No worker threads are attending..."); }
 
             Instrumentation = instrumentation;
             if (Instrumentation) { Console.WriteLine(GetType().FullName + ": Phase 0: Creating barrier, managing at most " + numberOfParticipants + " phased worker threads, + 1 main thread"); }
@@ -269,7 +269,7 @@ namespace Memoizer.NET
 
     #region New TwoPhaseExecutor API
 
-    internal class DynamicTwoPhaseExecutorThread : AbstractTwoPhaseExecutorThread
+    public class DynamicTwoPhaseExecutorThread : AbstractTwoPhaseExecutorThread
     {
         static int TASK_COUNTER;
 
@@ -277,7 +277,11 @@ namespace Memoizer.NET
         internal readonly dynamic originalInvocable;
         internal readonly dynamic[] args;
 
-        internal dynamic Result { get; private set; }
+        public dynamic Result
+        {
+            get;
+            private set;
+        }
 
         internal DynamicTwoPhaseExecutorThread(dynamic invocable,
                                                dynamic originalInvocable,
@@ -307,6 +311,21 @@ namespace Memoizer.NET
     // TODO: extend to Action and up-to four Func input arguments
     public static partial class FuncExtensionMethods
     {
+        public static TwoPhaseExecutionContext CreatePhasedExecutionContext<TResult>(this Func<TResult> function, dynamic[] args = null, int threads = 1, int iterations = 1, bool concurrent = true, bool memoize = false, long functionLatency = default(long), bool instrumentation = false, string tag = null)
+        {
+            return new TwoPhaseExecutionContext(function,
+                                                args,
+                                                threads,
+                                                iterations,
+                                                concurrent,
+                                                memoize,
+                // memoizerClearing,
+                                                false,
+                                                functionLatency,
+                                                instrumentation,
+                                                tag);
+        }
+
         public static TwoPhaseExecutionContext CreateExecutionContext<TParam1, TParam2, TResult>(
             this Func<TParam1, TParam2, TResult> functionToBeMemoized,
             dynamic[] args = null,
@@ -317,7 +336,7 @@ namespace Memoizer.NET
             bool concurrent = true,
             bool memoize = false,
             //bool memoizerClearing = false, // Remove!
-            bool idempotentFunction = true, // Remove...?
+            bool idempotent = true, // Remove...?
             long functionLatency = default(long), // Remove...?
             bool instrumentation = false,
             string tag = null
@@ -330,7 +349,7 @@ namespace Memoizer.NET
                                                 concurrent,
                                                 memoize,
                 // memoizerClearing,
-                                                idempotentFunction,
+                                                idempotent,
                                                 functionLatency,
                                                 instrumentation,
                                                 tag);
@@ -391,10 +410,13 @@ namespace Memoizer.NET
                 //else
                 //{
 
+                if (LatencyInMilliseconds != default(long))
+                    stringBuilder.Append(LatencyInMilliseconds + " ms latency");
+
                 if (IsMemoized)
-                    stringBuilder.Append("mem");
+                    stringBuilder.Append(", mem");
                 else
-                    stringBuilder.Append("non-mem");
+                    stringBuilder.Append(", non-mem");
 
                 //}
                 //stringBuilder.Append(IsMemoizerClearingTask);
@@ -427,7 +449,7 @@ namespace Memoizer.NET
         IList<DynamicTwoPhaseExecutorThread> workerThreads;
 
 
-        TwoPhaseExecutionContextResultSet twoPhaseExecutionContextResultSet;// = new TwoPhaseExecutionContextResultSet(this);
+        internal TwoPhaseExecutionContextResultSet twoPhaseExecutionContextResultSet;// = new TwoPhaseExecutionContextResultSet(this);
 
 
         //private IDictionary<string, Tuple<long, object>> resultMatrix;
@@ -436,6 +458,18 @@ namespace Memoizer.NET
 
 
         //internal TwoPhaseExecutionContext(Func<TParam1, TParam2, TResult> functionToBeExecuted,
+        //internal TwoPhaseExecutionContext(dynamic function,
+        //                                  dynamic[] args, 
+        //                                  int numberOfConcurrentThreadsWitinhEachIteration,
+        //                                  int numberOfIterations,
+        //                                  bool concurrent,
+        //                                  bool memoize,
+        //                                  long functionLatencyInMilliseconds,
+        //                                  bool instrumentation,
+        //                                  string tag)
+        //    :this((dynamic)function, (dynamic[])args, numberOfConcurrentThreadsWitinhEachIteration, numberOfIterations,concurrent, memoize, true,functionLatencyInMilliseconds, instrumentation, tag)
+        //{ }
+
         internal TwoPhaseExecutionContext(dynamic functionToBeExecuted,
                                           dynamic[] args,
                                           int numberOfConcurrentThreadsWitinhEachIteration,
@@ -451,8 +485,8 @@ namespace Memoizer.NET
             if (numberOfIterations < 0) { throw new ArgumentException("Number-of-iteration parameter ('iterations') cannot be a negative number"); }
             if (numberOfConcurrentThreadsWitinhEachIteration < 0) { throw new ArgumentException("Number-of-worker-threads parameter ('threads') cannot be a negative number"); }
 
-            Type[] genericArguments = functionToBeExecuted.GetType().GetGenericArguments();
 
+            Type[] genericArguments = functionToBeExecuted.GetType().GetGenericArguments();
             if (args != null)
             {
                 if (genericArguments.Length - 1 != args.Length) // -1 since the last generic parameter is the TResult
@@ -472,6 +506,7 @@ namespace Memoizer.NET
                 }
                 args = defaultValueArguments;
             }
+
 
             FunctionExecutionContext functionExecutionContext = new FunctionExecutionContext
             {
@@ -548,6 +583,11 @@ namespace Memoizer.NET
         //internal long LatencyInMilliseconds { get; private set; }
         public long MaximumExpectedLatencyInMilliseconds { get; private set; }
         public long MinimumExpectedLatencyInMilliseconds { get; private set; }
+
+        public PhasedExecutionContextResult Results
+        {
+            get { return new PhasedExecutionContextResult(this); }
+        }
 
         //internal bool IsConcurrent { get { return this.concurrent; } }
         //internal bool IsMemoized
@@ -904,9 +944,9 @@ namespace Memoizer.NET
             //if (report) { Console.WriteLine(new TwoPhaseExecutionContextResultSet(this).Report); }
             //#endregion
 
-            #region Idempotency
-            if (!this.isIdempotentContext) { throw new NotImplementedException("Non-idempotent function are kind of N/A in this context... I think"); }
-            #endregion
+            //#region Idempotency
+            //if (!this.isIdempotentContext) { throw new NotImplementedException("Non-idempotent function are kind of N/A in this context... I think"); }
+            //#endregion
 
             #region Expected latency);
             //Console.WriteLine("--- Expected latency ---");
@@ -982,10 +1022,16 @@ namespace Memoizer.NET
                     {
                         int numberOfFunctionArguments;
 
+                        FunctionExecutionContext context;
+                        DynamicTwoPhaseExecutorThread dynamicTwoPhaseExecutorThread;
+
                         if (functionExecutionContext.IsMemoized)
                         {
                             genericArguments = functionExecutionContext.FunctionToBeExecuted.GetType().GetGenericArguments();
                             numberOfFunctionArguments = genericArguments.Length - 1; // -1 since the last generic parameter is the TResult
+
+
+
                             switch (numberOfFunctionArguments)
                             {
                                 case 0: throw new NotImplementedException();
@@ -999,17 +1045,17 @@ namespace Memoizer.NET
                                     {
                                         throw new ApplicationException("Missing args");
                                     }
-                                    FunctionExecutionContext context = functionExecutionContext;
-                                    Func<dynamic, dynamic, dynamic> func = (arg1, arg2) =>
+                                    context = functionExecutionContext;
+                                    Func<dynamic, dynamic, dynamic> func2 = (arg1, arg2) =>
                                         new MemoizerFactory(context.FunctionToBeExecuted).GetMemoizer().InvokeWith(new object[] { arg1, arg2 });
 
-                                    DynamicTwoPhaseExecutorThread dynamicTwoPhaseExecutorThread =
-                                        new DynamicTwoPhaseExecutorThread(invocable: func,
-                                                                          originalInvocable: functionExecutionContext.FunctionToBeExecuted,
-                                                                          args: functionExecutionContext.Args,
-                                                                          barrier: twoPhaseExecutor.Barrier,
-                                                                          instrumentation: functionExecutionContext.Instrumentation,
-                                                                          tag: functionExecutionContext.Tag);
+                                    dynamicTwoPhaseExecutorThread =
+                                       new DynamicTwoPhaseExecutorThread(invocable: func2,
+                                                                         originalInvocable: functionExecutionContext.FunctionToBeExecuted,
+                                                                         args: functionExecutionContext.Args,
+                                                                         barrier: twoPhaseExecutor.Barrier,
+                                                                         instrumentation: functionExecutionContext.Instrumentation,
+                                                                         tag: functionExecutionContext.Tag);
 
                                     this.workerThreads.Add(dynamicTwoPhaseExecutorThread);
 
@@ -1026,7 +1072,27 @@ namespace Memoizer.NET
                             numberOfFunctionArguments = genericArguments.Length - 1; // -1 since the last generic parameter is the TResult
                             switch (numberOfFunctionArguments)
                             {
-                                case 0: throw new NotImplementedException();
+                                case 0:
+                                    //if (functionExecutionContext.Args == null)
+                                    //{
+                                    //    throw new ApplicationException("Missing args");
+                                    //}
+                                    //if (functionExecutionContext.Args.Count() != 2)
+                                    //{
+                                    //    throw new ApplicationException("Missing args");
+                                    //}
+
+                                    dynamicTwoPhaseExecutorThread =
+                                       new DynamicTwoPhaseExecutorThread(invocable: functionExecutionContext.FunctionToBeExecuted,
+                                                                         originalInvocable: functionExecutionContext.FunctionToBeExecuted,
+                                                                         args: functionExecutionContext.Args,
+                                                                         barrier: twoPhaseExecutor.Barrier,
+                                                                         instrumentation: functionExecutionContext.Instrumentation,
+                                                                         tag: functionExecutionContext.Tag);
+                                    this.workerThreads.Add(dynamicTwoPhaseExecutorThread);
+                                    dynamicTwoPhaseExecutorThread.Start();
+                                    break;
+
                                 case 1: throw new NotImplementedException();
                                 case 2:
                                     if (functionExecutionContext.Args == null)
@@ -1038,13 +1104,13 @@ namespace Memoizer.NET
                                         throw new ApplicationException("Missing args");
                                     }
 
-                                    DynamicTwoPhaseExecutorThread dynamicTwoPhaseExecutorThread =
-                                        new DynamicTwoPhaseExecutorThread(invocable: functionExecutionContext.FunctionToBeExecuted,
-                                                                          originalInvocable: functionExecutionContext.FunctionToBeExecuted,
-                                                                          args: functionExecutionContext.Args,
-                                                                          barrier: twoPhaseExecutor.Barrier,
-                                                                          instrumentation: functionExecutionContext.Instrumentation,
-                                                                          tag: functionExecutionContext.Tag);
+                                    dynamicTwoPhaseExecutorThread =
+                                       new DynamicTwoPhaseExecutorThread(invocable: functionExecutionContext.FunctionToBeExecuted,
+                                                                         originalInvocable: functionExecutionContext.FunctionToBeExecuted,
+                                                                         args: functionExecutionContext.Args,
+                                                                         barrier: twoPhaseExecutor.Barrier,
+                                                                         instrumentation: functionExecutionContext.Instrumentation,
+                                                                         tag: functionExecutionContext.Tag);
                                     this.workerThreads.Add(dynamicTwoPhaseExecutorThread);
                                     dynamicTwoPhaseExecutorThread.Start();
                                     break;
@@ -1165,62 +1231,12 @@ namespace Memoizer.NET
                             reportBuilder.Append(Environment.NewLine);
                             reportBuilder.Append("\t");
                             reportBuilder.Append("Result [" + i + "][" + j + "]: " + actualResult);
-                            //reportBuilder.Append(Environment.NewLine);
-                            //string funcHash = HashHelper.CreateFunctionHash(dynamicTwoPhaseExecutorThread.originalInvocable, dynamicTwoPhaseExecutorThread.args);
-                            //dynamic expectedResult;
-                            //expectedResults.TryGetValue(funcHash, out expectedResult);
-
-                            //if (!expectedResult.Equals(actualResult))
-                            //{
-                            //    StringBuilder reportBuilder = new StringBuilder();
-                            //    reportBuilder.Append("Expected result: " + expectedResult);
-                            //    reportBuilder.Append(Environment.NewLine);
-                            //    reportBuilder.Append("Actual result: " + actualResult);
-                            //    throw new ApplicationException("Memoizer.NET.TwoPhaseExecutor: Violation in result" + Environment.NewLine + reportBuilder);
-                            //}
-
-                            //    reportBuilder.Append("Expected result: " + expectedResult);
-                            //    reportBuilder.Append(Environment.NewLine);
-                            //    reportBuilder.Append("Actual result: " + actualResult);
-                            //    throw new ApplicationException("Memoizer.NET.TwoPhaseExecutor: Violation in result" + Environment.NewLine + reportBuilder);
                         }
                     }
                 }
             }
             else
             {
-                //    expectedResults = new Dictionary<string, object>();
-
-                //    for (int i = 0; i < this.workerThreads.Count; ++i)
-                //    {
-                //        var dynamicTwoPhaseExecutorThread = this.workerThreads[i];
-                //        var func = dynamicTwoPhaseExecutorThread.originalInvocable;
-
-                //        Type[] genericArguments = func.GetType().GetGenericArguments();
-                //        object[] defaultValueArguments = new object[genericArguments.Length - 1]; // -1 since the last generic parameter is the TResult
-
-                //        string funcHash = HashHelper.CreateFunctionHash(func, dynamicTwoPhaseExecutorThread.args);
-                //        dynamic expectedResult;
-                //        expectedResults.TryGetValue(funcHash, out expectedResult);
-
-                //    }
-
-                //    //Type[] genericArguments = this.functionExecutionContext.FunctionToBeExecuted.GetType().GetGenericArguments();
-                //    //object[] defaultValueArguments = new object[genericArguments.Length - 1]; // -1 since the last generic parameter is the TResult
-                //    //for (int j = 0; j < genericArguments.Length - 1; ++j)
-                //    //{
-                //    //    Type genericArgument = genericArguments[j];
-                //    //    if (genericArgument.IsValueType)
-                //    //        defaultValueArguments[j] = Activator.CreateInstance(genericArgument);
-                //    //    else if (genericArgument == typeof(String))
-                //    //        defaultValueArguments[j] = default(String);
-                //    //}
-                //    //functionExecutionContext.FunctionToBeExecuted.DynamicInvoke(defaultValueArguments);
-
-                //    //accumulatedLatencyMeasurement += stopWatch.DurationInMilliseconds;
-                //}
-
-
                 TwoPhaseExecutionContextResult[] twoPhaseExecutionContextResults = this.twoPhaseExecutionContextResultSet.ExecutionResult;
 
                 for (int i = 0; i < NumberOfIterations; ++i)
@@ -1237,7 +1253,7 @@ namespace Memoizer.NET
                         dynamic expectedResult;
                         expectedResults.TryGetValue(funcHash, out expectedResult);
 
-                        if (actualResult != expectedResult)
+                        if (!actualResult.Equals(expectedResult))
                         {
                             StringBuilder errorReportBuilder = new StringBuilder();
                             if (expectedResult == null)
@@ -1337,7 +1353,6 @@ namespace Memoizer.NET
         }
 
 
-
         public override int GetHashCode()
         {
             int hashCode = 0;
@@ -1346,32 +1361,21 @@ namespace Memoizer.NET
                 bool firstTime = false;
                 long objectId = HashHelper.GetObjectId(functionExecutionContext.FunctionToBeExecuted, ref firstTime);
 
-                int parameterHash = 0;// = HashHelper.CreateParameterHash(functionExecutionContext.Args);
+                int parameterHash = 0;
 
                 if (functionExecutionContext.Args == null || functionExecutionContext.Args.Length == 0)
                     parameterHash += 0;
 
                 else if (functionExecutionContext.Args.Length == 1)
-                {
                     if (functionExecutionContext.Args[0] == null)
-                    {
                         parameterHash += 0;
-                    }
                     else
-                    {
                         parameterHash += functionExecutionContext.Args[0].GetHashCode();
-                    }
-                }
                 else
-                {
                     parameterHash += Convert.ToInt32(HashHelper.CreateParameterHash(functionExecutionContext.Args));
-
-                }
-                //return objectId + "@" + parameterHash;
 
                 hashCode += Convert.ToInt32(objectId) + parameterHash + functionExecutionContext.NumberOfConcurrentThreadsWitinhEachIteration;
             }
-
             return hashCode;
         }
 
@@ -1384,13 +1388,18 @@ namespace Memoizer.NET
             if (otherTwoPhaseExecutionContext == null) { return false; }
             return this.GetHashCode().Equals(otherTwoPhaseExecutionContext.GetHashCode());
         }
+
+
+        public override string ToString()
+        {
+            return this.twoPhaseExecutionContextResultSet.Report;
+        }
     }
 
 
 
 
 
-    // TODO: should be internal
     internal class TwoPhaseExecutionContextResult
     {
         readonly DynamicTwoPhaseExecutorThread[] funcTwoPhaseExecutorThreads;
@@ -1407,11 +1416,10 @@ namespace Memoizer.NET
 
 
 
-    // TODO: should be internal
     internal class TwoPhaseExecutionContextResultSet
     {
         readonly TwoPhaseExecutionContext twoPhaseExecutionContext;
-        readonly TwoPhaseExecutionContextResult[] twoPhaseExecutionContextResults;
+        internal readonly TwoPhaseExecutionContextResult[] twoPhaseExecutionContextResults;
 
         public StopWatch StopWatch { get; private set; }
 
@@ -1482,6 +1490,69 @@ namespace Memoizer.NET
                     throw new Exception("Result set contains only " + funcTwoPhaseExecutorThreads.Length + " worker threads... Really no point is asking for thread #" + (concurrentThreadIndex + 1) + " (zero-based) then, is it?");
 
                 return twoPhaseExecutionContextResult.WorkerThreads[concurrentThreadIndex];
+            }
+        }
+    }
+
+
+    public class PhasedExecutionContextResult
+    {
+        readonly TwoPhaseExecutionContext twoPhaseExecutionContext;
+
+        public PhasedExecutionContextResult(TwoPhaseExecutionContext twoPhaseExecutionContext)
+        {
+            this.twoPhaseExecutionContext = twoPhaseExecutionContext;
+        }
+
+
+        public IList<object> this[int iterationIndex]
+        {
+            get
+            {
+                if (this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults == null || this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults.Length < 1)
+                    throw new Exception("No results are available");
+                if (iterationIndex > this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults.Length - 1 && this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults.Length == 1)
+                    throw new Exception("Result set contains only 1 iteration... Really no point is asking for iteration #2 (zero-based) then, is it?");
+                if (iterationIndex > this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults.Length - 1)
+                    throw new Exception("Result set contains only " + this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults.Length + " iterations... Really no point is asking for iteration #" + (iterationIndex + 1) + " (zero-based) then, is it?");
+
+                TwoPhaseExecutionContextResult twoPhaseExecutionContextResult = this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults[iterationIndex];
+
+                List<object> results = new List<dynamic>(twoPhaseExecutionContextResult.WorkerThreads.Length);
+                foreach (DynamicTwoPhaseExecutorThread workerThread in twoPhaseExecutionContextResult.WorkerThreads)
+                    results.Add(workerThread.Result);
+
+                return results;
+            }
+        }
+
+
+        public object this[int iterationIndex, int concurrentThreadIndex]
+        {
+            get
+            {
+                if (this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults == null || this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults.Length < 1)
+                    throw new Exception("No results are available");
+                if (iterationIndex > this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults.Length - 1 && this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults.Length == 1)
+                    throw new Exception("Result set contains only 1 iteration... Really no point is asking for iteration #2 (zero-based) then, is it?");
+                if (iterationIndex > this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults.Length - 1)
+                    throw new Exception("Result set contains only " + this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults.Length + " iterations... Really no point is asking for iteration #" + (iterationIndex + 1) + " (zero-based) then, is it?");
+
+                TwoPhaseExecutionContextResult twoPhaseExecutionContextResult = this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults[iterationIndex];
+
+                DynamicTwoPhaseExecutorThread[] funcTwoPhaseExecutorThreads = twoPhaseExecutionContextResult.WorkerThreads;
+                if (funcTwoPhaseExecutorThreads == null || funcTwoPhaseExecutorThreads.Length < 1)
+                    throw new Exception("No worker threads are available");
+                if (concurrentThreadIndex > funcTwoPhaseExecutorThreads.Length - 1 && funcTwoPhaseExecutorThreads.Length == 1)
+                    throw new Exception("Result set contains only 1 worker thread... Really no point is asking for thread #2 (zero-based) then, is it?");
+                if (concurrentThreadIndex > funcTwoPhaseExecutorThreads.Length - 1)
+                    throw new Exception("Result set contains only " + funcTwoPhaseExecutorThreads.Length + " worker threads... Really no point is asking for thread #" + (concurrentThreadIndex + 1) + " (zero-based) then, is it?");
+
+                List<object> results = new List<dynamic>(twoPhaseExecutionContextResult.WorkerThreads.Length);
+                foreach (DynamicTwoPhaseExecutorThread workerThread in twoPhaseExecutionContextResult.WorkerThreads)
+                    results.Add(workerThread.Result);
+
+                return results;
             }
         }
     }

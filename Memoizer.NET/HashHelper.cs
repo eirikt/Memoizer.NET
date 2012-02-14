@@ -45,7 +45,9 @@ namespace Memoizer.NET
         public static string CreateFunctionHash(dynamic func, params dynamic[] args)
         {
             bool firstTime = false;
-            return GetObjectId(func, ref firstTime) + "@" + CreateParameterHash(args);
+            var objectId = GetObjectId(func, ref firstTime);
+            var parameterHash = CreateParameterHash(args);
+            return objectId + "@" + parameterHash;
         }
     }
 }

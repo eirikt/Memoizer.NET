@@ -18,7 +18,6 @@
 
 #region Using
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using NUnit.Framework;
 #endregion
@@ -47,7 +46,7 @@ namespace Memoizer.NET.Test
         static string Concatinate(string arg1, string arg2, string arg3) { return arg1 + arg2 + arg3; }
 
 
-        static int ReallySlowNetworkStaticInvocation_INVOCATION_COUNTER;
+        internal static int ReallySlowNetworkStaticInvocation_INVOCATION_COUNTER;
         internal static string ReallySlowNetworkStaticInvocation(string stringArg, long longArg)
         {
             //Console.WriteLine("TypicalNetworkInvocation invoked...");
@@ -57,7 +56,7 @@ namespace Memoizer.NET.Test
             return Concatinate(METHOD_RESPONSE_ELEMENT, stringArg, Convert.ToString(longArg));
         }
 
-        static int reallySlowNetworkInvocation1a_INVOCATION_COUNTER;
+        internal static int reallySlowNetworkInvocation1a_INVOCATION_COUNTER;
         internal Func<string, long, string> reallySlowNetworkInvocation1a =
            new Func<string, long, string>(delegate(string stringArg, long longArg)
            {
@@ -71,7 +70,7 @@ namespace Memoizer.NET.Test
                return Concatinate(METHOD_RESPONSE_ELEMENT, stringArg, Convert.ToString(longArg));
            });
 
-        static int reallySlowNetworkInvocation1b_INVOCATION_COUNTER;
+        internal static int reallySlowNetworkInvocation1b_INVOCATION_COUNTER;
         internal Func<string, long, string> reallySlowNetworkInvocation1b =
            (delegate(string stringArg, long longArg)
            {
@@ -79,7 +78,7 @@ namespace Memoizer.NET.Test
                return ReallySlowNetworkStaticInvocation(stringArg, longArg);
            });
 
-        static int reallySlowNetworkInvocation1c_INVOCATION_COUNTER;
+        internal static int reallySlowNetworkInvocation1c_INVOCATION_COUNTER;
         internal Func<string, long, string> reallySlowNetworkInvocation1c =
             (stringArg, longArg) =>
             {
@@ -640,132 +639,6 @@ namespace Memoizer.NET.Test
             TwoPhaseExecutionContext twoPhaseExecutionContext = this.reallySlowNetworkInvocation1a.CreateExecutionContext(threads: 1, args: new dynamic[] { "yo", 13 }, memoize: true, instrumentation: true);
             twoPhaseExecutionContext.And(twoPhaseExecutionContext).Having(iterations: 1);
         }
-
-
-        // TODO: Target test :-)
-        // TODO: Rename 'threads' to 'threads' ?
-        // TODO: Rename 'idempotentFunction' to 'idempotent' ?
-        [Test]
-        public void TestTarget()
-        {
-            //actual    // expected
-            //Assert.That(actual:1, expression:Is.EqualTo(2));
-
-            //// Reset function 
-            //Console.WriteLine(reallySlowNetworkInvocation1a_INVOCATION_COUNTER);
-            //Interlocked.Exchange(ref reallySlowNetworkInvocation1a_INVOCATION_COUNTER, 0);
-            //Console.WriteLine(reallySlowNetworkInvocation1a_INVOCATION_COUNTER);
-
-
-            // Arrange context
-            //TwoPhaseExecutionContextResultSet testResult =
-            //this.reallySlowNetworkInvocation1a.CreateExecutionContext(threads: 100, args: new dynamic[] { "yo", 13 }, memoize: true, idempotentFunction: true)
-            //    .And(this.reallySlowNetworkInvocation1a.CreateExecutionContext(threads: 90, args: new dynamic[] { "yoyo", 1313 }, memoize: true, idempotentFunction: true))
-            //    .And(this.reallySlowNetworkInvocation1b.CreateExecutionContext(threads: 10, args: new dynamic[] { "yo", 13 }, memoize: true, idempotentFunction: true))
-            //    .And(this.reallySlowNetworkInvocation1b.CreateExecutionContext(threads: 4, args: new dynamic[] { "yoyo", 1313 }, memoize: false, idempotentFunction: true))
-
-            TwoPhaseExecutionContext twoPhaseExecutionContext1 =
-                this.reallySlowNetworkInvocation1a.CreateExecutionContext(threads: 4,
-                                                                          args: new dynamic[] { "yo", 13 },
-                                                                          memoize: true,
-                                                                          instrumentation: false,
-                                                                          tag: "#1");
-            TwoPhaseExecutionContext twoPhaseExecutionContext2 =
-                this.reallySlowNetworkInvocation1a.CreateExecutionContext(threads: 3,
-                                                                          args: new dynamic[] { "yoyo", 1313 },
-                                                                          memoize: false,
-                                                                          functionLatency: NETWORK_RESPONSE_LATENCY_IN_MILLIS + 100,
-                                                                          instrumentation: false,
-                                                                          tag: "#2");
-
-            TwoPhaseExecutionContext twoPhaseExecutionContext = twoPhaseExecutionContext1.And(twoPhaseExecutionContext2);
-
-            // Add additional _total_ execution context, e.g. number of iterations
-            twoPhaseExecutionContext = twoPhaseExecutionContext1.Having(iterations: 2);
-
-            // Execute
-            twoPhaseExecutionContext = twoPhaseExecutionContext.Execute(report: true);
-
-            // Inject expected execution state, and verify execution
-            IDictionary<string, object> results = new Dictionary<string, object>
-            {
-                { HashHelper.CreateFunctionHash(this.reallySlowNetworkInvocation1a, "yoyo", 1313), "VeryExpensiveMethodResponseForyoyo1313" }, 
-                { HashHelper.CreateFunctionHash(this.reallySlowNetworkInvocation1a, "yo", 13), "VeryExpensiveMethodResponseForyo13" }
-            };
-
-            IDictionary<string, long> functionInvocationCounts = new Dictionary<string, long>
-            {
-                { HashHelper.CreateFunctionHash(this.reallySlowNetworkInvocation1a), reallySlowNetworkInvocation1a_INVOCATION_COUNTER }
-            };
-
-            twoPhaseExecutionContext.Verify(expectedResults: results,
-                                            expectedMinimumLatency: 0L,
-                                            expectedMaximumLatency: twoPhaseExecutionContext.NumberOfIterations * NETWORK_RESPONSE_LATENCY_IN_MILLIS + 100,
-                                            actualFunctionInvocationCounts: functionInvocationCounts // For memoizer testing mostly...
-                                            );
-
-
-            //TwoPhaseExecutionContext twoPhaseExecutionContext = twoPhaseExecutionContext1.And(twoPhaseExecutionContext2).Having(iterations: 1);
-            ////TwoPhaseExecutionContext twoPhaseExecutionContext = twoPhaseExecutionContext2.And(twoPhaseExecutionContext1).Having(iterations: 1);
-
-            //// Execute context
-            ////TwoPhaseExecutionContextResultSet twoPhaseExecutionContextResultSet = twoPhaseExecutionContext1.Execute(report: true);
-            ////TwoPhaseExecutionContextResultSet twoPhaseExecutionContextResultSet = twoPhaseExecutionContext2.Execute(report: true);
-            //TwoPhaseExecutionContextResultSet twoPhaseExecutionContextResultSet = twoPhaseExecutionContext.Execute(report: true);
-
-
-            //// Assert results of the executed functions
-
-            ////TwoPhaseExecutionContextResult[] t = twoPhaseExecutionContextResultSet.ExecutionResult;
-            ////Assert.That(t.Length, Is.EqualTo(1));
-            ////TwoPhaseExecutionContextResult twoPhaseExecutionContextResult = t[0];
-            ////DynamicTwoPhaseExecutorThread[] dynamicTwoPhaseExecutorThreads = twoPhaseExecutionContextResult.WorkerThreads;
-            ////Assert.That(dynamicTwoPhaseExecutorThreads.Length, Is.EqualTo(1 + 1 * 2));
-            ////DynamicTwoPhaseExecutorThread tt = dynamicTwoPhaseExecutorThreads[0];
-            //////tt.Start(); // System.Threading.ThreadStateException : Thread is running or terminated; it cannot restart.
-
-            ////var res_0_0 = twoPhaseExecutionContextResultSet[0, 0].Result;
-            ////var res_0_1 = twoPhaseExecutionContextResultSet[0, 1].Result;
-            ////var res_0_2 = twoPhaseExecutionContextResultSet[0, 2].Result;
-            //////var res_0_3 = twoPhaseExecutionContextResultSet[0, 3].Result; // Exception: ...
-            //////var res_1_0 = twoPhaseExecutionContextResultSet[1, 0].Result; // Exception: ...
-            ////Assert.That(res_0_0, Is.EqualTo("VeryExpensiveMethodResponseForyo13"));
-            ////Assert.That(res_0_1, Is.EqualTo("VeryExpensiveMethodResponseForyoyo1313"));
-            ////Assert.That(res_0_2, Is.EqualTo("VeryExpensiveMethodResponseForyoyo1313"));
-
-            //// New version:
-
-
-
-
-
-            //// Assert latency/duration
-            //long duration = twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds;
-            //if (duration > twoPhaseExecutionContext.MaximumExpectedLatencyInMilliseconds)
-            //    throw new ApplicationException("Memoizer.NET.TwoPhaseExecutor: Latency violation! [to slow...]");
-            //if (duration < twoPhaseExecutionContext.MinimumExpextedLatencyInMilliseconds)
-            //    throw new ApplicationException("Memoizer.NET.TwoPhaseExecutor: Latency violation! [too fast!?]");
-
-
-            //// Assert number of invocations (when memoizing...)
-            //// TODO: ...
-            ////twoPhaseExecutionContext.PrintInvocationReport();
-
-            ////Assert.That(reallySlowNetworkInvocation1a_INVOCATION_COUNTER, Is.EqualTo(twoPhaseExecutionContext1.GetExpectedFunctionInvocationCountFor(this.reallySlowNetworkInvocation1a /*, new dynamic[] { "yo", 13 }*/)));
-            ////Assert.That(reallySlowNetworkInvocation1a_INVOCATION_COUNTER, Is.EqualTo(twoPhaseExecutionContext2.GetExpectedFunctionInvocationCountFor(this.reallySlowNetworkInvocation1a /*, new dynamic[] { "yo", 13 }*/)));
-            //Assert.That(reallySlowNetworkInvocation1a_INVOCATION_COUNTER, Is.EqualTo(twoPhaseExecutionContext.GetExpectedFunctionInvocationCountFor(this.reallySlowNetworkInvocation1a /*, new dynamic[] { "yo", 13 }*/)));
-
-
-            //// Assert ...
-
-
-
-
-
-
-
-        }
-
 
 
 
