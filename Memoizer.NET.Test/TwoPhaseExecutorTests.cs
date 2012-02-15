@@ -382,8 +382,8 @@ namespace Memoizer.NET.Test
             long invocationCounter = 0;
             Func<long> myThreadSafeFunc = () => invocationCounter++;
 
-            TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc.CreatePhasedExecutionContext(iterations: 0, threads: 0, functionLatency: 1);//ignoreLatency: true);
-            twoPhaseExecutionContext.Execute(report: false);
+            TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc.CreatePhasedExecutionContext(iterations: 0, threads: 0);
+            twoPhaseExecutionContext.Execute(report: false).Verify(report: true, listResults: true);
 
             IEnumerable<object> results = twoPhaseExecutionContext.Results[0];
         }
@@ -395,7 +395,7 @@ namespace Memoizer.NET.Test
             long invocationCounter = 0;
             Func<long> myThreadSafeFunc = () => invocationCounter++;
 
-            TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc.CreatePhasedExecutionContext(threads: 0, functionLatency: 1);//ignoreLatency: true);
+            TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc.CreatePhasedExecutionContext(threads: 0, functionLatency: 1);
             twoPhaseExecutionContext.Execute(report: false);
 
             IEnumerable<object> results = twoPhaseExecutionContext.Results[0];
@@ -410,13 +410,28 @@ namespace Memoizer.NET.Test
         [Test]
         public void TestTarget_4()
         {
-            long invocationCounter = 0;
-            Func<long> func = () => invocationCounter++;
+            int invocationCounter = 0;
 
-            IEnumerable<dynamic> results = func.CreatePhasedExecutionContext(threads: 1, functionLatency: 1).Execute().Results[0];
+            Func<int> func = () => ++invocationCounter; // Not thread-safe
+            //Func<int> func = new Func<int>(delegate()
+            //    {
+            //        Interlocked.Increment(ref invocationCounter);
+            //        return invocationCounter;
+            //    });
+
+            IEnumerable<dynamic> results = func.CreatePhasedExecutionContext().Execute().Verify().Results[0];
 
             Assert.That(results.Count(), Is.EqualTo(1));
+            Assert.That(results.ElementAtOrDefault(0), Is.EqualTo(1));
             Assert.That(invocationCounter, Is.EqualTo(1));
+
+            object result = func.CreatePhasedExecutionContext(threads: 2).Execute().Verify().Results[0][0];
+            Assert.That(result, Is.InRange(2, 3));
+            Assert.That(invocationCounter, Is.EqualTo(3));
+
+            result = func.CreatePhasedExecutionContext(threads: 2).Execute().Verify().Results[0][1];
+            Assert.That(result, Is.InRange(4, 5));
+            Assert.That(invocationCounter, Is.EqualTo(5));
         }
 
 
@@ -440,7 +455,6 @@ namespace Memoizer.NET.Test
             //Console.Write("FUNC() returns... ");
             return retVal;
         });
-
 
         [Test]
         public void TestTarget_5()
@@ -503,33 +517,39 @@ namespace Memoizer.NET.Test
         /// <summary>
         /// Lock object for removal of element and incrementing total element removal index.
         /// </summary>
-        static readonly object @lock = new Object();
+        //static readonly object @lock = new Object();
 
-        static readonly Func<int> FUNC7 = new Func<int>(delegate()
-        {
-            //lock (@lock)
-            //{
+        //static readonly Func<int> FUNC7 = new Func<int>(delegate()
+        //{
+        //    //lock (@lock)
+        //    //{
+        //    Interlocked.Increment(ref INVOCATION_COUNTER7);
+        //    return INVOCATION_COUNTER7;
+        //    //    return ++INVOCATION_COUNTER7;
+        //    //}
+        //});
+        readonly Func<int> FUNC7 = delegate
+            {
                 Interlocked.Increment(ref INVOCATION_COUNTER7);
                 return INVOCATION_COUNTER7;
-            //    return ++INVOCATION_COUNTER7;
-            //}
-        });
+            };
 
         [Test]
         public void TestTarget_7(
             [Values(4)] int numberOfIterations,
             [Values(1, 2, 4, 8, 12, 16, 20, 40, 80, 100, 200, 400, 800, 1000, 1200)] int numberOfConcurrentWorkerThreads)
+        //[Values(50)] int numberOfConcurrentWorkerThreads)
         {
             try
             {
-                TwoPhaseExecutionContext context = FUNC7.CreatePhasedExecutionContext(iterations: numberOfIterations, threads: numberOfConcurrentWorkerThreads, functionLatency: 1).Execute();
-                context.Verify();
+                TwoPhaseExecutionContext context =
+                    FUNC7.CreatePhasedExecutionContext(iterations: numberOfIterations, threads: numberOfConcurrentWorkerThreads, functionLatency: 1)
+                    .Execute()
+                    .Verify();
+
                 for (int i = 0; i < numberOfIterations; ++i)
-                {
-                    IList<object> results = context.Results[i];
                     for (int j = numberOfConcurrentWorkerThreads * numberOfIterations; j <= numberOfConcurrentWorkerThreads; ++j)
-                        Assert.That(results, Contains.Item(j));
-                }
+                        Assert.That(context.Results[i], Contains.Item(j));
             }
             finally
             {

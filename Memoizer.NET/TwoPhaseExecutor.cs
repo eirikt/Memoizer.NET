@@ -311,7 +311,17 @@ namespace Memoizer.NET
     // TODO: extend to Action and up-to four Func input arguments
     public static partial class FuncExtensionMethods
     {
-        public static TwoPhaseExecutionContext CreatePhasedExecutionContext<TResult>(this Func<TResult> function, dynamic[] args = null, int threads = 1, int iterations = 1, bool concurrent = true, bool memoize = false, long functionLatency = default(long), bool instrumentation = false, string tag = null)
+        public static TwoPhaseExecutionContext CreatePhasedExecutionContext<TResult>(
+            this Func<TResult> function,
+            dynamic[] args = null,
+            int threads = 1,
+            int iterations = 1,
+            bool concurrent = true,
+            bool memoize = false,
+            long functionLatency = default(long),
+            //bool ignoreLatency = false,
+            bool instrumentation = false,
+            string tag = null)
         {
             return new TwoPhaseExecutionContext(function,
                                                 args,
@@ -322,6 +332,7 @@ namespace Memoizer.NET
                 // memoizerClearing,
                                                 false,
                                                 functionLatency,
+                //ignoreLatency,
                                                 instrumentation,
                                                 tag);
         }
@@ -351,6 +362,7 @@ namespace Memoizer.NET
                 // memoizerClearing,
                                                 idempotent,
                                                 functionLatency,
+                //false,
                                                 instrumentation,
                                                 tag);
         }
@@ -381,8 +393,10 @@ namespace Memoizer.NET
             //internal bool IsMemoizerClearingTask { get; set; }
             internal long LatencyInMilliseconds { get; set; }
             internal bool CalculatedLatency { get; set; }
+            //internal bool IgnoreLatency { get; set; }
             internal bool Instrumentation { get; set; }
             internal string Tag { get; set; }
+
 
             public override string ToString()
             {
@@ -451,6 +465,8 @@ namespace Memoizer.NET
 
         internal TwoPhaseExecutionContextResultSet twoPhaseExecutionContextResultSet;// = new TwoPhaseExecutionContextResultSet(this);
 
+        bool MeasureLatency { get; set; }
+
 
         //private IDictionary<string, Tuple<long, object>> resultMatrix;
         //private long totalLatency;
@@ -479,7 +495,8 @@ namespace Memoizer.NET
             //bool isMemoizerClearing,
                                           bool idempotentFunction,
                                           long functionLatencyInMilliseconds,
-                                          bool instrumentation,
+            //bool ignoreLatency,
+            bool instrumentation,
                                           string tag)
         {
             if (numberOfIterations < 0) { throw new ArgumentException("Number-of-iteration parameter ('iterations') cannot be a negative number"); }
@@ -519,6 +536,7 @@ namespace Memoizer.NET
                 //IsMemoizerClearingTask = isMemoizerClearing,
                 LatencyInMilliseconds = functionLatencyInMilliseconds,
                 CalculatedLatency = functionLatencyInMilliseconds == default(long),
+                //IgnoreLatency = ignoreLatency,
                 Instrumentation = instrumentation,
                 Tag = tag
             };
@@ -938,8 +956,10 @@ namespace Memoizer.NET
 
 
 
-        public TwoPhaseExecutionContext Execute(bool report = true)
+        public TwoPhaseExecutionContext Execute(bool measureLatency = false, bool report = true)
         {
+            MeasureLatency = measureLatency;
+
             //#region Report [before]
             //if (report) { Console.WriteLine(new TwoPhaseExecutionContextResultSet(this).Report); }
             //#endregion
@@ -948,59 +968,63 @@ namespace Memoizer.NET
             //if (!this.isIdempotentContext) { throw new NotImplementedException("Non-idempotent function are kind of N/A in this context... I think"); }
             //#endregion
 
-            #region Expected latency);
-            //Console.WriteLine("--- Expected latency ---");
-            foreach (var functionExecutionContext in this.functionsToBeExecuted.Values)
+            #region Expected latency
+            if (MeasureLatency)
             {
-                if (functionExecutionContext.LatencyInMilliseconds == default(long))
+                //Console.WriteLine("--- Expected latency ---");
+                foreach (var functionExecutionContext in this.functionsToBeExecuted.Values)
                 {
-                    long accumulatedLatencyMeasurement = 0;
-                    StopWatch stopWatch = new StopWatch();
-                    for (int i = 0; i < NUMBER_OF_WARM_UP_ITERATIONS; ++i)
+                    //if (!functionExecutionContext.IgnoreLatency && functionExecutionContext.LatencyInMilliseconds == default(long))
+                    if (functionExecutionContext.LatencyInMilliseconds == default(long))
                     {
-                        stopWatch.Start();
-
-                        Type[] genericArguments = functionExecutionContext.FunctionToBeExecuted.GetType().GetGenericArguments();
-                        object[] defaultValueArguments = new object[genericArguments.Length - 1]; // -1 since the last generic parameter is the TResult
-                        for (int j = 0; j < genericArguments.Length - 1; ++j)
+                        long accumulatedLatencyMeasurement = 0;
+                        StopWatch stopWatch = new StopWatch();
+                        for (int i = 0; i < NUMBER_OF_WARM_UP_ITERATIONS; ++i)
                         {
-                            Type genericArgument = genericArguments[j];
-                            if (genericArgument.IsValueType)
-                                defaultValueArguments[j] = Activator.CreateInstance(genericArgument);
-                            else if (genericArgument == typeof(String))
-                                defaultValueArguments[j] = default(String);
+                            stopWatch.Start();
+
+                            Type[] genericArguments = functionExecutionContext.FunctionToBeExecuted.GetType().GetGenericArguments();
+                            object[] defaultValueArguments = new object[genericArguments.Length - 1]; // -1 since the last generic parameter is the TResult
+                            for (int j = 0; j < genericArguments.Length - 1; ++j)
+                            {
+                                Type genericArgument = genericArguments[j];
+                                if (genericArgument.IsValueType)
+                                    defaultValueArguments[j] = Activator.CreateInstance(genericArgument);
+                                else if (genericArgument == typeof(String))
+                                    defaultValueArguments[j] = default(String);
+                            }
+                            functionExecutionContext.FunctionToBeExecuted.DynamicInvoke(defaultValueArguments);
+
+                            accumulatedLatencyMeasurement += stopWatch.DurationInMilliseconds;
                         }
-                        functionExecutionContext.FunctionToBeExecuted.DynamicInvoke(defaultValueArguments);
+                        functionExecutionContext.LatencyInMilliseconds = accumulatedLatencyMeasurement / NUMBER_OF_WARM_UP_ITERATIONS;
 
-                        accumulatedLatencyMeasurement += stopWatch.DurationInMilliseconds;
+                        if (MinimumExpectedLatencyInMilliseconds == default(long))
+                            MinimumExpectedLatencyInMilliseconds = functionExecutionContext.LatencyInMilliseconds;
+                        else if (functionExecutionContext.LatencyInMilliseconds < MinimumExpectedLatencyInMilliseconds)
+                            MinimumExpectedLatencyInMilliseconds = functionExecutionContext.LatencyInMilliseconds;
                     }
-                    functionExecutionContext.LatencyInMilliseconds = accumulatedLatencyMeasurement / NUMBER_OF_WARM_UP_ITERATIONS;
 
-                    if (MinimumExpectedLatencyInMilliseconds == default(long))
-                        MinimumExpectedLatencyInMilliseconds = functionExecutionContext.LatencyInMilliseconds;
-                    else if (functionExecutionContext.LatencyInMilliseconds < MinimumExpectedLatencyInMilliseconds)
-                        MinimumExpectedLatencyInMilliseconds = functionExecutionContext.LatencyInMilliseconds;
-                }
+                    long expectedLatency = functionExecutionContext.LatencyInMilliseconds + CalculateContentionOverheadInMilliseconds();
 
-                long expectedLatency = functionExecutionContext.LatencyInMilliseconds + CalculateContentionOverheadInMilliseconds();
+                    if (functionExecutionContext.IsMemoized)
+                    {
+                        if (expectedLatency > MaximumExpectedLatencyInMilliseconds)
+                            MaximumExpectedLatencyInMilliseconds = expectedLatency;
 
-                if (functionExecutionContext.IsMemoized)
-                {
-                    if (expectedLatency > MaximumExpectedLatencyInMilliseconds)
-                        MaximumExpectedLatencyInMilliseconds = expectedLatency;
+                        if (expectedLatency < MinimumExpectedLatencyInMilliseconds)
+                            MinimumExpectedLatencyInMilliseconds = expectedLatency;
+                    }
+                    else
+                    {
+                        expectedLatency *= NumberOfIterations;
 
-                    if (expectedLatency < MinimumExpectedLatencyInMilliseconds)
-                        MinimumExpectedLatencyInMilliseconds = expectedLatency;
-                }
-                else
-                {
-                    expectedLatency *= NumberOfIterations;
+                        if (expectedLatency > MaximumExpectedLatencyInMilliseconds)
+                            MaximumExpectedLatencyInMilliseconds = expectedLatency;
 
-                    if (expectedLatency > MaximumExpectedLatencyInMilliseconds)
-                        MaximumExpectedLatencyInMilliseconds = expectedLatency;
-
-                    if (expectedLatency < MinimumExpectedLatencyInMilliseconds)
-                        MinimumExpectedLatencyInMilliseconds = expectedLatency;
+                        if (expectedLatency < MinimumExpectedLatencyInMilliseconds)
+                            MinimumExpectedLatencyInMilliseconds = expectedLatency;
+                    }
                 }
             }
             #endregion
@@ -1029,8 +1053,6 @@ namespace Memoizer.NET
                         {
                             genericArguments = functionExecutionContext.FunctionToBeExecuted.GetType().GetGenericArguments();
                             numberOfFunctionArguments = genericArguments.Length - 1; // -1 since the last generic parameter is the TResult
-
-
 
                             switch (numberOfFunctionArguments)
                             {
@@ -1167,17 +1189,19 @@ namespace Memoizer.NET
 
 
 
-        public void Verify(bool report = true,
-                           bool listResults = false,
-                           IDictionary<string, object> expectedResults = default(IDictionary<string, object>),
-                           long expectedMinimumLatency = 0L,
-                           long expectedMaximumLatency = Int64.MaxValue,
-                           IDictionary<string, long> actualFunctionInvocationCounts = default(IDictionary<string, long>))
+        public TwoPhaseExecutionContext Verify(bool report = true,
+                                               bool listResults = false,
+                                               IDictionary<string, object> expectedResults = default(IDictionary<string, object>),
+                                               long expectedMinimumLatency = 0L,
+                                               long expectedMaximumLatency = Int64.MaxValue,
+                                               IDictionary<string, long> actualFunctionInvocationCounts = default(IDictionary<string, long>))
         {
             if (!IsExecuted) { throw new InvalidOperationException("Execution context is not yet executed"); }
 
-            // Assert results of the executed functions
             StringBuilder reportBuilder = new StringBuilder();
+            StringBuilder errorReportBuilder = new StringBuilder();
+
+            // Assert results of the executed functions
             reportBuilder.Append("PhasedExecutor: ");
             reportBuilder.Append(NumberOfIterations);
             reportBuilder.Append(NumberOfIterations == 1 ? " round " : " rounds of ");
@@ -1255,7 +1279,7 @@ namespace Memoizer.NET
 
                         if (!actualResult.Equals(expectedResult))
                         {
-                            StringBuilder errorReportBuilder = new StringBuilder();
+                            //StringBuilder resultErrorReportBuilder = new StringBuilder();
                             if (expectedResult == null)
                                 errorReportBuilder.Append("Expected result: [no expected results found for action with hash '" + HashHelper.CreateFunctionHash(dynamicTwoPhaseExecutorThread.originalInvocable, dynamicTwoPhaseExecutorThread.args) + "']");
                             else
@@ -1272,58 +1296,67 @@ namespace Memoizer.NET
             // Assert latency/duration
             long duration = this.twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds;
 
-            if (duration > MaximumExpectedLatencyInMilliseconds)
-            {
-                StringBuilder errorReportBuilder = new StringBuilder();
-                errorReportBuilder.Append("Duration: " + duration + " ms | " + this.twoPhaseExecutionContextResultSet.StopWatch.DurationInTicks + " ticks");
-                errorReportBuilder.Append(" (should take ");
-                errorReportBuilder.Append(MinimumExpectedLatencyInMilliseconds);
-                errorReportBuilder.Append(" <= ");
-                errorReportBuilder.Append(duration);
-                errorReportBuilder.Append(" <= ");
-                errorReportBuilder.Append(MaximumExpectedLatencyInMilliseconds);
-                errorReportBuilder.Append(" ms) [Internal demand]");
-                throw new ApplicationException("Memoizer.NET.TwoPhaseExecutor: Latency violation! TOO SLOW" + Environment.NewLine + errorReportBuilder);
-            }
-            if (duration < MinimumExpectedLatencyInMilliseconds)
-            {
-                StringBuilder errorReportBuilder = new StringBuilder();
-                errorReportBuilder.Append("Duration: " + duration + " ms | " + this.twoPhaseExecutionContextResultSet.StopWatch.DurationInTicks + " ticks");
-                errorReportBuilder.Append(" (should take ");
-                errorReportBuilder.Append(MinimumExpectedLatencyInMilliseconds);
-                errorReportBuilder.Append(" <= ");
-                errorReportBuilder.Append(duration);
-                errorReportBuilder.Append(" <= ");
-                errorReportBuilder.Append(MaximumExpectedLatencyInMilliseconds);
-                errorReportBuilder.Append(" ms) [Internal demand]");
-                throw new ApplicationException("Memoizer.NET.TwoPhaseExecutor: Latency violation! TOO FAST" + Environment.NewLine + errorReportBuilder);
-            }
-            if (duration > expectedMaximumLatency)
-            {
-                StringBuilder errorReportBuilder = new StringBuilder();
-                errorReportBuilder.Append("Duration: " + duration + " ms | " + this.twoPhaseExecutionContextResultSet.StopWatch.DurationInTicks + " ticks");
-                errorReportBuilder.Append(" (should take ");
-                errorReportBuilder.Append(expectedMinimumLatency);
-                errorReportBuilder.Append(" <= ");
-                errorReportBuilder.Append(duration);
-                errorReportBuilder.Append(" <= ");
-                errorReportBuilder.Append(expectedMaximumLatency);
-                errorReportBuilder.Append(" ms) [External demand]");
-                throw new ApplicationException("Memoizer.NET.TwoPhaseExecutor: Latency violation, TOO SLOW!" + Environment.NewLine + errorReportBuilder);
-            }
-            if (duration < expectedMinimumLatency)
-            {
-                StringBuilder errorReportBuilder = new StringBuilder();
+            //StringBuilder errorReportBuilder = new StringBuilder();
+            reportBuilder.Append("Duration: " + duration + " ms | " + this.twoPhaseExecutionContextResultSet.StopWatch.DurationInTicks + " ticks");
 
-                errorReportBuilder.Append("Duration: " + duration + " ms | " + this.twoPhaseExecutionContextResultSet.StopWatch.DurationInTicks + " ticks");
-                errorReportBuilder.Append(" (should take ");
-                errorReportBuilder.Append(expectedMinimumLatency);
-                errorReportBuilder.Append(" <= ");
-                errorReportBuilder.Append(duration);
-                errorReportBuilder.Append(" <= ");
-                errorReportBuilder.Append(expectedMaximumLatency);
-                errorReportBuilder.Append(" ms) [External demand]");
-                throw new ApplicationException("Memoizer.NET.TwoPhaseExecutor: Latency violation! TOO FAST" + Environment.NewLine + errorReportBuilder);
+            if (!MeasureLatency)
+            {
+                
+            }
+            else
+            {
+                if (duration > MaximumExpectedLatencyInMilliseconds)
+                {
+                    errorReportBuilder.Append(" (should take ");
+                    errorReportBuilder.Append(MinimumExpectedLatencyInMilliseconds);
+                    errorReportBuilder.Append(" <= ");
+                    errorReportBuilder.Append(duration);
+                    errorReportBuilder.Append(" <= ");
+                    errorReportBuilder.Append(MaximumExpectedLatencyInMilliseconds);
+                    errorReportBuilder.Append(" ms) [Internal demand]");
+                    throw new ApplicationException("Memoizer.NET.TwoPhaseExecutor: Latency violation! TOO SLOW" + Environment.NewLine + errorReportBuilder);
+
+                }
+                if (duration < MinimumExpectedLatencyInMilliseconds)
+                {
+                    //StringBuilder errorReportBuilder = new StringBuilder();
+                    //errorReportBuilder.Append("Duration: " + duration + " ms | " + this.twoPhaseExecutionContextResultSet.StopWatch.DurationInTicks + " ticks");
+                    errorReportBuilder.Append(" (should take ");
+                    errorReportBuilder.Append(MinimumExpectedLatencyInMilliseconds);
+                    errorReportBuilder.Append(" <= ");
+                    errorReportBuilder.Append(duration);
+                    errorReportBuilder.Append(" <= ");
+                    errorReportBuilder.Append(MaximumExpectedLatencyInMilliseconds);
+                    errorReportBuilder.Append(" ms) [Internal demand]");
+                    throw new ApplicationException("Memoizer.NET.TwoPhaseExecutor: Latency violation! TOO FAST" + Environment.NewLine + errorReportBuilder);
+                }
+                if (duration > expectedMaximumLatency)
+                {
+                    //StringBuilder errorReportBuilder = new StringBuilder();
+                    //errorReportBuilder.Append("Duration: " + duration + " ms | " + this.twoPhaseExecutionContextResultSet.StopWatch.DurationInTicks + " ticks");
+                    errorReportBuilder.Append(" (should take ");
+                    errorReportBuilder.Append(expectedMinimumLatency);
+                    errorReportBuilder.Append(" <= ");
+                    errorReportBuilder.Append(duration);
+                    errorReportBuilder.Append(" <= ");
+                    errorReportBuilder.Append(expectedMaximumLatency);
+                    errorReportBuilder.Append(" ms) [External demand]");
+                    throw new ApplicationException("Memoizer.NET.TwoPhaseExecutor: Latency violation, TOO SLOW!" + Environment.NewLine + errorReportBuilder);
+                }
+                if (duration < expectedMinimumLatency)
+                {
+                    //StringBuilder errorReportBuilder = new StringBuilder();
+
+                    //errorReportBuilder.Append("Duration: " + duration + " ms | " + this.twoPhaseExecutionContextResultSet.StopWatch.DurationInTicks + " ticks");
+                    errorReportBuilder.Append(" (should take ");
+                    errorReportBuilder.Append(expectedMinimumLatency);
+                    errorReportBuilder.Append(" <= ");
+                    errorReportBuilder.Append(duration);
+                    errorReportBuilder.Append(" <= ");
+                    errorReportBuilder.Append(expectedMaximumLatency);
+                    errorReportBuilder.Append(" ms) [External demand]");
+                    throw new ApplicationException("Memoizer.NET.TwoPhaseExecutor: Latency violation! TOO FAST" + Environment.NewLine + errorReportBuilder);
+                }
             }
 
 
@@ -1336,7 +1369,7 @@ namespace Memoizer.NET
                     long actualCount;
                     actualFunctionInvocationCounts.TryGetValue(HashHelper.CreateFunctionHash(functionExecutionContext.FunctionToBeExecuted), out actualCount);
 
-                    StringBuilder errorReportBuilder = new StringBuilder();
+                    //StringBuilder numberOfInvocationsErrorReportBuilder = new StringBuilder();
                     errorReportBuilder.Append("Expected function [id=" + HashHelper.CreateFunctionHash(functionExecutionContext.FunctionToBeExecuted) + "] invocations:\t" + expectedCount);
                     errorReportBuilder.Append(Environment.NewLine);
                     errorReportBuilder.Append("Actual function [id=" + HashHelper.CreateFunctionHash(functionExecutionContext.FunctionToBeExecuted) + "] invocations:\t\t" + actualCount);
@@ -1350,6 +1383,8 @@ namespace Memoizer.NET
 
 
             if (report) { Console.WriteLine(reportBuilder.ToString()); }
+
+            return this;
         }
 
 

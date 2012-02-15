@@ -87,8 +87,8 @@ You can also bypass the memoizer registry entirely by using `CreateMemoizer()` i
 
 ```c#
 TResult InvokeWith(TParam param)
-    void Remove(TParam param)
-    void Clear()
+   void Remove(TParam param)
+   void Clear()
 ```
 
 ...in addition to some methods for instrumentation.
@@ -96,33 +96,15 @@ TResult InvokeWith(TParam param)
 
 ## Memoizer.NET.PhasedExecutor
 A class for synchronized execution of an arbitrary number of worker threads.
+It is 
 
 ### Usage
-As with the memoizer the bootstrap mechanism is `Func` or `Action` extension mmethods.
+As with the memoizer the bootstrap mechanism is a `Func` or an `Action` extension method, `PhasedExecutionContext CreatePhasedExecutionContext`.
+Pass in arguments, number of concurrent thread to run, and number of iterations.
+
 
 ```c#
-Action<long> myThreadSafeAction = ...
 
-PhasedExecutionContext context = myThreadSafeAction.CreateExecutionContext(threads: 100);
-context.Execute();
-
-// Inject expected results
-IDictionary<string, long> results = new Dictionary<string, long>
-{
-    { HashHelper.CreateFunctionHash(myThreadSafeAction), "VeryExpensiveMethodResponseForyoyo1313" }, 
-    { HashHelper.CreateFunctionHash(myThreadSafeAction), "VeryExpensiveMethodResponseForyo13" }
-            };
-
-            IDictionary<string, long> functionInvocationCounts = new Dictionary<string, long>
-            {
-                { HashHelper.CreateFunctionHash(memoizerTests.reallySlowNetworkInvocation1a), MemoizerTests.reallySlowNetworkInvocation1a_INVOCATION_COUNTER }
-            };
-
-            twoPhaseExecutionContext.Verify(expectedResults: results,
-                                            expectedMinimumLatency: 0L,
-                                            expectedMaximumLatency: twoPhaseExecutionContext.NumberOfIterations * MemoizerTests.NETWORK_RESPONSE_LATENCY_IN_MILLIS + 100,
-                                            actualFunctionInvocationCounts: functionInvocationCounts // For memoizer testing mostly...
-                                            );
 
 ```
 
