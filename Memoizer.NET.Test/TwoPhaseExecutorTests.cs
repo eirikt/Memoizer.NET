@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -75,26 +74,514 @@ namespace Memoizer.NET.Test
 
 
 
-        [Test, ExpectedException(typeof(ArgumentException), ExpectedMessage = "Number-of-iteration parameter ('iterations') cannot be a negative number", MatchType = MessageMatch.Exact)]
-        public void TwoPhaseExecutionContext_IterationParameterCannotBeNegativeNumber(
-            [Values(-10, -1)] int numberOfIterations,
-            [Values(1)] int numberOfConcurrentWorkerThreads)
+        static IList<string> LOG_LINES;// = new List<string>();
+
+        readonly Action<string> loggingMethod = delegate(string logLine) { LOG_LINES.Add(logLine); Console.WriteLine(logLine); };
+
+        [SetUp]
+        //#pragma warning disable 108,114 // Affirmative, both [SetUp] methods should be executed. This one _after_ the base [Setup] method.
+        public void PerMethodSetUp()
+        //#pragma warning restore 108,114
+        {
+            LOG_LINES = new List<string>();
+        }
+
+
+
+        // --- less-than-one execution numbers ---
+
+        [Test, ExpectedException(typeof(ArgumentException), ExpectedMessage = "Number-of-iterations parameter ('iterations') cannot be less than 1", MatchType = MessageMatch.Exact)]
+        public void TwoPhaseExecutionContext_IterationParameterMustBeAPositiveInteger(
+            [Values(-100, -1, 0)] int numberOfIterations,
+            [Values(-100, -1, 0, 1)] int numberOfConcurrentWorkerThreads)
         {
             Func<string, long, string> myFunc = MemoizerTests.ReallySlowNetworkStaticInvocation;
             myFunc.CreateExecutionContext(iterations: numberOfIterations, threads: numberOfConcurrentWorkerThreads);
         }
 
 
-        [Test, ExpectedException(typeof(ArgumentException), ExpectedMessage = "Number-of-worker-threads parameter ('threads') cannot be a negative number", MatchType = MessageMatch.Exact)]
-        public void TwoPhaseExecutionContext_NumberOfConcurrentWorkerThreadsParameterCannotBeNegativeNumber(
-            [Values(1)] int numberOfIterations,
-            [Values(-10, -1)] int numberOfConcurrentWorkerThreads)
+        [Test, ExpectedException(typeof(ArgumentException), ExpectedMessage = "Number-of-worker-threads parameter ('threads') cannot be less than 1", MatchType = MessageMatch.Exact)]
+        public void TwoPhaseExecutionContext_NumberOfConcurrentWorkerThreadsParameterMustBeAPositiveInteger(
+            [Values(1, 100)] int numberOfIterations,
+            [Values(-100, -1, 0)] int numberOfConcurrentWorkerThreads)
         {
             Func<string, long, string> myFunc = MemoizerTests.ReallySlowNetworkStaticInvocation;
             myFunc.CreateExecutionContext(iterations: numberOfIterations, threads: numberOfConcurrentWorkerThreads);
         }
 
 
+        // --- no-execution behaviour ---
+
+        [Test, ExpectedException(typeof(ApplicationException), ExpectedMessage = "No results are available", MatchType = MessageMatch.Exact)]
+        public void NotExecutedPhasedExecutionContext_ReportIsFalseByDefault(
+            [Values(1, 2, 100)] int iterations,
+            [Values(1, 2, 100)] int threads)
+        {
+            int invocationCounter = 0;
+            Func<int> myThreadSafeFunc = () => ++invocationCounter;
+
+            TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc.CreatePhasedExecutionContext(iterations: iterations, threads: threads);
+            Assert.That(LOG_LINES, Is.Empty);
+            var res = twoPhaseExecutionContext.Results[0];
+        }
+
+
+        [Test, ExpectedException(typeof(ApplicationException), ExpectedMessage = "No results are available", MatchType = MessageMatch.Exact)]
+        public void NotExecutedPhasedExecutionContext_LoggingMethodIsConsoleWriteLineByDefault(
+            [Values(1, 2, 100)] int iterations,
+            [Values(1, 2, 100)] int threads)
+        {
+            int invocationCounter = 0;
+            Func<int> myThreadSafeFunc = () => ++invocationCounter;
+
+            TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc.CreatePhasedExecutionContext(iterations: iterations, threads: threads, report: true);
+
+            // Console.WriteLine by default only
+            Assert.That(LOG_LINES, Is.Empty);
+
+            var res = twoPhaseExecutionContext.Results[0][1000];
+        }
+
+
+        [Test, ExpectedException(typeof(ApplicationException), ExpectedMessage = "No results are available", MatchType = MessageMatch.Exact)]
+        public void NotExecutedPhasedExecutionContext_ShouldGiveNotYetExecutedMessage_1()
+        {
+            int invocationCounter = 0;
+            Func<int> myThreadSafeFunc = () => ++invocationCounter;
+
+            TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc.CreatePhasedExecutionContext(iterations: 1, threads: 1, report: true, loggingMethod: loggingMethod);
+
+            Assert.That(LOG_LINES.Count, Is.EqualTo(1));
+            Assert.That(LOG_LINES[0], Is.EqualTo("PhasedExecutor: 1 round of {[1 concurrent thread, no args, latency unknown]} - not yet executed"));
+
+            var res = twoPhaseExecutionContext.Results[0];
+        }
+
+
+        [Test, ExpectedException(typeof(ApplicationException), ExpectedMessage = "Result set contains only 2 iterations... Really no point is asking for iteration #3 (zero-based) then, is it?", MatchType = MessageMatch.Exact)]
+        public void NotExecutedPhasedExecutionContext_ShouldGiveNotYetExecutedMessage_2()
+        {
+            int invocationCounter = 0;
+            Func<int> myThreadSafeFunc = () => ++invocationCounter;
+
+            TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc.CreatePhasedExecutionContext(iterations: 2, threads: 3, report: true, loggingMethod: loggingMethod);
+
+            Assert.That(LOG_LINES.Count, Is.EqualTo(1));
+            Assert.That(LOG_LINES[0], Is.EqualTo("PhasedExecutor: 2 rounds of {[3 concurrent threads, no args, latency unknown]} - not yet executed"));
+
+            var res = twoPhaseExecutionContext.Results[2];
+        }
+
+
+        //[Test, ExpectedException(typeof(ApplicationException), ExpectedMessage = "No results are available", MatchType = MessageMatch.Exact)]
+        //public void ZeroThreadPhasedExecutionContext_ShouldGiveNotApplicableMessage_1_2()
+        //{
+        //    long invocationCounter = 0;
+        //    Func<long> myThreadSafeFunc = () => invocationCounter++;
+
+        //    TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc.CreatePhasedExecutionContext(iterations: 1, threads: 0, report: true, loggingMethod: loggingMethod);
+
+        //    Assert.That(LOG_LINES.Count, Is.EqualTo(1));
+        //    Assert.That(LOG_LINES[0], Is.EqualTo("PhasedExecutor: 1 round of {[0 concurrent threads, no args, latency unknown]} (no worker threads are declared - context cannot be executed!)"));
+
+        //    IEnumerable<object> results = twoPhaseExecutionContext.Results[0];
+        //}
+
+
+        //[Test, ExpectedException(typeof(ArgumentException), ExpectedMessage = "No iterations are declared - context cannot be executed!", MatchType = MessageMatch.Exact)]
+        //public void ZeroThreadPhasedExecutionContext_ShouldGiveNotApplicableMessage_2_1(
+        //    [Values(-1, 0, 1, 10)] int threads)
+        //{
+        //    long invocationCounter = 0;
+        //    Func<long> myThreadSafeFunc = () => invocationCounter++;
+        //    myThreadSafeFunc.CreatePhasedExecutionContext(iterations: 0, threads: threads).Execute();
+        //}
+
+
+        //[Test, ExpectedException(typeof(InvalidOperationException), ExpectedMessage = "No worker threads are declared - context cannot be executed!", MatchType = MessageMatch.Exact)]
+        //public void ZeroThreadPhasedExecutionContext_ShouldGiveNotApplicableMessage_2_2(
+        //    [Values(-1, 0, 1, 10)] int iterations)
+        //{
+        //    long invocationCounter = 0;
+        //    Func<long> myThreadSafeFunc = () => invocationCounter++;
+        //    myThreadSafeFunc.CreatePhasedExecutionContext(iterations: iterations, threads: 0).Execute();
+        //}
+
+
+
+
+
+        // --- default argument's execution => single iteration - single thread ---
+
+        [Test, ExpectedException(typeof(ApplicationException), ExpectedMessage = "No results are available", MatchType = MessageMatch.Exact)]
+        public void DefaultPhasedExecutionContext_NotExecuted_ReportingIsOffByDefault_1()
+        {
+            int invocationCounter = 0;
+            Func<int> myThreadSafeFunc = () => ++invocationCounter;
+
+            TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc.CreatePhasedExecutionContext(loggingMethod: loggingMethod);
+            Assert.That(LOG_LINES, Is.Empty);
+            var res = twoPhaseExecutionContext.Results[0];
+        }
+
+
+        [Test, ExpectedException(typeof(ApplicationException), ExpectedMessage = "Result set contains only 1 iteration... Really no point is asking for iteration #2 (zero-based) then, is it?", MatchType = MessageMatch.Exact)]
+        public void DefaultPhasedExecutionContext_NotExecuted_ReportingIsOffByDefault_2()
+        {
+            int invocationCounter = 0;
+            Func<int> myThreadSafeFunc = () => ++invocationCounter;
+
+            TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc.CreatePhasedExecutionContext(loggingMethod: loggingMethod);
+            Assert.That(LOG_LINES, Is.Empty);
+            var res = twoPhaseExecutionContext.Results[1];
+        }
+
+
+        [Test]
+        public void DefaultPhasedExecutionContext_Executed_AllIndividualResultsAreAvailable_ReportingIsOnByDefault()
+        {
+            int invocationCounter = 0;
+            Func<int> myThreadSafeFunc = () => ++invocationCounter;
+
+            TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc.CreatePhasedExecutionContext(loggingMethod: loggingMethod, tag: "f1")
+                .Execute();
+
+            Assert.That(LOG_LINES.Count, Is.EqualTo(1));
+            Assert.That(LOG_LINES[0].StartsWith("PhasedExecutor: 1 round of {[f1: 1 concurrent thread, no args, latency unknown]} took "));
+            Assert.That(LOG_LINES[0].Contains(" | "));
+            Assert.That(LOG_LINES[0].EndsWith(" ticks"));
+
+            Assert.That(twoPhaseExecutionContext.Results[0][0], Is.EqualTo(1)); // 1 == first invocationCounter count
+
+            // Or in a more generic form:
+            PhasedExecutionContextResult executionResults = twoPhaseExecutionContext.Results;
+            Assert.That(executionResults, Is.Not.Null);
+            Assert.That(executionResults.Count, Is.EqualTo(1));
+            for (int i = 0; i < executionResults.Count; ++i)
+            {
+                Assert.That(executionResults[i][0], Is.EqualTo(1)); // 1 == first invocationCounter count
+
+                IList<object> iterationResults = twoPhaseExecutionContext.Results[i];
+                Assert.That(iterationResults.Count, Is.EqualTo(1));
+                for (int j = 0; j < iterationResults.Count; ++j)
+                {
+                    Assert.That(iterationResults, Is.Not.Null);
+                    Assert.That(iterationResults.Count, Is.EqualTo(1));
+                    Assert.That(iterationResults[j], Is.EqualTo(i + 1));
+                }
+            }
+        }
+
+
+        [Test]
+        public void DefaultPhasedExecutionContext_ExecutedAndVerified_ReportingIsOnByDefault()
+        {
+            int invocationCounter = 0;
+            Func<int> myThreadSafeFunc = () => ++invocationCounter;
+
+            myThreadSafeFunc
+                .CreatePhasedExecutionContext(args: null, threads: 1, iterations: 1, report: false, concurrent: true, memoize: false, functionLatency: default(long), instrumentation: false, tag: null, loggingMethod: loggingMethod)
+                .Execute(measureLatency: false, assertLatency: false, report: true)
+                .Verify(report: true, listResults: false, expectedResults: default(IDictionary<string, object>), expectedMinimumLatency: 0L, expectedMaximumLatency: Int64.MaxValue, actualFunctionInvocationCounts: default(IDictionary<string, long>));
+
+            Assert.That(LOG_LINES.Count, Is.EqualTo(2));
+            Assert.That(LOG_LINES[1], Is.EqualTo("PhasedExecutor: 1 round of {[1 concurrent thread, no args, latency unknown]} expected results not given, latency boundaries demands not given"));
+        }
+
+
+        [Test]
+        public void DefaultPhasedExecutionContext_ExecutedAndVerified_ReportingOnNonExecutedContextActivated()
+        {
+            int invocationCounter = 0;
+            Func<int> myThreadSafeFunc = () => ++invocationCounter;
+
+            myThreadSafeFunc
+                .CreatePhasedExecutionContext(report: true, loggingMethod: loggingMethod)
+                //.CreatePhasedExecutionContext(args: null, threads: 1, iterations: 1, report: true, concurrent: true, memoize: false, functionLatency: default(long), instrumentation: false, tag: null, loggingMethod: loggingMethod)
+                .Execute() //measureLatency: false, assertLatency: false, report: true)
+                .Verify();//report: true, listResults: false, expectedResults: default(IDictionary<string, object>), expectedMinimumLatency: 0L, expectedMaximumLatency: Int64.MaxValue, actualFunctionInvocationCounts: default(IDictionary<string, long>));
+
+            Assert.That(LOG_LINES.Count, Is.EqualTo(3));
+            Assert.That(LOG_LINES[0], Is.EqualTo("PhasedExecutor: 1 round of {[1 concurrent thread, no args, latency unknown]} - not yet executed"));
+        }
+
+
+        // HIT!
+
+        [Test]
+        public void DefaultPhasedExecutionContext_ExecutedAndVerified_EmbeddedLatencyMeasurement()
+        {
+            int invocationCounter = 0;
+            Func<int> myThreadSafeFunc = () => ++invocationCounter;
+
+            myThreadSafeFunc
+                .CreatePhasedExecutionContext(loggingMethod: loggingMethod)
+                //.CreatePhasedExecutionContext(args: null, threads: 1, iterations: 1, report: true, concurrent: true, memoize: false, functionLatency: default(long), instrumentation: false, tag: null, loggingMethod: loggingMethod)
+                .Execute(measureLatency: true) //, assertLatency: false, report: true)
+                .Verify();//report: true, listResults: false, expectedResults: default(IDictionary<string, object>), expectedMinimumLatency: 0L, expectedMaximumLatency: Int64.MaxValue, actualFunctionInvocationCounts: default(IDictionary<string, long>));
+
+            Assert.That(LOG_LINES.Count, Is.EqualTo(2));
+            Assert.That(LOG_LINES[0].StartsWith("PhasedExecutor: 1 round of {[1 concurrent thread, no args, latency unknown]} took "));
+            Assert.That(LOG_LINES[0].Contains(" | "));
+            Assert.That(LOG_LINES[0].EndsWith(" ticks"));
+            Assert.That(LOG_LINES[1], Is.EqualTo("PhasedExecutor: 1 round of {[1 concurrent thread, no args, latency unknown]} expected results not given, latency boundaries demands not given"));
+        }
+
+
+        [Test]
+        public void DefaultPhasedExecutionContext_ExecutedAndVerified_EmbeddedLatencyAsserts()
+        {
+            int invocationCounter = 0;
+            Func<int> myThreadSafeFunc = () => ++invocationCounter;
+
+            myThreadSafeFunc
+                .CreatePhasedExecutionContext(loggingMethod: loggingMethod)
+                //.CreatePhasedExecutionContext(args: null, threads: 1, iterations: 1, report: true, concurrent: true, memoize: false, functionLatency: default(long), instrumentation: false, tag: null, loggingMethod: loggingMethod)
+                .Execute(measureLatency: true, assertLatency: true) //, report: true)
+                .Verify();//report: true, listResults: false, expectedResults: default(IDictionary<string, object>), expectedMinimumLatency: 0L, expectedMaximumLatency: Int64.MaxValue, actualFunctionInvocationCounts: default(IDictionary<string, long>));
+
+            Assert.That(LOG_LINES.Count, Is.EqualTo(2));
+            Assert.That(LOG_LINES[0].StartsWith("PhasedExecutor: 1 round of {[1 concurrent thread, no args, latency unknown]} took "));
+            Assert.That(LOG_LINES[0].Contains(" | "));
+            Assert.That(LOG_LINES[0].EndsWith(" ticks"));
+            Assert.That(LOG_LINES[1], Is.EqualTo("PhasedExecutor: 1 round of {[1 concurrent thread, no args, latency unknown]} expected results not given, internal latency boundaries demands: ..."));
+        }
+
+
+        [Test]
+        public void DefaultPhasedExecutionContext_ExecutedAndVerified_EmbeddedLatencyAsserts_EmbeddedLatencyMeasuringIncluded()
+        {
+            int invocationCounter = 0;
+            Func<int> myThreadSafeFunc = () => ++invocationCounter;
+
+            myThreadSafeFunc
+                .CreatePhasedExecutionContext(loggingMethod: loggingMethod)
+                //.CreatePhasedExecutionContext(args: null, threads: 1, iterations: 1, report: true, concurrent: true, memoize: false, functionLatency: default(long), instrumentation: false, tag: null, loggingMethod: loggingMethod)
+                .Execute(assertLatency: true) //measureLatency: false, report: true)
+                .Verify();//report: true, listResults: false, expectedResults: default(IDictionary<string, object>), expectedMinimumLatency: 0L, expectedMaximumLatency: Int64.MaxValue, actualFunctionInvocationCounts: default(IDictionary<string, long>));
+
+            Assert.That(LOG_LINES.Count, Is.EqualTo(2));
+            Assert.That(LOG_LINES[0].StartsWith("PhasedExecutor: 1 round of {[1 concurrent thread, no args, latency unknown]} took "));
+            Assert.That(LOG_LINES[0].Contains(" | "));
+            Assert.That(LOG_LINES[0].EndsWith(" ticks"));
+            Assert.That(LOG_LINES[1], Is.EqualTo("PhasedExecutor: 1 round of {[1 concurrent thread, no args, latency unknown]} expected results not given, internal latency boundaries demands: ..."));
+        }
+
+
+
+
+
+        // --- multiple iterations ---
+
+
+
+        
+        
+        // --- multiple worker threads ---
+
+
+
+
+
+        [Test]
+        public void DefaultPhasedExecutionContext_AllIndividualResultsAreAvailable_ReportingIsOffByDefault(
+            //[Values(1, 2, 100)] int iterations,
+            [Values(1)] int iterations,
+            [Values(1)] int threads
+            )
+        {
+            int invocationCounter = 0;
+            Func<int> myThreadSafeFunc = () => ++invocationCounter;
+
+            TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc
+                .CreatePhasedExecutionContext(iterations: iterations, threads: threads, loggingMethod: loggingMethod)
+                .Execute(measureLatency: false, assertLatency: false, report: true);
+
+            Assert.That(LOG_LINES, Is.Empty);
+
+
+            PhasedExecutionContextResult executionResults = twoPhaseExecutionContext.Results;
+            Assert.That(executionResults, Is.Not.Null);
+            Assert.That(executionResults.Count, Is.EqualTo(iterations));
+            for (int i = 0; i < executionResults.Count; ++i)
+            {
+                //Assert.That(executionResults[i][0], Is.EqualTo(1)); // 1 == first invocationCounter count
+
+                IList<object> iterationResults = twoPhaseExecutionContext.Results[i];
+                Assert.That(iterationResults.Count, Is.EqualTo(threads));
+                for (int j = 0; j < iterationResults.Count; ++j)
+                {
+                    Assert.That(iterationResults, Is.Not.Null);
+                    Assert.That(iterationResults.Count, Is.EqualTo(threads));
+                    Assert.That(iterationResults[j], Is.EqualTo(i + 1));
+                }
+            }
+        }
+
+
+
+
+        // --- context conjunctions ---
+
+
+
+
+
+        [Test, ExpectedException(typeof(ApplicationException), ExpectedMessage = "No results are available", MatchType = MessageMatch.Exact)]
+        public void ZeroThreadPhasedExecutionContext_ShouldGiveNotApplicableMessage_3()
+        {
+            long invocationCounter = 0;
+            Func<long> myThreadSafeFunc = () => invocationCounter++;
+
+            TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc
+                .CreatePhasedExecutionContext(iterations: 0, threads: 0, report: true, loggingMethod: loggingMethod)
+                .Execute()
+                .Verify();
+
+            Assert.That(LOG_LINES.Count, Is.EqualTo(3));
+            Assert.That(LOG_LINES[0], Is.EqualTo("PhasedExecutor: 0 rounds of {[0 concurrent threads, no args, latency unknown]} (no threads are declared - context is N/A)"));
+            Assert.That(LOG_LINES[1], Is.EqualTo("PhasedExecutor: 0 rounds of {[0 concurrent threads, no args, ignore latency]} (no threads are declared - context is N/A)"));
+            Assert.That(LOG_LINES[2], Is.EqualTo("PhasedExecutor: 0 rounds of {[0 concurrent threads, no args, ignore latency]}"));
+
+            IEnumerable<object> results = twoPhaseExecutionContext.Results[0];
+        }
+
+
+        //[Test, ExpectedException(typeof(ApplicationException), ExpectedMessage = "No results are available", MatchType = MessageMatch.Exact)]
+        //public void TestTarget_2_6()
+        //{
+        //    long invocationCounter = 0;
+        //    Func<long> myThreadSafeFunc = () => invocationCounter++;
+
+        //    TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc.CreatePhasedExecutionContext(iterations: 0, threads: 0, loggingMethod: loggingMethod);
+        //    twoPhaseExecutionContext.Execute(measureLatency: false, report: true);
+
+        //    Assert.That(LOG_LINES.Count, Is.EqualTo(1));
+        //    Assert.That(LOG_LINES[0], Is.EqualTo("PhasedExecutor: 0 rounds of {[0 concurrent threads, no args, ignore latency]} (context not yet executed)"));
+
+        //    IEnumerable<object> results = twoPhaseExecutionContext.Results[0];
+        //}
+
+
+        [Test, ExpectedException(typeof(ApplicationException), ExpectedMessage = "No results are available", MatchType = MessageMatch.Exact)]
+        public void ZeroThreadPhasedExecutionContext_QuietExecution()
+        {
+            long invocationCounter = 0;
+            Func<long> myThreadSafeFunc = () => invocationCounter++;
+
+            TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc
+                .CreatePhasedExecutionContext(iterations: 0, threads: 0, loggingMethod: loggingMethod)
+                .Execute(measureLatency: false, report: false)
+                .Verify(report: false, listResults: false);
+
+            Assert.That(LOG_LINES, Is.Empty);
+
+            IEnumerable<object> results = twoPhaseExecutionContext.Results[0];
+        }
+
+
+        [Test, ExpectedException(typeof(ApplicationException), ExpectedMessage = "No results are available", MatchType = MessageMatch.Exact)]
+        public void ZeroThreadPhasedExecutionContext_VerificationReportOnly()
+        {
+            long invocationCounter = 0;
+            Func<long> myThreadSafeFunc = () => invocationCounter++;
+
+            TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc.
+                CreatePhasedExecutionContext(iterations: 0, threads: 0, loggingMethod: loggingMethod)
+                .Execute(measureLatency: false, report: false)
+                .Verify(report: true, listResults: false);
+
+            Assert.That(LOG_LINES.Count, Is.EqualTo(1));
+            Assert.That(LOG_LINES[0], Is.EqualTo("PhasedExecutor: 0 rounds of {[0 concurrent threads, no args, ignore latency]}"));
+
+            IEnumerable<object> results = twoPhaseExecutionContext.Results[0];
+        }
+
+
+        [Test, ExpectedException(typeof(ApplicationException), ExpectedMessage = "No results are available", MatchType = MessageMatch.Exact)]
+        public void ZeroThreadPhasedExecutionContext_VerificationReportOnly_WithEmptyResultListing()
+        {
+            long invocationCounter = 0;
+            Func<long> myThreadSafeFunc = () => invocationCounter++;
+
+            TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc.CreatePhasedExecutionContext(iterations: 0, threads: 0, loggingMethod: loggingMethod);
+            twoPhaseExecutionContext.Execute(measureLatency: false, report: false);
+            twoPhaseExecutionContext.Verify(report: true, listResults: true);
+
+            Assert.That(LOG_LINES.Count, Is.EqualTo(1));
+            Assert.That(LOG_LINES[0], Is.EqualTo("PhasedExecutor: 0 rounds of {[0 concurrent threads, no args, ignore latency]}\r\nNo results available"));
+
+            IEnumerable<object> results = twoPhaseExecutionContext.Results[0];
+        }
+
+
+        [Test, ExpectedException(typeof(ApplicationException), ExpectedMessage = "No results are available", MatchType = MessageMatch.Exact)]
+        public void ZeroThreadPhasedExecutionContext_ExecutionAndVerificationReport_WithEmptyResultListing()
+        {
+            long invocationCounter = 0;
+            Func<long> myThreadSafeFunc = () => invocationCounter++;
+
+            TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc.CreatePhasedExecutionContext(iterations: 0, threads: 0, loggingMethod: loggingMethod);
+            twoPhaseExecutionContext.Execute(measureLatency: false, report: true);
+            twoPhaseExecutionContext.Verify(report: true, listResults: true);
+
+            Assert.That(LOG_LINES.Count, Is.EqualTo(2));
+            Assert.That(LOG_LINES[0], Is.EqualTo("PhasedExecutor: 0 rounds of {[0 concurrent threads, no args, ignore latency]} (zero threads declared - context is N/A)"));
+            Assert.That(LOG_LINES[1], Is.EqualTo("PhasedExecutor: 0 rounds of {[0 concurrent threads, no args, ignore latency]}\r\nNo results available"));
+
+            IEnumerable<object> results = twoPhaseExecutionContext.Results[0];
+        }
+
+
+        [Test]//, ExpectedException(typeof(ApplicationException), ExpectedMessage = "No results are available", MatchType = MessageMatch.Exact)]
+        public void ZeroThreadPhasedExecutionContext_WithLatencyMeasurements_ExecutionAndVerificationReport_WithEmptyResultListing()
+        {
+            long invocationCounter = 0;
+            Func<long> myThreadSafeFunc = () => invocationCounter++;
+
+            TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc.CreatePhasedExecutionContext(iterations: 0, threads: 0, report: true, loggingMethod: loggingMethod);
+            twoPhaseExecutionContext.Execute(measureLatency: true, assertLatency: true, report: true);
+            twoPhaseExecutionContext.Verify(report: true, listResults: true);
+
+            Assert.That(LOG_LINES.Count, Is.EqualTo(3));
+            Assert.That(LOG_LINES[0], Is.EqualTo("PhasedExecutor: 0 rounds of {[0 concurrent threads, no args, latency unknown]} (zero threads declared - context is N/A)"));
+            Assert.That(LOG_LINES[1], Is.EqualTo("PhasedExecutor: 0 rounds of {[0 concurrent threads, no args, ~12 us latency]} (zero threads declared - context is N/A)"));
+            Assert.That(LOG_LINES[2], Is.EqualTo("PhasedExecutor: 0 rounds of {[0 concurrent threads, no args, ~12 us latency]} (should take [0, 24] us)\r\nNo results available"));
+
+            IEnumerable<object> results = twoPhaseExecutionContext.Results[0];
+        }
+
+
+        [Test, ExpectedException(typeof(ApplicationException), ExpectedMessage = "No results are available", MatchType = MessageMatch.Exact)]
+        public void TestTarget_2_0()
+        {
+            long invocationCounter = 0;
+            Func<long> myThreadSafeFunc = () => invocationCounter++;
+
+            TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc.CreatePhasedExecutionContext(iterations: 0, threads: 0, report: true, loggingMethod: loggingMethod);
+            twoPhaseExecutionContext.Execute(assertLatency: true, report: true);
+            twoPhaseExecutionContext.Verify(report: true, listResults: true);
+
+
+
+        }
+
+
+        [Test, ExpectedException(typeof(ApplicationException), ExpectedMessage = "No results are available", MatchType = MessageMatch.Exact)]
+        public void TestTarget_2_00()
+        {
+            long invocationCounter = 0;
+            Func<long> myThreadSafeFunc = () => invocationCounter++;
+
+            TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc.CreatePhasedExecutionContext(iterations: 0, threads: 0, loggingMethod: loggingMethod);
+            twoPhaseExecutionContext.Execute(measureLatency: true, assertLatency: true, report: true).Verify(report: true, listResults: true);
+        }
+
+
+
+
+
+        // TODO: merge with spec above...
         [Test]
         public void TwoPhaseExecutionContext_ZeroValuedParameters()
         {
@@ -120,6 +607,7 @@ namespace Memoizer.NET.Test
         }
 
 
+        // TODO: merge with spec above...
         [Test]
         public void TwoPhaseExecutionContext_DefaultExecution()
         {
@@ -302,7 +790,7 @@ namespace Memoizer.NET.Test
             twoPhaseExecutionContext = twoPhaseExecutionContext.Having(iterations: 2);
 
             // Execute
-            twoPhaseExecutionContext = twoPhaseExecutionContext.Execute(report: true);
+            twoPhaseExecutionContext = twoPhaseExecutionContext.Execute(measureLatency: true, report: true);
 
             // Inject expected execution state, and verify execution
             IDictionary<string, object> results = new Dictionary<string, object>
@@ -376,17 +864,25 @@ namespace Memoizer.NET.Test
         }
 
 
-        [Test, ExpectedException(typeof(Exception), ExpectedMessage = "No results are available", MatchType = MessageMatch.Exact)]
-        public void TestTarget_2()
+
+
+
+        [Test, ExpectedException(typeof(ApplicationException), ExpectedMessage = "No results are available", MatchType = MessageMatch.Exact)]
+        public void TestTarget_2_100()
         {
             long invocationCounter = 0;
             Func<long> myThreadSafeFunc = () => invocationCounter++;
 
-            TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc.CreatePhasedExecutionContext(iterations: 0, threads: 0);
-            twoPhaseExecutionContext.Execute(report: false).Verify(report: true, listResults: true);
+            TwoPhaseExecutionContext twoPhaseExecutionContext = myThreadSafeFunc.CreatePhasedExecutionContext(report: true, loggingMethod: loggingMethod);
+
+            Assert.That(LOG_LINES.Count, Is.EqualTo(1));
+            Assert.That(LOG_LINES[0], Is.EqualTo("PhasedExecutor: 1 round of {[1 concurrent thread, no args, ignore latency]} (context not yet executed)"));
 
             IEnumerable<object> results = twoPhaseExecutionContext.Results[0];
         }
+
+
+
 
 
         [Test]

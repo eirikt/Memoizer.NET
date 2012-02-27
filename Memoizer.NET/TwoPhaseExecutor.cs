@@ -26,7 +26,7 @@ namespace Memoizer.NET
     /// <p/>
     /// ... 
     /// </remarks>
-    // TODO: Rename to PhasedExecutor ...?
+    // TODO: Rename to PhasedExecutor!
     public sealed class TwoPhaseExecutor
     {
         /// <summary>
@@ -309,33 +309,30 @@ namespace Memoizer.NET
 
 
     // TODO: extend to Action and up-to four Func input arguments
+
     public static partial class FuncExtensionMethods
     {
+        const int DEFAULT_NUMBER_OF_ITERATIONS = 1;
+        const int DEFAULT_NUMBER_OF_WORKER_THREADS = 1;
+
+
         public static TwoPhaseExecutionContext CreatePhasedExecutionContext<TResult>(
             this Func<TResult> function,
             dynamic[] args = null,
-            int threads = 1,
-            int iterations = 1,
+            int threads = DEFAULT_NUMBER_OF_WORKER_THREADS,
+            int iterations = DEFAULT_NUMBER_OF_ITERATIONS,
+            bool report = false,
             bool concurrent = true,
             bool memoize = false,
             long functionLatency = default(long),
             //bool ignoreLatency = false,
             bool instrumentation = false,
-            string tag = null)
+            string tag = null,
+            Action<string> loggingMethod = null)
         {
-            return new TwoPhaseExecutionContext(function,
-                                                args,
-                                                threads,
-                                                iterations,
-                                                concurrent,
-                                                memoize,
-                // memoizerClearing,
-                                                false,
-                                                functionLatency,
-                //ignoreLatency,
-                                                instrumentation,
-                                                tag);
+            return new TwoPhaseExecutionContext(function, args, threads, iterations, report, concurrent, memoize, false, functionLatency, instrumentation, tag, loggingMethod);
         }
+
 
         public static TwoPhaseExecutionContext CreateExecutionContext<TParam1, TParam2, TResult>(
             this Func<TParam1, TParam2, TResult> functionToBeMemoized,
@@ -357,6 +354,7 @@ namespace Memoizer.NET
                                                 args,
                                                 threads,
                                                 iterations,
+                                                true,
                                                 concurrent,
                                                 memoize,
                 // memoizerClearing,
@@ -364,7 +362,9 @@ namespace Memoizer.NET
                                                 functionLatency,
                 //false,
                                                 instrumentation,
-                                                tag);
+                                                tag,
+                                                Console.WriteLine
+                                                );
         }
     }
 
@@ -414,23 +414,33 @@ namespace Memoizer.NET
                     ? " concurrent thread, "
                     : " concurrent threads, ");
 
-                if (DefaultArguments)
-                    stringBuilder.Append("default args, ");
-                //else
-                //    stringBuilder.Append("");
+                Type[] genericArguments = FunctionToBeExecuted.GetType().GetGenericArguments();
+                if (genericArguments.Length <= 1)
+                    stringBuilder.Append("no args, ");
+                else
+                    if (DefaultArguments)
+                        stringBuilder.Append("default args, ");
 
                 //if (IsMemoizerClearingTask)
                 //    stringBuilder.Append("mem-clearing");
                 //else
                 //{
 
+                //if (CalculatedLatency)
+                //  stringBuilder.Append("~" + LatencyInMilliseconds + " ms latency");
+
                 if (LatencyInMilliseconds != default(long))
-                    stringBuilder.Append(LatencyInMilliseconds + " ms latency");
+                    if (CalculatedLatency)
+                        stringBuilder.Append("~" + LatencyInMilliseconds + " ms latency");
+                    else
+                        stringBuilder.Append(LatencyInMilliseconds + " ms latency");
+                else
+                    stringBuilder.Append("latency unknown");
 
                 if (IsMemoized)
-                    stringBuilder.Append(", mem");
-                else
-                    stringBuilder.Append(", non-mem");
+                    stringBuilder.Append(", memoized");
+                //else
+                //    stringBuilder.Append(", non-mem");
 
                 //}
                 //stringBuilder.Append(IsMemoizerClearingTask);
@@ -465,8 +475,10 @@ namespace Memoizer.NET
 
         internal TwoPhaseExecutionContextResultSet twoPhaseExecutionContextResultSet;// = new TwoPhaseExecutionContextResultSet(this);
 
-        bool MeasureLatency { get; set; }
+        private Action<string> loggingMethod;
 
+        internal bool MeasureLatency { get; set; }
+        internal bool AssertLatency { get; set; }
 
         //private IDictionary<string, Tuple<long, object>> resultMatrix;
         //private long totalLatency;
@@ -490,20 +502,32 @@ namespace Memoizer.NET
                                           dynamic[] args,
                                           int numberOfConcurrentThreadsWitinhEachIteration,
                                           int numberOfIterations,
+            bool report,
                                           bool concurrent,
                                           bool memoize,
             //bool isMemoizerClearing,
                                           bool idempotentFunction,
                                           long functionLatencyInMilliseconds,
             //bool ignoreLatency,
-            bool instrumentation,
-                                          string tag)
+                                          bool instrumentation,
+                                          string tag,
+                                          Action<string> loggingMethod// = null//new Action<string>(delegate(string logLine){Console.WriteLine(logLine);});
+            )
         {
-            if (numberOfIterations < 0) { throw new ArgumentException("Number-of-iteration parameter ('iterations') cannot be a negative number"); }
-            if (numberOfConcurrentThreadsWitinhEachIteration < 0) { throw new ArgumentException("Number-of-worker-threads parameter ('threads') cannot be a negative number"); }
+            if (numberOfIterations < 1) { throw new ArgumentException("Number-of-iterations parameter ('iterations') cannot be less than 1"); }
+            if (numberOfConcurrentThreadsWitinhEachIteration < 1) { throw new ArgumentException("Number-of-worker-threads parameter ('threads') cannot be less than 1"); }
+
+            //if (numberOfIterations < 1) { throw new ArgumentException("No iterations are declared - context cannot be executed"); }
+            //if (numberOfConcurrentThreadsWitinhEachIteration < 1) { throw new ArgumentException("No worker threads are declared - context cannot be executed"); }
 
 
             Type[] genericArguments = functionToBeExecuted.GetType().GetGenericArguments();
+            //if (genericArguments.Length < 1)
+            //{
+
+            //}
+            //else
+            //{
             if (args != null)
             {
                 if (genericArguments.Length - 1 != args.Length) // -1 since the last generic parameter is the TResult
@@ -523,7 +547,7 @@ namespace Memoizer.NET
                 }
                 args = defaultValueArguments;
             }
-
+            //}
 
             FunctionExecutionContext functionExecutionContext = new FunctionExecutionContext
             {
@@ -535,7 +559,8 @@ namespace Memoizer.NET
                 IsMemoized = memoize,
                 //IsMemoizerClearingTask = isMemoizerClearing,
                 LatencyInMilliseconds = functionLatencyInMilliseconds,
-                CalculatedLatency = functionLatencyInMilliseconds == default(long),
+                //CalculatedLatency = functionLatencyInMilliseconds == default(long),
+                CalculatedLatency = false,
                 //IgnoreLatency = ignoreLatency,
                 Instrumentation = instrumentation,
                 Tag = tag
@@ -547,6 +572,13 @@ namespace Memoizer.NET
             this.isIdempotentContext = idempotentFunction;
             this.instrumentation = instrumentation;
             this.twoPhaseExecutionContextResultSet = new TwoPhaseExecutionContextResultSet(this);
+
+            this.loggingMethod = loggingMethod == default(Action<string>)
+                ? logLine => Console.WriteLine(logLine)
+                : loggingMethod;
+
+            if (report)
+                this.loggingMethod(this.twoPhaseExecutionContextResultSet.Report);
         }
 
 
@@ -686,6 +718,7 @@ namespace Memoizer.NET
             catch (ArgumentException e)
             {
                 Console.WriteLine("Oops: " + e);
+                this.loggingMethod("Oops: " + e);
             }
             if (!anotherTwoPhaseExecutionContext.isIdempotentContext)
                 mergedTwoPhaseExecutionContext.isIdempotentContext = false;
@@ -696,6 +729,7 @@ namespace Memoizer.NET
         }
 
 
+        [Obsolete("Include this as Execute (named) parameters")]
         public TwoPhaseExecutionContext Having(int iterations)
         {
             this.NumberOfIterations = iterations;
@@ -710,258 +744,16 @@ namespace Memoizer.NET
         }
 
 
-        //[Obsolete("To be removed, I guess...")]
-        //// TODO: automatic arguments
-        ////public void Test() { TestUsingArguments(default(TParam1), default(TParam2)); }
-        ////public void Test() { TestUsingArguments(1234L, "SomeString"); }
-        ////public void Test() { TestUsingArguments("SomeString", 1234L); }
-        //public void Test() { TestUsingDefaultValues(); }
-
-
-        //[Obsolete("To be removed, I guess...")]
-        //public void TestUsingDefaultValues()
-        //{
-        //    dynamic[] defaultValues = null;
-        //    foreach (var functionExecutionContext in this.functionsToBeExecuted)
-        //    {
-        //        Type[] genericArguments = functionExecutionContext.Value.FunctionToBeExecuted.GetType().GetGenericArguments();
-        //        defaultValues = new dynamic[genericArguments.Length - 1]; // -1 since the last generic parameter is the TResult
-        //        for (int j = 0; j < genericArguments.Length - 1; ++j)
-        //        {
-        //            Type genericArgument = genericArguments[j];
-        //            if (genericArgument.IsValueType)
-        //                defaultValues[j] = Activator.CreateInstance(genericArgument);
-        //            else if (genericArgument == typeof(String))
-        //                defaultValues[j] = default(String);
-        //        }
-        //    }
-        //    TestUsingArguments(defaultValues);
-        //}
-
-
-        //[Obsolete("To be removed, I guess...")]
-        //// TODO: automatic arguments
-        ////public void TestUsingRandomArgumentsFrom(ISet<TParam1> arg1Set, ISet<TParam2> arg2Set) { throw new NotImplementedException(); }
-        //public void TestUsingRandomArgumentsFrom(ISet<dynamic> setOfArguments) { throw new NotImplementedException(); }
-
-
-        //[Obsolete("Use one of the two above")]
-        ////public void TestUsingArguments(TParam1 arg1, TParam2 arg2)
-        //public void TestUsingArguments(params dynamic[] args)
-        //{
-        //    // Execute context
-        //    //TwoPhaseExecutionContextResultSet<TParam1, TParam2, TResult> twoPhaseExecutionContextResultSet = Execute(arg1, arg2);
-        //    TwoPhaseExecutionContextResultSet twoPhaseExecutionContextResultSet = Execute(args);
-
-        //    // Write report
-        //    Console.WriteLine(twoPhaseExecutionContextResultSet.Report);
-
-        //    // Assert latency (everything in milliseconds)
-        //    long duration = twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds;
-        //    if (duration > MaximumExpectedLatencyInMilliseconds)
-        //        throw new ApplicationException("Memoizer.NET.TwoPhaseExecutor: Latency violation! [to slow...]");
-        //    if (duration < MinimumExpextedLatencyInMilliseconds)
-        //        throw new ApplicationException("Memoizer.NET.TwoPhaseExecutor: Latency violation! [too fast!?]");
-
-        //    //// Assert results
-        //    //for (int i = 0; i < this.numberOfIterations; ++i)
-        //    //{
-        //    //    for (int j = 0; j < this.twoPhaseExecutor.NumberOfParticipatingWorkerThreads; ++j)
-        //    //    {
-        //    //        dynamic result = twoPhaseExecutionContextResultSet[i, j].Result;
-        //    //        //if (typeof(TResult) == typeof(String))
-        //    //        //{
-        //    //        //try
-        //    //        //{
-        //    //        if (twoPhaseExecutionContextResultSet[i, j].IsMemoizerClearingThread) { continue; }
-
-        //    //        //if (args[0] == null) { if (default(TParam1) == null) { continue; } }
-        //    //        /*else {*/
-        //    //        //if (args[0].Equals(1234L)) { continue; } //}
-
-        //    //        //if (arg2 == null) { if (default(TParam2) == null) { continue; } }
-        //    //        /*else {*/
-        //    //        //if (args[1].Equals("SomeString")) { continue; } //}
-
-        //    //        if (!((result as string).Contains(args[0].ToString()) && (result as string).Contains(args[1].ToString())))
-        //    //            throw new ApplicationException("Memoizer.NET.TwoPhaseExecutor: Result violation!");
-        //    //        //}
-        //    //        //catch (Exception) { throw new ApplicationException("Internal casting..."); }
-        //    //        //}
-        //    //        //else
-        //    //        //    throw new ApplicationException("Only String type results are supported ...so far");
-        //    //    }
-        //    //    //}
-        //    //}
-        //}
-
-
-        //[Obsolete("Arguments is now part of the individual contexts")]
-        ////public TwoPhaseExecutionContextResultSet<TParam1, TParam2, TResult> Execute(TParam1 arg1, TParam2 arg2)
-        //public TwoPhaseExecutionContextResultSet Execute(params dynamic[] args)
-        ////internal TwoPhaseExecutionContextResultSet Execute(params dynamic[] args)
-        //{
-        //    #region Idempotency
-        //    if (!this.isIdempotentContext) { throw new NotImplementedException("Non-idempotent function are kind of N/A in this context... I think"); }
-        //    #endregion
-
-        //    #region Expected latency
-        //    foreach (var functionExecutionContext in this.functionsToBeExecuted)
-        //    {
-        //        if (functionExecutionContext.Value.LatencyInMilliseconds == default(long))
-        //        {
-        //            long accumulatedLatencyMeasurement = 0;
-        //            StopWatch stopWatch = new StopWatch();
-        //            for (int i = 0; i < NUMBER_OF_WARM_UP_ITERATIONS; ++i)
-        //            {
-        //                stopWatch.Start();
-
-        //                Type[] genericArguments = functionExecutionContext.Value.FunctionToBeExecuted.GetType().GetGenericArguments();
-        //                object[] onTheFlyArguments = new object[genericArguments.Length - 1]; // -1 since the last generic parameter is the TResult
-        //                for (int j = 0; j < genericArguments.Length - 1; ++j)
-        //                {
-        //                    Type genericArgument = genericArguments[j];
-        //                    if (genericArgument.IsValueType)
-        //                        onTheFlyArguments[j] = Activator.CreateInstance(genericArgument);
-        //                    else if (genericArgument == typeof(String))
-        //                        onTheFlyArguments[j] = default(String);
-        //                }
-        //                functionExecutionContext.Value.FunctionToBeExecuted.DynamicInvoke(onTheFlyArguments);
-
-        //                accumulatedLatencyMeasurement += stopWatch.DurationInMilliseconds;
-        //            }
-        //            functionExecutionContext.Value.LatencyInMilliseconds = accumulatedLatencyMeasurement / NUMBER_OF_WARM_UP_ITERATIONS;
-
-        //            if (MinimumExpextedLatencyInMilliseconds == default(long))
-        //                MinimumExpextedLatencyInMilliseconds = functionExecutionContext.Value.LatencyInMilliseconds;
-        //            else if (functionExecutionContext.Value.LatencyInMilliseconds < MinimumExpextedLatencyInMilliseconds)
-        //                MinimumExpextedLatencyInMilliseconds = functionExecutionContext.Value.LatencyInMilliseconds;
-        //        }
-
-        //        long expectedLatency = functionExecutionContext.Value.LatencyInMilliseconds + CalculateContentionOverheadInMilliseconds();
-
-        //        if (functionExecutionContext.Value.IsMemoized)
-        //        {
-        //            if (expectedLatency > MaximumExpectedLatencyInMilliseconds)
-        //                MaximumExpectedLatencyInMilliseconds = expectedLatency;
-
-        //            if (expectedLatency < MinimumExpextedLatencyInMilliseconds)
-        //                MinimumExpextedLatencyInMilliseconds = expectedLatency;
-        //        }
-        //        else
-        //        {
-        //            expectedLatency *= NumberOfIterations;
-
-        //            if (expectedLatency > MaximumExpectedLatencyInMilliseconds)
-        //                MaximumExpectedLatencyInMilliseconds = expectedLatency;
-
-        //            if (expectedLatency < MinimumExpextedLatencyInMilliseconds)
-        //                MinimumExpextedLatencyInMilliseconds = expectedLatency;
-        //        }
-        //    }
-        //    #endregion
-
-        //    #region Two-phased execution
-        //    TwoPhaseExecutionContextResultSet twoPhaseExecutionContextResultSet = new TwoPhaseExecutionContextResultSet(this);
-        //    twoPhaseExecutionContextResultSet.StopWatch.Start();
-        //    //for (int i = 0; i < this.numberOfIterations; ++i)
-        //    for (int i = 0; i < NumberOfIterations; ++i)
-        //    {
-        //        this.twoPhaseExecutor = new TwoPhaseExecutor(NumberOfConcurrentWorkerThreads, this.instrumentation);
-
-        //        //this.workerThreads = new List<FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>>(NumberOfConcurrentWorkerThreads);
-        //        this.workerThreads = new List<DynamicTwoPhaseExecutorThread>(NumberOfConcurrentWorkerThreads);
-
-        //        foreach (var function in functionsToBeExecuted)
-        //            for (int j = 0; j < function.Value.NumberOfConcurrentThreadsWitinhEachIteration; ++j)
-        //                //if (function.Value.IsMemoizerClearingTask)
-        //                //    this.workerThreads.Add(new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>(function: ((Func<TParam1, TParam2, TResult>)function.Value.FunctionToBeExecuted),
-        //                //                                                                                     barrier: twoPhaseExecutor.Barrier,
-        //                //                                                                                     isMemoizerClearing: true,
-        //                //                                                                                     instrumentation: function.Value.Instrumentation,
-        //                //                                                                                     tag: function.Value.Tag));
-        //                //else
-        //                if (function.Value.IsMemoized)
-        //                {
-        //                    ////this.workerThreads.Add(new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>(function: ((Func<TParam1, TParam2, TResult>)function.Value.FunctionToBeExecuted).CachedInvoke,
-        //                    ////                                                                                 barrier: twoPhaseExecutor.Barrier,
-        //                    ////                                                                                 instrumentation: function.Value.Instrumentation,
-        //                    ////                                                                                 tag: function.Value.Tag));
-
-        //                    var functionToBeExecuted = function.Value.FunctionToBeExecuted;
-
-        //                    //Func<dynamic, dynamic, dynamic> func = new Func<dynamic, dynamic, dynamic>(delegate(dynamic arg1, dynamic arg2)
-        //                    //{
-        //                    //    return new MemoizerFactory(functionToBeExecuted).GetMemoizer().InvokeWith(new object[] { arg1, arg2 });
-        //                    //    //return functionToBeExecuted.CachedDynamicInvoke(new object[] { arg11, arg22 });
-        //                    //});
-        //                    Func<dynamic, dynamic, dynamic> f = (arg1, arg2) => new MemoizerFactory(functionToBeExecuted).GetMemoizer().InvokeWith(new object[] { arg1, arg2 });
-        //                    DynamicTwoPhaseExecutorThread d = new DynamicTwoPhaseExecutorThread(invocable: f, //*/functionToBeExecuted,//.DynamicCachedInvoke,
-        //                                                                                        originalInvocable: functionsToBeExecuted,
-        //                                                                                        args: args,
-        //                                                                                        barrier: twoPhaseExecutor.Barrier,
-        //                                                                                        instrumentation: function.Value.Instrumentation,
-        //                                                                                        tag: function.Value.Tag);
-        //                    //{
-        //                    //    Args = args
-        //                    //};
-        //                    this.workerThreads.Add(d);
-        //                }
-        //                else
-        //                {
-        //                    //this.workerThreads.Add(new FuncTwoPhaseExecutorThread<TParam1, TParam2, TResult>(function: ((Func<TParam1, TParam2, TResult>)function.Value.FunctionToBeExecuted),
-        //                    //                                                                                 barrier: twoPhaseExecutor.Barrier,
-        //                    //                                                                                 instrumentation: function.Value.Instrumentation,
-        //                    //                                                                                 tag: function.Value.Tag));
-        //                    //this.workerThreads.Add(new DynamicTwoPhaseExecutorThread(invocable: function.Value.FunctionToBeExecuted,
-        //                    //                                                         barrier: twoPhaseExecutor.Barrier,
-        //                    //                                                         instrumentation: function.Value.Instrumentation,
-        //                    //                                                         tag: function.Value.Tag));
-        //                    DynamicTwoPhaseExecutorThread d = new DynamicTwoPhaseExecutorThread(invocable: function.Value.FunctionToBeExecuted,
-        //                        originalInvocable: function.Value.FunctionToBeExecuted,
-        //                                                                                        args: args,
-        //                                                                                        barrier: twoPhaseExecutor.Barrier,
-        //                                                                                        instrumentation: function.Value.Instrumentation,
-        //                                                                                        tag: function.Value.Tag);
-        //                    //{
-        //                    //    Args = args
-        //                    //};
-        //                    this.workerThreads.Add(d);
-        //                }
-
-        //        TwoPhaseExecutionContextResult twoPhaseExecutionContextResult = new TwoPhaseExecutionContextResult(NumberOfConcurrentWorkerThreads);
-        //        for (int j = 0; j < NumberOfConcurrentWorkerThreads; ++j)
-        //        {
-        //            //    //workerThreads[j].Arg1 = arg1;
-        //            //    //workerThreads[j].Arg2 = arg2;
-        //            //    workerThreads[j].Args = args; //new dynamic[] { args };
-        //            workerThreads[j].Start();
-        //            twoPhaseExecutionContextResult.WorkerThreads[j] = workerThreads[j];
-        //        }
-        //        twoPhaseExecutor.Start();
-
-        //        //for (int j = 0; j < NumberOfConcurrentWorkerThreads; ++j)
-        //        //    twoPhaseExecutionContextResult.WorkerThread[j] = workerThreads[j];
-
-        //        twoPhaseExecutionContextResultSet.ExecutionResult[i] = twoPhaseExecutionContextResult;
-        //    }
-        //    twoPhaseExecutionContextResultSet.StopWatch.Stop();
-        //    IsExecuted = true;
-
-        //    return twoPhaseExecutionContextResultSet;
-        //    #endregion
-        //}
 
 
 
-
-
-        public TwoPhaseExecutionContext Execute(bool measureLatency = false, bool report = true)
+        public TwoPhaseExecutionContext Execute(bool measureLatency = false, bool assertLatency = false, bool report = true)
         {
             MeasureLatency = measureLatency;
+            AssertLatency = assertLatency;
 
             //#region Report [before]
-            //if (report) { Console.WriteLine(new TwoPhaseExecutionContextResultSet(this).Report); }
+            //if (report) { this.loggingMethod(new TwoPhaseExecutionContextResultSet(this).Report); }
             //#endregion
 
             //#region Idempotency
@@ -971,7 +763,7 @@ namespace Memoizer.NET
             #region Expected latency
             if (MeasureLatency)
             {
-                //Console.WriteLine("--- Expected latency ---");
+                //this.loggingMethod("--- Expected latency ---");
                 foreach (var functionExecutionContext in this.functionsToBeExecuted.Values)
                 {
                     //if (!functionExecutionContext.IgnoreLatency && functionExecutionContext.LatencyInMilliseconds == default(long))
@@ -1017,7 +809,10 @@ namespace Memoizer.NET
                     }
                     else
                     {
-                        expectedLatency *= NumberOfIterations;
+                        if (NumberOfIterations < 1)
+                            expectedLatency *= 1; // Too avoid expectedLatency == 0 and MaximumExpectedLatencyInMilliseconds == 0
+                        else
+                            expectedLatency *= NumberOfIterations;
 
                         if (expectedLatency > MaximumExpectedLatencyInMilliseconds)
                             MaximumExpectedLatencyInMilliseconds = expectedLatency;
@@ -1025,12 +820,13 @@ namespace Memoizer.NET
                         if (expectedLatency < MinimumExpectedLatencyInMilliseconds)
                             MinimumExpectedLatencyInMilliseconds = expectedLatency;
                     }
+                    functionExecutionContext.CalculatedLatency = true;
                 }
             }
             #endregion
 
             #region Two-phased execution
-            //Console.WriteLine("--- Two-phased execution ---");
+            //this.loggingMethod("--- Two-phased execution ---");
             //TwoPhaseExecutionContextResultSet twoPhaseExecutionContextResultSet = new TwoPhaseExecutionContextResultSet(this);
             this.twoPhaseExecutionContextResultSet.StopWatch.Start();
             for (int i = 0; i < NumberOfIterations; ++i)
@@ -1059,14 +855,7 @@ namespace Memoizer.NET
                                 case 0: throw new NotImplementedException();
                                 case 1: throw new NotImplementedException();
                                 case 2:
-                                    if (functionExecutionContext.Args == null)
-                                    {
-                                        throw new ApplicationException("Missing args");
-                                    }
-                                    if (functionExecutionContext.Args.Count() != 2)
-                                    {
-                                        throw new ApplicationException("Missing args");
-                                    }
+                                    if (functionExecutionContext.Args == null || functionExecutionContext.Args.Count() != 2) { throw new ApplicationException("Missing args"); }
                                     context = functionExecutionContext;
                                     Func<dynamic, dynamic, dynamic> func2 = (arg1, arg2) =>
                                         new MemoizerFactory(context.FunctionToBeExecuted).GetMemoizer().InvokeWith(new object[] { arg1, arg2 });
@@ -1103,7 +892,6 @@ namespace Memoizer.NET
                                     //{
                                     //    throw new ApplicationException("Missing args");
                                     //}
-
                                     dynamicTwoPhaseExecutorThread =
                                        new DynamicTwoPhaseExecutorThread(invocable: functionExecutionContext.FunctionToBeExecuted,
                                                                          originalInvocable: functionExecutionContext.FunctionToBeExecuted,
@@ -1117,15 +905,7 @@ namespace Memoizer.NET
 
                                 case 1: throw new NotImplementedException();
                                 case 2:
-                                    if (functionExecutionContext.Args == null)
-                                    {
-                                        throw new ApplicationException("Missing args");
-                                    }
-                                    if (functionExecutionContext.Args.Count() != 2)
-                                    {
-                                        throw new ApplicationException("Missing args");
-                                    }
-
+                                    if (functionExecutionContext.Args == null || functionExecutionContext.Args.Count() != 2) { throw new ApplicationException("Missing args"); }
                                     dynamicTwoPhaseExecutorThread =
                                        new DynamicTwoPhaseExecutorThread(invocable: functionExecutionContext.FunctionToBeExecuted,
                                                                          originalInvocable: functionExecutionContext.FunctionToBeExecuted,
@@ -1155,7 +935,7 @@ namespace Memoizer.NET
             #endregion
 
             #region Report [after]
-            if (report) { Console.WriteLine(this.twoPhaseExecutionContextResultSet.Report); }
+            if (report) { this.loggingMethod(this.twoPhaseExecutionContextResultSet.Report); }
             #endregion
 
             return this;
@@ -1204,59 +984,78 @@ namespace Memoizer.NET
             // Assert results of the executed functions
             reportBuilder.Append("PhasedExecutor: ");
             reportBuilder.Append(NumberOfIterations);
-            reportBuilder.Append(NumberOfIterations == 1 ? " round " : " rounds of ");
+            reportBuilder.Append(NumberOfIterations == 1 ? " round of " : " rounds of ");
             reportBuilder.Append(FunctionListing);
 
-            if (IsExecuted)
-            {
-                reportBuilder.Append(/*" having approx. " + LatencyListing + " ms latency - t*/" took " + this.twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds + " ms | " + this.twoPhaseExecutionContextResultSet.StopWatch.DurationInTicks + " ticks");
-                reportBuilder.Append(" (should take [");
-                reportBuilder.Append(MinimumExpectedLatencyInMilliseconds);
-                reportBuilder.Append(" <= ");
-                reportBuilder.Append(this.twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds);
-                reportBuilder.Append(" <= ");
-                reportBuilder.Append(MaximumExpectedLatencyInMilliseconds);
-                reportBuilder.Append("] ms)");
-                //if (this.twoPhaseExecutionContext.NumberOfConcurrentWorkerThreads == 1) reportBuilder.Append(" (extra 1-thread-only-latency-expectation penalty added...)");
-                if (IsMergedWithOneOrMoreSingleThreadContexts) reportBuilder.Append(" (extra 1-thread-only-latency-expectation penalty added...)");
-                //reportBuilder.Append(" (expected function invocations: " + GetExpectedFunctionInvocationCountFor(this.twoPhaseExecutionContext.) + ")");
-                //}
-                //else
-                //    reportBuilder.Append(" (context not yet executed)");
+            //if (IsExecuted)
+            //{
+            //    reportBuilder.Append(/*" having approx. " + LatencyListing + " ms latency - t*/" took " + this.twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds + " ms | " + this.twoPhaseExecutionContextResultSet.StopWatch.DurationInTicks + " ticks");
 
-                if (expectedResults == default(IDictionary<string, object>) || expectedResults.Count <= 0)
-                {
-                    reportBuilder.Append(" (no expected results given)");
+            //    if (MeasureLatency)
+            //    {
+            //        reportBuilder.Append(" (should take [");
+            //        reportBuilder.Append(MinimumExpectedLatencyInMilliseconds);
+            //        reportBuilder.Append(" <= ");
+            //        reportBuilder.Append(this.twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds);
+            //        reportBuilder.Append(" <= ");
+            //        reportBuilder.Append(MaximumExpectedLatencyInMilliseconds);
+            //        reportBuilder.Append("] ms)");
+            //        //if (this.twoPhaseExecutionContext.NumberOfConcurrentWorkerThreads == 1) reportBuilder.Append(" (extra 1-thread-only-latency-expectation penalty added...)");
+            //        if (IsMergedWithOneOrMoreSingleThreadContexts) reportBuilder.Append(" (extra 1-thread-only-latency-expectation penalty added...)");
+            //        //reportBuilder.Append(" (expected function invocations: " + GetExpectedFunctionInvocationCountFor(this.twoPhaseExecutionContext.) + ")");
+            //        //}
+            //        //else
+            //        //    reportBuilder.Append(" (context not yet executed)");
+            //    }
+            //    //else
+            //    //    reportBuilder.Append(" (no latency...)");
 
-                    if (listResults)
-                        reportBuilder.Append(Environment.NewLine);
-                }
-            }
+            //    if (expectedResults == default(IDictionary<string, object>) || expectedResults.Count <= 0)
+            //    {
+            //        reportBuilder.Append(" (no expected results given)");
+
+            //        if (listResults)
+            //            reportBuilder.Append(Environment.NewLine);
+            //    }
+            //}
 
             if (expectedResults == default(IDictionary<string, object>) || expectedResults.Count <= 0)
             {
+                // Expected results not given
+                reportBuilder.Append(" expected results not given");
+
                 if (listResults)
                 {
-                    reportBuilder.Append("Result listing:");
+                    reportBuilder.Append(Environment.NewLine);
 
                     TwoPhaseExecutionContextResult[] twoPhaseExecutionContextResults = this.twoPhaseExecutionContextResultSet.ExecutionResult;
-
-                    for (int i = 0; i < NumberOfIterations; ++i)
+                    if (twoPhaseExecutionContextResults.Length == 0)
+                        reportBuilder.Append("No results available");
+                    else
                     {
-                        TwoPhaseExecutionContextResult twoPhaseExecutionContextResult = twoPhaseExecutionContextResults[i];
-                        DynamicTwoPhaseExecutorThread[] dynamicTwoPhaseExecutorThreads = twoPhaseExecutionContextResult.WorkerThreads;
-                        long numberOfConcurrentThreadsForThisParticularFuncContext = dynamicTwoPhaseExecutorThreads.Length;
-                        for (int j = 0; j < numberOfConcurrentThreadsForThisParticularFuncContext; ++j)
+                        reportBuilder.Append("Result listing:");
+
+                        for (int i = 0; i < NumberOfIterations; ++i)
                         {
-                            DynamicTwoPhaseExecutorThread dynamicTwoPhaseExecutorThread = dynamicTwoPhaseExecutorThreads[j];
+                            TwoPhaseExecutionContextResult twoPhaseExecutionContextResult = twoPhaseExecutionContextResults[i];
+                            DynamicTwoPhaseExecutorThread[] dynamicTwoPhaseExecutorThreads = twoPhaseExecutionContextResult.WorkerThreads;
+                            long numberOfConcurrentThreadsForThisParticularFuncContext = dynamicTwoPhaseExecutorThreads.Length;
+                            for (int j = 0; j < numberOfConcurrentThreadsForThisParticularFuncContext; ++j)
+                            {
+                                DynamicTwoPhaseExecutorThread dynamicTwoPhaseExecutorThread = dynamicTwoPhaseExecutorThreads[j];
 
-                            object actualResult = dynamicTwoPhaseExecutorThread.Result;
+                                object actualResult = dynamicTwoPhaseExecutorThread.Result;
 
-                            reportBuilder.Append(Environment.NewLine);
-                            reportBuilder.Append("\t");
-                            reportBuilder.Append("Result [" + i + "][" + j + "]: " + actualResult);
+                                reportBuilder.Append(Environment.NewLine);
+                                reportBuilder.Append("\t");
+                                reportBuilder.Append("Result [" + i + "][" + j + "]: " + actualResult);
+                            }
                         }
                     }
+                }
+                else
+                {
+
                 }
             }
             else
@@ -1292,19 +1091,20 @@ namespace Memoizer.NET
                 }
             }
 
-
-            // Assert latency/duration
-            long duration = this.twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds;
-
-            //StringBuilder errorReportBuilder = new StringBuilder();
-            reportBuilder.Append("Duration: " + duration + " ms | " + this.twoPhaseExecutionContextResultSet.StopWatch.DurationInTicks + " ticks");
-
-            if (!MeasureLatency)
+            if (AssertLatency)
             {
-                
-            }
-            else
-            {
+                // Assert latency/duration
+                long duration = this.twoPhaseExecutionContextResultSet.StopWatch.DurationInMilliseconds;
+
+                //StringBuilder errorReportBuilder = new StringBuilder();
+                //reportBuilder.Append("Duration: " + duration + " ms | " + this.twoPhaseExecutionContextResultSet.StopWatch.DurationInTicks + " ticks");
+
+                //if (!MeasureLatency)
+                //{
+
+                //}
+                //else
+                //{
                 if (duration > MaximumExpectedLatencyInMilliseconds)
                 {
                     errorReportBuilder.Append(" (should take ");
@@ -1357,6 +1157,11 @@ namespace Memoizer.NET
                     errorReportBuilder.Append(" ms) [External demand]");
                     throw new ApplicationException("Memoizer.NET.TwoPhaseExecutor: Latency violation! TOO FAST" + Environment.NewLine + errorReportBuilder);
                 }
+                //}
+            }
+            else
+            {
+                reportBuilder.Append(", latency boundaries demands not given");
             }
 
 
@@ -1373,7 +1178,7 @@ namespace Memoizer.NET
                     errorReportBuilder.Append("Expected function [id=" + HashHelper.CreateFunctionHash(functionExecutionContext.FunctionToBeExecuted) + "] invocations:\t" + expectedCount);
                     errorReportBuilder.Append(Environment.NewLine);
                     errorReportBuilder.Append("Actual function [id=" + HashHelper.CreateFunctionHash(functionExecutionContext.FunctionToBeExecuted) + "] invocations:\t\t" + actualCount);
-                    //Console.WriteLine(Environment.NewLine + errorReportBuilder);
+                    //this.loggingMethod(Environment.NewLine + errorReportBuilder);
                     if (expectedCount != actualCount) { throw new ApplicationException("Memoizer.NET.TwoPhaseExecutor: Violation in number of function invocations" + Environment.NewLine + errorReportBuilder); }
                 }
             }
@@ -1382,7 +1187,7 @@ namespace Memoizer.NET
             // More asserts ...?
 
 
-            if (report) { Console.WriteLine(reportBuilder.ToString()); }
+            if (report) { this.loggingMethod(reportBuilder.ToString()); }
 
             return this;
         }
@@ -1470,31 +1275,40 @@ namespace Memoizer.NET
             get
             {
                 {
-                    //StringBuilder reportBuilder = new StringBuilder(GetType().FullName + ": ");
                     StringBuilder reportBuilder = new StringBuilder();
                     reportBuilder.Append("PhasedExecutor: ");
                     reportBuilder.Append(this.twoPhaseExecutionContext.NumberOfIterations);
-                    reportBuilder.Append(this.twoPhaseExecutionContext.NumberOfIterations == 1 ? " round " : " rounds of ");
+                    reportBuilder.Append(this.twoPhaseExecutionContext.NumberOfIterations == 1 ? " round of " : " rounds of ");
                     reportBuilder.Append(this.twoPhaseExecutionContext.FunctionListing);
-                    //if (this.twoPhaseExecutionContext.DefaultArguments) reportBuilder.Append(" (default arguments in use...)");
 
-                    if (this.twoPhaseExecutionContext.IsExecuted)
+                    if (!this.twoPhaseExecutionContext.IsExecuted)
+                    {
+                        reportBuilder.Append(" - not yet executed");
+                    }
+                    if (this.twoPhaseExecutionContext.IsExecuted && this.twoPhaseExecutionContext.MeasureLatency)
                     {
                         reportBuilder.Append(" having approx. " + this.twoPhaseExecutionContext.LatencyListing + " ms latency");//" - took " + this.StopWatch.DurationInMilliseconds + " ms | " + this.StopWatch.DurationInTicks + " ticks");
                         reportBuilder.Append(" (should take [");
                         reportBuilder.Append(this.twoPhaseExecutionContext.MinimumExpectedLatencyInMilliseconds);
-                        //reportBuilder.Append(" <= ");
-                        //reportBuilder.Append(StopWatch.DurationInMilliseconds);
-                        //reportBuilder.Append(" <= ");
                         reportBuilder.Append(", ");
                         reportBuilder.Append(this.twoPhaseExecutionContext.MaximumExpectedLatencyInMilliseconds);
                         reportBuilder.Append("] ms)");
-                        //if (this.twoPhaseExecutionContext.NumberOfConcurrentWorkerThreads == 1) reportBuilder.Append(" (extra 1-thread-only-latency-expectation penalty added...)");
                         if (this.twoPhaseExecutionContext.IsMergedWithOneOrMoreSingleThreadContexts) reportBuilder.Append(" (extra 1-thread-only-latency-expectation penalty added...)");
-                        //reportBuilder.Append(" (expected function invocations: " + GetExpectedFunctionInvocationCountFor(this.twoPhaseExecutionContext.) + ")");
                     }
                     else
-                        reportBuilder.Append(" (context not yet executed)");
+                        if (this.twoPhaseExecutionContext.IsExecuted && !this.twoPhaseExecutionContext.MeasureLatency)
+                        {
+                            reportBuilder.Append(" took " + this.StopWatch.DurationInMilliseconds + " ms | " + this.StopWatch.DurationInTicks + " ticks");
+                        }
+                        else
+                        {
+                            if (this.twoPhaseExecutionContext.NumberOfIterations < 1)
+                            {
+                                reportBuilder.Append(" (no iterations are declared - context cannot be executed!)");
+                            }
+                        }
+                    if (this.twoPhaseExecutionContext.NumberOfConcurrentWorkerThreads < 1)
+                        reportBuilder.Append(" (no worker threads are declared - context cannot be executed!)");
 
                     return reportBuilder.ToString();
                 }
@@ -1508,21 +1322,21 @@ namespace Memoizer.NET
             get
             {
                 if (this.twoPhaseExecutionContextResults == null || this.twoPhaseExecutionContextResults.Length < 1)
-                    throw new Exception("No TwoPhaseExecutionContextResults are available");
+                    throw new ApplicationException("No TwoPhaseExecutionContextResults are available");
                 if (iterationIndex > this.twoPhaseExecutionContextResults.Length - 1 && this.twoPhaseExecutionContextResults.Length == 1)
-                    throw new Exception("Result set contains only 1 iteration... Really no point is asking for iteration #2 (zero-based) then, is it?");
+                    throw new ApplicationException("Result set contains only 1 iteration... Really no point is asking for iteration #2 (zero-based) then, is it?");
                 if (iterationIndex > this.twoPhaseExecutionContextResults.Length - 1)
-                    throw new Exception("Result set contains only " + this.twoPhaseExecutionContextResults.Length + " iterations... Really no point is asking for iteration #" + (iterationIndex + 1) + " (zero-based) then, is it?");
+                    throw new ApplicationException("Result set contains only " + this.twoPhaseExecutionContextResults.Length + " iterations... Really no point is asking for iteration #" + (iterationIndex + 1) + " (zero-based) then, is it?");
 
                 TwoPhaseExecutionContextResult twoPhaseExecutionContextResult = this.twoPhaseExecutionContextResults[iterationIndex];
 
                 DynamicTwoPhaseExecutorThread[] funcTwoPhaseExecutorThreads = twoPhaseExecutionContextResult.WorkerThreads;
                 if (funcTwoPhaseExecutorThreads == null || funcTwoPhaseExecutorThreads.Length < 1)
-                    throw new Exception("No FuncTwoPhaseExecutorThreads (worker threads) are available");
+                    throw new ApplicationException("No FuncTwoPhaseExecutorThreads (worker threads) are available");
                 if (concurrentThreadIndex > funcTwoPhaseExecutorThreads.Length - 1 && funcTwoPhaseExecutorThreads.Length == 1)
-                    throw new Exception("Result set contains only 1 worker thread... Really no point is asking for thread #2 (zero-based) then, is it?");
+                    throw new ApplicationException("Result set contains only 1 worker thread... Really no point is asking for thread #2 (zero-based) then, is it?");
                 if (concurrentThreadIndex > funcTwoPhaseExecutorThreads.Length - 1)
-                    throw new Exception("Result set contains only " + funcTwoPhaseExecutorThreads.Length + " worker threads... Really no point is asking for thread #" + (concurrentThreadIndex + 1) + " (zero-based) then, is it?");
+                    throw new ApplicationException("Result set contains only " + funcTwoPhaseExecutorThreads.Length + " worker threads... Really no point is asking for thread #" + (concurrentThreadIndex + 1) + " (zero-based) then, is it?");
 
                 return twoPhaseExecutionContextResult.WorkerThreads[concurrentThreadIndex];
             }
@@ -1545,13 +1359,15 @@ namespace Memoizer.NET
             get
             {
                 if (this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults == null || this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults.Length < 1)
-                    throw new Exception("No results are available");
+                    throw new ApplicationException("No results are available");
                 if (iterationIndex > this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults.Length - 1 && this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults.Length == 1)
-                    throw new Exception("Result set contains only 1 iteration... Really no point is asking for iteration #2 (zero-based) then, is it?");
+                    throw new ApplicationException("Result set contains only 1 iteration... Really no point is asking for iteration #2 (zero-based) then, is it?");
                 if (iterationIndex > this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults.Length - 1)
-                    throw new Exception("Result set contains only " + this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults.Length + " iterations... Really no point is asking for iteration #" + (iterationIndex + 1) + " (zero-based) then, is it?");
+                    throw new ApplicationException("Result set contains only " + this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults.Length + " iterations... Really no point is asking for iteration #" + (iterationIndex + 1) + " (zero-based) then, is it?");
 
                 TwoPhaseExecutionContextResult twoPhaseExecutionContextResult = this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults[iterationIndex];
+                if (twoPhaseExecutionContextResult == null)
+                    throw new ApplicationException("No results are available");
 
                 List<object> results = new List<dynamic>(twoPhaseExecutionContextResult.WorkerThreads.Length);
                 foreach (DynamicTwoPhaseExecutorThread workerThread in twoPhaseExecutionContextResult.WorkerThreads)
@@ -1567,27 +1383,36 @@ namespace Memoizer.NET
             get
             {
                 if (this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults == null || this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults.Length < 1)
-                    throw new Exception("No results are available");
+                    throw new ApplicationException("No results are available");
                 if (iterationIndex > this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults.Length - 1 && this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults.Length == 1)
-                    throw new Exception("Result set contains only 1 iteration... Really no point is asking for iteration #2 (zero-based) then, is it?");
+                    throw new ApplicationException("Result set contains only 1 iteration... Really no point is asking for iteration #2 (zero-based) then, is it?");
                 if (iterationIndex > this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults.Length - 1)
-                    throw new Exception("Result set contains only " + this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults.Length + " iterations... Really no point is asking for iteration #" + (iterationIndex + 1) + " (zero-based) then, is it?");
+                    throw new ApplicationException("Result set contains only " + this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults.Length + " iterations... Really no point is asking for iteration #" + (iterationIndex + 1) + " (zero-based) then, is it?");
 
                 TwoPhaseExecutionContextResult twoPhaseExecutionContextResult = this.twoPhaseExecutionContext.twoPhaseExecutionContextResultSet.twoPhaseExecutionContextResults[iterationIndex];
 
                 DynamicTwoPhaseExecutorThread[] funcTwoPhaseExecutorThreads = twoPhaseExecutionContextResult.WorkerThreads;
                 if (funcTwoPhaseExecutorThreads == null || funcTwoPhaseExecutorThreads.Length < 1)
-                    throw new Exception("No worker threads are available");
+                    throw new ApplicationException("No worker threads are available");
                 if (concurrentThreadIndex > funcTwoPhaseExecutorThreads.Length - 1 && funcTwoPhaseExecutorThreads.Length == 1)
-                    throw new Exception("Result set contains only 1 worker thread... Really no point is asking for thread #2 (zero-based) then, is it?");
+                    throw new ApplicationException("Result set contains only 1 worker thread... Really no point is asking for thread #2 (zero-based) then, is it?");
                 if (concurrentThreadIndex > funcTwoPhaseExecutorThreads.Length - 1)
-                    throw new Exception("Result set contains only " + funcTwoPhaseExecutorThreads.Length + " worker threads... Really no point is asking for thread #" + (concurrentThreadIndex + 1) + " (zero-based) then, is it?");
+                    throw new ApplicationException("Result set contains only " + funcTwoPhaseExecutorThreads.Length + " worker threads... Really no point is asking for thread #" + (concurrentThreadIndex + 1) + " (zero-based) then, is it?");
 
                 List<object> results = new List<dynamic>(twoPhaseExecutionContextResult.WorkerThreads.Length);
                 foreach (DynamicTwoPhaseExecutorThread workerThread in twoPhaseExecutionContextResult.WorkerThreads)
                     results.Add(workerThread.Result);
 
                 return results;
+            }
+        }
+
+
+        public long Count
+        {
+            get
+            {
+                return this.twoPhaseExecutionContext.NumberOfIterations;
             }
         }
     }
