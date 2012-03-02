@@ -74,18 +74,15 @@ namespace Memoizer.NET.Test
 
 
 
-        static IList<string> LOG_LINES;// = new List<string>();
+        static IList<string> LOG_LINES;
 
         readonly Action<string> loggingMethod = delegate(string logLine) { LOG_LINES.Add(logLine); Console.WriteLine(logLine); };
 
         [SetUp]
-        //#pragma warning disable 108,114 // Affirmative, both [SetUp] methods should be executed. This one _after_ the base [Setup] method.
         public void PerMethodSetUp()
-        //#pragma warning restore 108,114
         {
             LOG_LINES = new List<string>();
         }
-
 
 
         // --- less-than-one execution numbers ---
@@ -206,9 +203,6 @@ namespace Memoizer.NET.Test
         //    Func<long> myThreadSafeFunc = () => invocationCounter++;
         //    myThreadSafeFunc.CreatePhasedExecutionContext(iterations: iterations, threads: 0).Execute();
         //}
-
-
-
 
 
         // --- default argument's execution => single iteration - single thread ---
@@ -375,8 +369,8 @@ namespace Memoizer.NET.Test
 
 
 
-        
-        
+
+
         // --- multiple worker threads ---
 
 
